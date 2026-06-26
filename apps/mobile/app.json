@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Fitness Calendar",
+    "slug": "fitness-calendar",
+    "scheme": "fitnesscalendar",
+    "userInterfaceStyle": "automatic",
+    "platforms": ["ios", "android", "web"],
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": ["expo-router"]
+  }
+}

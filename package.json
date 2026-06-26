@@ -1,0 +1,14 @@
+{
+  "name": "fitness-calendar",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.5.2",
+  "scripts": {
+    "dev:mobile": "pnpm --dir apps/mobile start",
+    "dev:api": "pnpm --dir apps/api dev",
+    "typecheck": "pnpm --recursive run typecheck",
+    "test": "pnpm --recursive run test",
+    "smoke": "pnpm --dir shared test",
+    "food:smoke": "pnpm --dir shared test"
+  }
+}

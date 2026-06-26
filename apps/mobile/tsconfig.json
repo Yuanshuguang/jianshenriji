@@ -1,0 +1,22 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@fitness-calendar/shared": [
+        "../../shared/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "app",
+    "components",
+    "features",
+    "store"
+  ],
+  "exclude": [
+    "features/__tests__"
+  ]
+}
