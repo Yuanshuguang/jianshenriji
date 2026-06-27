@@ -1,0 +1,161 @@
+{
+  "data": [
+    {
+      "id": "page-today",
+      "title": "今日总览",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1750816400000,
+      "canvasData": {
+        "x": 0,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/today.html",
+        "interactions": [
+          {
+            "domId": "tab-train",
+            "targetPageId": "page-train",
+            "hideEdge": false,
+            "transitionLabel": "训练"
+          },
+          {
+            "domId": "tab-plan",
+            "targetPageId": "page-plan",
+            "hideEdge": true,
+            "transitionLabel": "计划"
+          },
+          {
+            "domId": "tab-more",
+            "targetPageId": "page-more",
+            "hideEdge": true,
+            "transitionLabel": "更多"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-train",
+      "title": "训练",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1750816400000,
+      "canvasData": {
+        "x": 420,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/train.html",
+        "interactions": [
+          {
+            "domId": "tab-today",
+            "targetPageId": "page-today",
+            "hideEdge": true,
+            "transitionLabel": "今日"
+          },
+          {
+            "domId": "tab-plan",
+            "targetPageId": "page-plan",
+            "hideEdge": false,
+            "transitionLabel": "计划"
+          },
+          {
+            "domId": "tab-more",
+            "targetPageId": "page-more",
+            "hideEdge": true,
+            "transitionLabel": "更多"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-plan",
+      "title": "计划",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1750816400000,
+      "canvasData": {
+        "x": 840,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/plan.html",
+        "interactions": [
+          {
+            "domId": "tab-today",
+            "targetPageId": "page-today",
+            "hideEdge": true,
+            "transitionLabel": "今日"
+          },
+          {
+            "domId": "tab-train",
+            "targetPageId": "page-train",
+            "hideEdge": true,
+            "transitionLabel": "训练"
+          },
+          {
+            "domId": "tab-more",
+            "targetPageId": "page-more",
+            "hideEdge": false,
+            "transitionLabel": "更多"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-more",
+      "title": "更多",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1750816400000,
+      "canvasData": {
+        "x": 1164,
+        "y": 72,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/more.html",
+        "interactions": [
+          {
+            "domId": "tab-today",
+            "targetPageId": "page-today",
+            "hideEdge": true,
+            "transitionLabel": "今日"
+          },
+          {
+            "domId": "tab-train",
+            "targetPageId": "page-train",
+            "hideEdge": true,
+            "transitionLabel": "训练"
+          },
+          {
+            "domId": "tab-plan",
+            "targetPageId": "page-plan",
+            "hideEdge": true,
+            "transitionLabel": "计划"
+          }
+        ]
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": false,
+    "deviceType": "freeSize",
+    "projectName": "健身日历 Apple 风格",
+    "designLibrary": {
+      "name": "苹果",
+      "id": "dl_builtin_apple",
+      "version": null,
+      "scope": "built-in-global",
+      "path": "c:\\Users\\Administrator\\.trae-cn\\design_libraries\\dl_builtin_apple",
+      "versionSource": "metadata.json"
+    },
+    "windowSize": {
+      "width": 800,
+      "height": 600
+    }
+  }
+}

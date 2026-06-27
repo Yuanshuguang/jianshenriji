@@ -1,5 +1,6 @@
 import {
   calculateFoodTotals,
+  type Exercise,
   exercises,
   getFoodCatalog,
   muscleGroupLabels,
@@ -36,10 +37,33 @@ export type ActualFoodPortionResult = {
   portions: FoodPortion[];
 };
 
+export type TrainingCalorieProfile = {
+  heightCm: number;
+  weightKg: number;
+};
+
+export type TrainingTextExercise = Pick<Exercise, "id" | "name" | "aliases" | "primaryMuscleGroup" | "met">;
+
+export type TrainingTextMatch = {
+  input: string;
+  exercise: TrainingTextExercise;
+  minutes: number;
+  calories: number;
+  intensityMultiplier: number;
+};
+
+export type ParsedTrainingText = {
+  matched: TrainingTextMatch[];
+  unmatched: string[];
+  totalMinutes: number;
+  totalCalories: number;
+};
+
 export type MealFood = {
   name: string;
   grams: number;
   calories: number;
+  totals: NutritionTotals;
   displayAmount?: string;
 };
 
@@ -111,18 +135,19 @@ export function buildMealPlan(portions: FoodPortion[], customFoods: Food[] = [])
       name: portion.name,
       grams: Math.round(Math.abs(portion.grams)),
       calories: Math.round(portion.totals.calories),
+      totals: {
+        calories: Math.round(portion.totals.calories),
+        proteinG: portion.totals.proteinG,
+        fatG: portion.totals.fatG,
+        carbsG: portion.totals.carbsG
+      },
       displayAmount: (portion as FoodPortionWithMeal).displayAmount
     });
   });
 
   return meals.map((meal) => ({
     ...meal,
-    totals: sumNutrition(meal.foods.map((item) => ({
-      calories: item.calories,
-      proteinG: 0,
-      fatG: 0,
-      carbsG: 0
-    })))
+    totals: sumNutrition(meal.foods.map((item) => item.totals))
   }));
 }
 
@@ -137,25 +162,70 @@ export function estimateTodayWorkoutCalories(workout: WorkoutPlan | undefined, b
 }
 
 export function estimateActualTrainingCalories(text: string, minutes: number, bodyWeightKg: number, fallbackWorkout?: WorkoutPlan): number {
+  return parseTrainingText(text, minutes, { heightCm: 175, weightKg: bodyWeightKg }, fallbackWorkout).totalCalories;
+}
+
+export function parseTrainingText(
+  text: string,
+  minutes: number,
+  profile: TrainingCalorieProfile,
+  fallbackWorkout?: WorkoutPlan,
+  extraExercises: TrainingTextExercise[] = []
+): ParsedTrainingText {
   const normalized = normalize(text);
   const duration = minutes > 0 ? minutes : inferMinutes(normalized) || fallbackWorkout?.estimatedMinutes || 0;
-  if (duration <= 0) return 0;
+  if (duration <= 0) {
+    return {
+      matched: [],
+      unmatched: text.trim() ? [text.trim()] : [],
+      totalMinutes: 0,
+      totalCalories: 0
+    };
+  }
 
-  const segments = extractTrainingSegments(normalized);
+  const referenceExercises = mergeTrainingReferences(exercises, extraExercises);
+  const segments = extractTrainingSegments(normalized, referenceExercises);
   if (segments.length === 0) {
     const met = fallbackWorkout ? averageWorkoutMet(fallbackWorkout) : 5;
-    return Math.round(caloriesByMet(met, bodyWeightKg, duration));
+    const totalCalories = Math.round(caloriesByMet(met, profile, duration));
+    return {
+      matched: text.trim()
+        ? [{
+            input: text.trim(),
+            exercise: buildFallbackExercise(fallbackWorkout, met),
+            minutes: duration,
+            calories: totalCalories,
+            intensityMultiplier: 1
+          }]
+        : [],
+      unmatched: text.trim() ? [text.trim()] : [],
+      totalMinutes: duration,
+      totalCalories
+    };
   }
 
   const explicitMinutes = segments.reduce((sum, item) => sum + item.minutes, 0);
   const remainingMinutes = Math.max(0, duration - explicitMinutes);
   const defaultMinutes = remainingMinutes > 0 ? remainingMinutes / segments.length : 0;
-  const total = segments.reduce((sum, item) => {
+  const matched = segments.map((item) => {
     const segmentMinutes = item.minutes > 0 ? item.minutes : defaultMinutes;
-    return sum + caloriesByMet(item.exercise.met * item.intensityMultiplier, bodyWeightKg, segmentMinutes);
-  }, 0);
+    const calories = Math.round(caloriesByMet(item.exercise.met * item.intensityMultiplier, profile, segmentMinutes));
+    return {
+      input: item.term,
+      exercise: item.exercise,
+      minutes: Math.round(segmentMinutes),
+      calories,
+      intensityMultiplier: item.intensityMultiplier
+    };
+  });
+  const totalCalories = matched.reduce((sum, item) => sum + item.calories, 0);
 
-  return Math.round(total);
+  return {
+    matched,
+    unmatched: extractUnmatchedTrainingText(normalized, segments.map((item) => [item.index, item.index + item.term.length])),
+    totalMinutes: matched.reduce((sum, item) => sum + item.minutes, 0),
+    totalCalories
+  };
 }
 
 export function getNextWorkoutAfterFeedback(queue: WorkoutPlan[], status: ActualTrainingStatus): WorkoutPlan | undefined {
@@ -212,12 +282,15 @@ function inferMinutes(text: string): number {
   return match ? Number(match[1]) : 0;
 }
 
-function caloriesByMet(met: number, bodyWeightKg: number, minutes: number): number {
-  return met * 3.5 * bodyWeightKg / 200 * minutes;
+function caloriesByMet(met: number, profileOrWeightKg: TrainingCalorieProfile | number, minutes: number): number {
+  const profile = typeof profileOrWeightKg === "number"
+    ? { heightCm: 175, weightKg: profileOrWeightKg }
+    : profileOrWeightKg;
+  return met * 3.5 * profile.weightKg * getBodySizeFactor(profile) / 200 * minutes;
 }
 
-function extractTrainingSegments(text: string): Array<{ exercise: typeof exercises[number]; minutes: number; intensityMultiplier: number }> {
-  const matches = exercises
+function extractTrainingSegments(text: string, referenceExercises: TrainingTextExercise[]): Array<{ exercise: TrainingTextExercise; term: string; index: number; minutes: number; intensityMultiplier: number }> {
+  const matches = referenceExercises
     .flatMap((exercise) => [exercise.name, ...exercise.aliases].map((term) => ({
       exercise,
       term: normalize(term)
@@ -232,19 +305,94 @@ function extractTrainingSegments(text: string): Array<{ exercise: typeof exercis
       return b.term.length - a.term.length;
     });
 
-  const segments: Array<{ exercise: typeof exercises[number]; minutes: number; intensityMultiplier: number }> = [];
+  const segments: Array<{ exercise: TrainingTextExercise; term: string; index: number; minutes: number; intensityMultiplier: number }> = [];
   const usedRanges: Array<[number, number]> = [];
   for (const match of matches) {
     if (rangesOverlap(usedRanges, match.index, match.index + match.term.length)) continue;
     const context = text.slice(Math.max(0, match.index - 18), Math.min(text.length, match.index + match.term.length + 28));
     segments.push({
       exercise: match.exercise,
-      minutes: inferMinutes(context),
+      term: match.term,
+      index: match.index,
+      minutes: inferSegmentMinutes(text, match.index, match.term.length),
       intensityMultiplier: inferIntensity(context)
     });
     usedRanges.push([match.index, match.index + match.term.length]);
   }
   return segments;
+}
+
+function mergeTrainingReferences(baseExercises: TrainingTextExercise[], extraExercises: TrainingTextExercise[]): TrainingTextExercise[] {
+  const byName = new Map<string, TrainingTextExercise>();
+  [...baseExercises, ...extraExercises, ...genericTrainingExercises].forEach((item) => {
+    const key = normalize(item.name);
+    if (!key || byName.has(key)) return;
+    byName.set(key, item);
+  });
+  return [...byName.values()];
+}
+
+const genericTrainingExercises: TrainingTextExercise[] = [
+  { id: "generic-stretch", name: "拉伸", aliases: ["拉伸", "放松", "拉伸放松"], primaryMuscleGroup: "core", met: 2.5 },
+  { id: "generic-warmup", name: "热身", aliases: ["热身", "动态热身"], primaryMuscleGroup: "core", met: 3 }
+];
+
+function inferSegmentMinutes(text: string, index: number, termLength: number): number {
+  const after = text.slice(index + termLength, Math.min(text.length, index + termLength + 24)).split(/[，。；、,.]/)[0] ?? "";
+  const afterAmountMinutes = inferFirstWorkAmountMinutes(after);
+  if (afterAmountMinutes > 0) return afterAmountMinutes;
+  const before = (text.slice(Math.max(0, index - 16), index).split(/[，。；、,.]/).pop() ?? "");
+  return inferFirstWorkAmountMinutes(before);
+}
+
+function inferSetMinutes(text: string): number {
+  const match = text.match(/([0-9]+)\s*(组|set|sets)/i);
+  if (!match) return 0;
+  return Math.max(3, Math.min(45, Number(match[1]) * 3));
+}
+
+function inferFirstWorkAmountMinutes(text: string): number {
+  const minuteMatch = text.match(/([0-9]+)\s*(分钟|分|min)/i);
+  const setMatch = text.match(/([0-9]+)\s*(组|set|sets)/i);
+  if (minuteMatch && (!setMatch || minuteMatch.index! <= setMatch.index!)) return Number(minuteMatch[1]);
+  if (setMatch) return Math.max(3, Math.min(45, Number(setMatch[1]) * 3));
+  return 0;
+}
+
+function buildFallbackExercise(fallbackWorkout: WorkoutPlan | undefined, met: number): TrainingTextExercise {
+  const firstExercise = fallbackWorkout?.exercises[0]
+    ? exercises.find((entry) => entry.id === fallbackWorkout.exercises[0].exerciseId)
+    : undefined;
+  return firstExercise ?? {
+    id: "unknown-training",
+    name: "训练",
+    aliases: [],
+    primaryMuscleGroup: "core",
+    met
+  };
+}
+
+function extractUnmatchedTrainingText(text: string, matchedRanges: Array<[number, number]>): string[] {
+  if (!text.trim()) return [];
+  let remainder = "";
+  for (let index = 0; index < text.length; index += 1) {
+    const inMatch = matchedRanges.some(([start, end]) => index >= start && index < end);
+    remainder += inMatch ? " " : text[index];
+  }
+  return remainder
+    .replace(/[0-9]+\s*(分钟|分|min|kg|公斤|千克|组|次)/gi, " ")
+    .replace(/(今天|最后|然后|接着|另外|做了|练了|训练|实际|大概|左右)/g, " ")
+    .split(/\s+/)
+    .map((item) => item.trim())
+    .filter((item) => item.length >= 2)
+    .filter((item) => !/^[0-9]+$/.test(item))
+    .slice(0, 6);
+}
+
+function getBodySizeFactor(profile: TrainingCalorieProfile): number {
+  const heightM = Math.max(1.2, profile.heightCm / 100);
+  const bmi = profile.weightKg / (heightM * heightM);
+  return Math.max(0.9, Math.min(1.12, Math.sqrt(bmi / 22)));
 }
 
 function inferIntensity(text: string): number {

@@ -7,10 +7,12 @@
     "start": "expo start",
     "export:web": "expo export --platform web --output-dir web-preview",
     "exercise-library:sync": "node scripts/sync-exercise-library.mjs",
+    "test": "tsx --test features/__tests__/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@fitness-calendar/shared": "workspace:*",
+    "@react-native-async-storage/async-storage": "^3.1.1",
     "expo": "56.0.12",
     "expo-constants": "56.0.18",
     "expo-font": "56.0.7",
@@ -28,7 +30,10 @@
     "zustand": "5.0.9"
   },
   "devDependencies": {
+    "@expo/cli": "^56.1.16",
+    "@types/node": "^22.10.0",
     "@types/react": "19.2.17",
+    "tsx": "^4.22.4",
     "typescript": "6.0.3"
   }
 }

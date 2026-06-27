@@ -27,7 +27,7 @@ export type DailyAdjustmentSummary = {
 
 export function buildDailyAdjustmentSummary(input: {
   target: EnergyPlan;
-  actualTotals: { calories: number };
+  actualTotals: NutritionTotals;
   actualFoodIsDelta: boolean;
   mealDeltas?: Array<{ id: MealAdjustmentKey; calories: number }>;
   plannedTrainingCalories: number;
@@ -65,9 +65,9 @@ export function buildDailyAdjustmentSummary(input: {
       target: input.target,
       actual: {
         calories: input.actualTotals.calories,
-        proteinG: 0,
-        fatG: 0,
-        carbsG: 0
+        proteinG: input.actualTotals.proteinG,
+        fatG: input.actualTotals.fatG,
+        carbsG: input.actualTotals.carbsG
       },
       actualFoodIsDelta: input.actualFoodIsDelta,
       mealDeltas: input.mealDeltas ?? []

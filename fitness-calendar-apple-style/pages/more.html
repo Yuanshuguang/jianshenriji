@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>更多 · 健身日历</title>
+    <style id="theme-vars">
+/*
+ * iOS 27 Liquid Glass Design Tokens
+ * 健身日历 APP · 液态玻璃风格
+ *
+ * 核心视觉特征：
+ *   - 半透明磨砂玻璃材质 (backdrop-filter: blur + saturate)
+ *   - 多层玻璃叠加产生深度感
+ *   - 鲜艳的系统色彩透过玻璃层
+ *   - 极大圆角 (接近药丸形)
+ *   - 微妙的边框高光模拟光线折射
+ *   - 渐变背景透过玻璃可见
+ */
+
+:root {
+  /* ===== GLASS MATERIAL TOKENS ===== */
+  --glass-bg: rgba(255, 255, 255, 0.45);
+  --glass-bg-raised: rgba(255, 255, 255, 0.62);
+  --glass-bg-elevated: rgba(255, 255, 255, 0.78);
+  --glass-bg-subtle: rgba(255, 255, 255, 0.25);
+  --glass-blur: 24px;
+  --glass-blur-heavy: 40px;
+  --glass-blur-light: 12px;
+  --glass-saturate: 1.8;
+
+  --glass-border: rgba(255, 255, 255, 0.35);
+  --glass-border-bright: rgba(255, 255, 255, 0.65);
+  --glass-border-subtle: rgba(255, 255, 255, 0.18);
+  --glass-highlight: rgba(255, 255, 255, 0.5);
+  --glass-inner-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  --glass-outer-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --glass-outer-shadow-raised: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+
+  /* ===== BACKGROUND ===== */
+  --background: #f2f2f7;
+  --background-gradient: linear-gradient(145deg, #e8f0fe 0%, #f2f2f7 30%, #fce4ec 60%, #f2f2f7 100%);
+  --foreground: #1d1d1f;
+
+  /* ===== CARD ===== */
+  --card: var(--glass-bg);
+  --card-foreground: #1d1d1f;
+  --card-hover: var(--glass-bg-raised);
+
+  /* ===== PRIMARY / ACCENT ===== */
+  --primary: #007AFF;
+  --primary-foreground: #ffffff;
+  --primary-glow: rgba(0, 122, 255, 0.25);
+  --primary-glass: rgba(0, 122, 255, 0.12);
+
+  /* ===== SECONDARY ===== */
+  --secondary: rgba(120, 120, 128, 0.12);
+  --secondary-foreground: #1d1d1f;
+
+  /* ===== MUTED ===== */
+  --muted: rgba(120, 120, 128, 0.08);
+  --muted-foreground: #8e8e93;
+
+  /* ===== ACCENT ===== */
+  --accent: rgba(120, 120, 128, 0.06);
+  --accent-foreground: #1d1d1f;
+
+  /* ===== STATE COLORS ===== */
+  --destructive: #FF3B30;
+  --destructive-foreground: #ffffff;
+  --destructive-glow: rgba(255, 59, 48, 0.2);
+  --destructive-glass: rgba(255, 59, 48, 0.1);
+
+  --success: #30D158;
+  --success-foreground: #ffffff;
+  --success-glow: rgba(48, 209, 88, 0.2);
+  --success-glass: rgba(48, 209, 88, 0.1);
+
+  --warning: #FF9F0A;
+  --warning-foreground: #ffffff;
+  --warning-glow: rgba(255, 159, 10, 0.2);
+  --warning-glass: rgba(255, 159, 10, 0.1);
+
+  /* ===== BORDER ===== */
+  --border: var(--glass-border);
+  --input: var(--glass-border);
+  --ring: var(--primary);
+
+  /* ===== ICON ===== */
+  --icon: #1d1d1f;
+  --icon-muted: #8e8e93;
+
+  /* ===== CHART COLORS ===== */
+  --chart-1: #30D158;
+  --chart-2: #007AFF;
+  --chart-3: #FF9F0A;
+  --chart-4: #5856D6;
+  --chart-5: #FF2D55;
+
+  /* ===== TYPOGRAPHY ===== */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --font-serif: -apple-system, BlinkMacSystemFont, 'SF Pro Display', serif, system-ui;
+  --font-mono: 'SF Mono', ui-monospace, 'Cascadia Code', monospace;
+  --tracking-normal: 0em;
+
+  /* ===== RADIUS ===== */
+  --radius: 1.4rem;
+  --radius-lg: 1.6rem;
+  --radius-xl: 2rem;
+
+  /* ===== SHADOWS ===== */
+  --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.07), 0 2px 6px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.1), 0 8px 20px rgba(0, 0, 0, 0.05);
+  --shadow-2xl: 0 28px 80px rgba(0, 0, 0, 0.12);
+
+  /* ===== SPACING ===== */
+  --spacing: 0.25rem;
+
+  /* ===== SIDEBAR ===== */
+  --sidebar: var(--glass-bg);
+  --sidebar-foreground: #1d1d1f;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--glass-bg-raised);
+  --sidebar-accent-foreground: #1d1d1f;
+  --sidebar-border: var(--glass-border);
+  --sidebar-ring: var(--primary);
+}
+
+/* ===== DARK MODE ===== */
+.dark {
+  --glass-bg: rgba(30, 30, 30, 0.55);
+  --glass-bg-raised: rgba(44, 44, 46, 0.7);
+  --glass-bg-elevated: rgba(58, 58, 60, 0.8);
+  --glass-bg-subtle: rgba(30, 30, 30, 0.3);
+  --glass-blur: 28px;
+  --glass-blur-heavy: 48px;
+  --glass-saturate: 2.0;
+
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-border-bright: rgba(255, 255, 255, 0.2);
+  --glass-border-subtle: rgba(255, 255, 255, 0.06);
+  --glass-highlight: rgba(255, 255, 255, 0.08);
+  --glass-inner-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06);
+  --glass-outer-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --glass-outer-shadow-raised: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  --background: #000000;
+  --background-gradient: linear-gradient(145deg, #0a1628 0%, #000000 30%, #1a0a1e 60%, #000000 100%);
+  --foreground: #f5f5f7;
+
+  --card: var(--glass-bg);
+  --card-foreground: #f5f5f7;
+  --card-hover: var(--glass-bg-raised);
+
+  --primary: #0A84FF;
+  --primary-foreground: #ffffff;
+  --primary-glow: rgba(10, 132, 255, 0.3);
+  --primary-glass: rgba(10, 132, 255, 0.15);
+
+  --secondary: rgba(120, 120, 128, 0.2);
+  --secondary-foreground: #f5f5f7;
+
+  --muted: rgba(120, 120, 128, 0.12);
+  --muted-foreground: #98989d;
+
+  --accent: rgba(120, 120, 128, 0.1);
+  --accent-foreground: #f5f5f7;
+
+  --destructive: #FF453A;
+  --destructive-glow: rgba(255, 69, 58, 0.3);
+  --destructive-glass: rgba(255, 69, 58, 0.15);
+
+  --success: #30D158;
+  --success-glow: rgba(48, 209, 88, 0.3);
+  --success-glass: rgba(48, 209, 88, 0.15);
+
+  --warning: #FFD60A;
+  --warning-glow: rgba(255, 214, 10, 0.25);
+  --warning-glass: rgba(255, 214, 10, 0.12);
+
+  --border: var(--glass-border);
+  --input: var(--glass-border);
+  --ring: var(--primary);
+
+  --icon: #f5f5f7;
+  --icon-muted: #98989d;
+
+  --chart-1: #30D158;
+  --chart-2: #0A84FF;
+  --chart-3: #FFD60A;
+  --chart-4: #5E5CE6;
+  --chart-5: #FF375F;
+
+  --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.45), 0 8px 20px rgba(0, 0, 0, 0.25);
+  --shadow-2xl: 0 28px 80px rgba(0, 0, 0, 0.5);
+}
+    </style>
+    <style id="component-vars">
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Untitled</title>
+    <style id="theme-vars">
+/*
+ * iOS 27 Liquid Glass Design Tokens
+ * 健身日历 APP · 液态玻璃风格
+ *
+ * 核心视觉特征：
+ *   - 半透明磨砂玻璃材质 (backdrop-filter: blur + saturate)
+ *   - 多层玻璃叠加产生深度感
+ *   - 鲜艳的系统色彩透过玻璃层
+ *   - 极大圆角 (接近药丸形)
+ *   - 微妙的边框高光模拟光线折射
+ *   - 渐变背景透过玻璃可见
+ */
+
+:root {
+  /* ===== GLASS MATERIAL TOKENS ===== */
+  --glass-bg: rgba(255, 255, 255, 0.45);
+  --glass-bg-raised: rgba(255, 255, 255, 0.62);
+  --glass-bg-elevated: rgba(255, 255, 255, 0.78);
+  --glass-bg-subtle: rgba(255, 255, 255, 0.25);
+  --glass-blur: 24px;
+  --glass-blur-heavy: 40px;
+  --glass-blur-light: 12px;
+  --glass-saturate: 1.8;
+
+  --glass-border: rgba(255, 255, 255, 0.35);
+  --glass-border-bright: rgba(255, 255, 255, 0.65);
+  --glass-border-subtle: rgba(255, 255, 255, 0.18);
+  --glass-highlight: rgba(255, 255, 255, 0.5);
+  --glass-inner-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  --glass-outer-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --glass-outer-shadow-raised: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+
+  /* ===== BACKGROUND ===== */
+  --background: #f2f2f7;
+  --background-gradient: linear-gradient(145deg, #e8f0fe 0%, #f2f2f7 30%, #fce4ec 60%, #f2f2f7 100%);
+  --foreground: #1d1d1f;
+
+  /* ===== CARD ===== */
+  --card: var(--glass-bg);
+  --card-foreground: #1d1d1f;
+  --card-hover: var(--glass-bg-raised);
+
+  /* ===== PRIMARY / ACCENT ===== */
+  --primary: #007AFF;
+  --primary-foreground: #ffffff;
+  --primary-glow: rgba(0, 122, 255, 0.25);
+  --primary-glass: rgba(0, 122, 255, 0.12);
+
+  /* ===== SECONDARY ===== */
+  --secondary: rgba(120, 120, 128, 0.12);
+  --secondary-foreground: #1d1d1f;
+
+  /* ===== MUTED ===== */
+  --muted: rgba(120, 120, 128, 0.08);
+  --muted-foreground: #8e8e93;
+
+  /* ===== ACCENT ===== */
+  --accent: rgba(120, 120, 128, 0.06);
+  --accent-foreground: #1d1d1f;
+
+  /* ===== STATE COLORS ===== */
+  --destructive: #FF3B30;
+  --destructive-foreground: #ffffff;
+  --destructive-glow: rgba(255, 59, 48, 0.2);
+  --destructive-glass: rgba(255, 59, 48, 0.1);
+
+  --success: #30D158;
+  --success-foreground: #ffffff;
+  --success-glow: rgba(48, 209, 88, 0.2);
+  --success-glass: rgba(48, 209, 88, 0.1);
+
+  --warning: #FF9F0A;
+  --warning-foreground: #ffffff;
+  --warning-glow: rgba(255, 159, 10, 0.2);
+  --warning-glass: rgba(255, 159, 10, 0.1);
+
+  /* ===== BORDER ===== */
+  --border: var(--glass-border);
+  --input: var(--glass-border);
+  --ring: var(--primary);
+
+  /* ===== ICON ===== */
+  --icon: #1d1d1f;
+  --icon-muted: #8e8e93;
+
+  /* ===== CHART COLORS ===== */
+  --chart-1: #30D158;
+  --chart-2: #007AFF;
+  --chart-3: #FF9F0A;
+  --chart-4: #5856D6;
+  --chart-5: #FF2D55;
+
+  /* ===== TYPOGRAPHY ===== */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --font-serif: -apple-system, BlinkMacSystemFont, 'SF Pro Display', serif, system-ui;
+  --font-mono: 'SF Mono', ui-monospace, 'Cascadia Code', monospace;
+  --tracking-normal: 0em;
+
+  /* ===== RADIUS ===== */
+  --radius: 1.4rem;
+  --radius-lg: 1.6rem;
+  --radius-xl: 2rem;
+
+  /* ===== SHADOWS ===== */
+  --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.07), 0 2px 6px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.1), 0 8px 20px rgba(0, 0, 0, 0.05);
+  --shadow-2xl: 0 28px 80px rgba(0, 0, 0, 0.12);
+
+  /* ===== SPACING ===== */
+  --spacing: 0.25rem;
+
+  /* ===== SIDEBAR ===== */
+  --sidebar: var(--glass-bg);
+  --sidebar-foreground: #1d1d1f;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--glass-bg-raised);
+  --sidebar-accent-foreground: #1d1d1f;
+  --sidebar-border: var(--glass-border);
+  --sidebar-ring: var(--primary);
+}
+
+/* ===== DARK MODE ===== */
+.dark {
+  --glass-bg: rgba(30, 30, 30, 0.55);
+  --glass-bg-raised: rgba(44, 44, 46, 0.7);
+  --glass-bg-elevated: rgba(58, 58, 60, 0.8);
+  --glass-bg-subtle: rgba(30, 30, 30, 0.3);
+  --glass-blur: 28px;
+  --glass-blur-heavy: 48px;
+  --glass-saturate: 2.0;
+
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-border-bright: rgba(255, 255, 255, 0.2);
+  --glass-border-subtle: rgba(255, 255, 255, 0.06);
+  --glass-highlight: rgba(255, 255, 255, 0.08);
+  --glass-inner-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06);
+  --glass-outer-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --glass-outer-shadow-raised: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  --background: #000000;
+  --background-gradient: linear-gradient(145deg, #0a1628 0%, #000000 30%, #1a0a1e 60%, #000000 100%);
+  --foreground: #f5f5f7;
+
+  --card: var(--glass-bg);
+  --card-foreground: #f5f5f7;
+  --card-hover: var(--glass-bg-raised);
+
+  --primary: #0A84FF;
+  --primary-foreground: #ffffff;
+  --primary-glow: rgba(10, 132, 255, 0.3);
+  --primary-glass: rgba(10, 132, 255, 0.15);
+
+  --secondary: rgba(120, 120, 128, 0.2);
+  --secondary-foreground: #f5f5f7;
+
+  --muted: rgba(120, 120, 128, 0.12);
+  --muted-foreground: #98989d;
+
+  --accent: rgba(120, 120, 128, 0.1);
+  --accent-foreground: #f5f5f7;
+
+  --destructive: #FF453A;
+  --destructive-glow: rgba(255, 69, 58, 0.3);
+  --destructive-glass: rgba(255, 69, 58, 0.15);
+
+  --success: #30D158;
+  --success-glow: rgba(48, 209, 88, 0.3);
+  --success-glass: rgba(48, 209, 88, 0.15);
+
+  --warning: #FFD60A;
+  --warning-glow: rgba(255, 214, 10, 0.25);
+  --warning-glass: rgba(255, 214, 10, 0.12);
+
+  --border: var(--glass-border);
+  --input: var(--glass-border);
+  --ring: var(--primary);
+
+  --icon: #f5f5f7;
+  --icon-muted: #98989d;
+
+  --chart-1: #30D158;
+  --chart-2: #0A84FF;
+  --chart-3: #FFD60A;
+  --chart-4: #5E5CE6;
+  --chart-5: #FF375F;
+
+  --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.45), 0 8px 20px rgba(0, 0, 0, 0.25);
+  --shadow-2xl: 0 28px 80px rgba(0, 0, 0, 0.5);
+}
+    </style>
+    <style id="component-vars">
+/*
+ * iOS 27 Liquid Glass Component Styles
+ * 健身日历 APP
+ */
+
+/* ===== GLASS CARD ===== */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-outer-shadow), var(--glass-inner-shadow);
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.glass-card:hover {
+  background: var(--glass-bg-raised);
+  box-shadow: var(--glass-outer-shadow-raised), var(--glass-inner-shadow);
+}
+
+.glass-card-raised {
+  background: var(--glass-bg-raised);
+  backdrop-filter: blur(var(--glass-blur-heavy)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-heavy)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border-bright);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--glass-outer-shadow-raised), var(--glass-inner-shadow);
+}
+
+.glass-card-subtle {
+  background: var(--glass-bg-subtle);
+  backdrop-filter: blur(var(--glass-blur-light)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-light)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-xs);
+}
+
+/* ===== GLASS PILL BUTTON ===== */
+.glass-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur-light)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-light)) saturate(var(--glass-saturate));
+  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.glass-btn-primary {
+  background: var(--primary-glass);
+  color: var(--primary);
+  border-color: rgba(0, 122, 255, 0.25);
+  box-shadow: 0 0 16px var(--primary-glow), var(--glass-inner-shadow);
+}
+
+.glass-btn-primary:hover {
+  background: rgba(0, 122, 255, 0.2);
+  box-shadow: 0 0 24px var(--primary-glow), var(--glass-inner-shadow);
+}
+
+.glass-btn-primary.active {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+  box-shadow: 0 0 20px var(--primary-glow);
+}
+
+.glass-btn-ghost {
+  background: var(--glass-bg);
+  color: var(--foreground);
+}
+
+.glass-btn-ghost:hover {
+  background: var(--glass-bg-raised);
+}
+
+.glass-btn-ghost.active {
+  background: var(--glass-bg-raised);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* ===== GLASS TOGGLE ===== */
+.glass-toggle {
+  position: relative;
+  width: 51px;
+  height: 31px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur-light));
+  -webkit-backdrop-filter: blur(var(--glass-blur-light));
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  flex-shrink: 0;
+}
+
+.glass-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: var(--foreground);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.glass-toggle.active {
+  background: var(--success);
+  border-color: var(--success);
+  box-shadow: 0 0 12px var(--success-glow);
+}
+
+.glass-toggle.active::after {
+  left: 22px;
+  background: var(--primary-foreground);
+}
+
+/* ===== GLASS INPUT ===== */
+.glass-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-subtle);
+  backdrop-filter: blur(var(--glass-blur-light));
+  -webkit-backdrop-filter: blur(var(--glass-blur-light));
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  color: var(--foreground);
+  transition: all 0.25s ease;
+  outline: none;
+}
+
+.glass-input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.glass-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glass), var(--glass-inner-shadow);
+  background: var(--glass-bg);
+}
+
+/* ===== GLASS SEGMENTED CONTROL ===== */
+.glass-segmented {
+  display: inline-flex;
+  background: var(--glass-bg-subtle);
+  backdrop-filter: blur(var(--glass-blur-light));
+  -webkit-backdrop-filter: blur(var(--glass-blur-light));
+  border: 1px solid var(--glass-border-subtle);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.glass-segmented-item {
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.glass-segmented-item.active {
+  background: var(--glass-bg-raised);
+  color: var(--foreground);
+  box-shadow: var(--glass-inner-shadow), var(--shadow-xs);
+}
+
+/* ===== GLASS BADGE ===== */
+.glass-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur-light));
+  -webkit-backdrop-filter: blur(var(--glass-blur-light));
+}
+
+.glass-badge-blue {
+  background: var(--primary-glass);
+  color: var(--primary);
+  border-color: rgba(0, 122, 255, 0.2);
+}
+
+.glass-badge-green {
+  background: var(--success-glass);
+  color: var(--success);
+  border-color: rgba(48, 209, 88, 0.2);
+}
+
+.glass-badge-red {
+  background: var(--destructive-glass);
+  color: var(--destructive);
+  border-color: rgba(255, 59, 48, 0.2);
+}
+
+.glass-badge-amber {
+  background: var(--warning-glass);
+  color: var(--warning);
+  border-color: rgba(255, 159, 10, 0.2);
+}
+
+.glass-badge-purple {
+  background: rgba(88, 86, 214, 0.12);
+  color: var(--chart-4);
+  border-color: rgba(88, 86, 214, 0.2);
+}
+
+/* ===== GLASS TAB BAR ===== */
+.glass-tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;
+  padding: 0.5rem 1rem;
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  background: var(--glass-bg-elevated);
+  backdrop-filter: blur(var(--glass-blur-heavy)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-heavy)) saturate(var(--glass-saturate));
+  border-top: 1px solid var(--glass-border);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.06);
+}
+
+.glass-tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius);
+  color: var(--muted-foreground);
+  font-size: 0.625rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.glass-tab-item.active {
+  color: var(--primary);
+}
+
+.glass-tab-item.active .tab-icon-wrap {
+  background: var(--primary-glass);
+  box-shadow: 0 0 12px var(--primary-glow);
+}
+
+.tab-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.6rem;
+  transition: all 0.25s ease;
+}
+
+/* ===== GLASS PROGRESS RING ===== */
+.glass-ring-track {
+  stroke: var(--glass-border-subtle);
+  fill: none;
+}
+
+.glass-ring-progress {
+  fill: none;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px var(--primary-glow));
+  transition: stroke-dashoffset 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* ===== GLASS LIST ROW ===== */
+.glass-row {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--glass-border-subtle);
+  transition: background 0.2s ease;
+}
+
+.glass-row:last-child {
+  border-bottom: none;
+}
+
+.glass-row:hover {
+  background: var(--glass-bg-subtle);
+}
+
+/* ===== GLASS SCROLLBAR ===== */
+.glass-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.glass-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.glass-scroll::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 999px;
+}
+
+/* ===== UTILITY: GRADIENT MESH BACKGROUND ===== */
+.liquid-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--background-gradient);
+}
+
+.liquid-bg::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  right: -20%;
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 122, 255, 0.08) 0%, transparent 70%);
+  filter: blur(40px);
+}
+
+.liquid-bg::after {
+  content: '';
+  position: absolute;
+  bottom: -10%;
+  left: -15%;
+  width: 50%;
+  height: 50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 45, 85, 0.06) 0%, transparent 70%);
+  filter: blur(40px);
+}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-foreground: var(--card-foreground);
+  }
+  @layer base {
+    body { background: var(--card-background); color: var(--card-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <main>
+    </main>
+    <script>lucide.createIcons();</script>
+
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+      /* Page-specific styles */
+      .section-label {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted-foreground);
+      }
+      .pet-chip {
+        cursor: pointer;
+        transition: all 0.25s ease;
+      }
+      .pet-chip:hover {
+        background: var(--glass-bg-raised);
+        box-shadow: var(--glass-inner-shadow);
+      }
+      .pet-chip.selected {
+        background: var(--primary-glass);
+        border-color: rgba(0, 122, 255, 0.3);
+        box-shadow: 0 0 12px var(--primary-glow);
+      }
+      .personality-chip {
+        cursor: pointer;
+        transition: all 0.25s ease;
+      }
+      .personality-chip:hover {
+        background: var(--glass-bg-raised);
+      }
+      .personality-chip.selected {
+        background: var(--primary-glass);
+        color: var(--primary);
+        border-color: rgba(0, 122, 255, 0.3);
+      }
+      .emoji-option {
+        width: 2.5rem;
+        height: 2.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        border-radius: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: var(--glass-bg-subtle);
+        border: 1px solid var(--glass-border-subtle);
+      }
+      .emoji-option:hover {
+        background: var(--glass-bg-raised);
+      }
+      .emoji-option.selected {
+        background: var(--primary-glass);
+        border-color: rgba(0, 122, 255, 0.3);
+        box-shadow: 0 0 8px var(--primary-glow);
+      }
+      .glass-toggle-amber.active {
+        background: var(--warning);
+        border-color: var(--warning);
+        box-shadow: 0 0 12px var(--warning-glow);
+      }
+      .glass-toggle-amber.active::after {
+        left: 22px;
+        background: var(--primary-foreground);
+      }
+      .custom-form { display: none; }
+      .custom-form.visible { display: block; }
+    </style>
+</body>
+</html>
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-foreground: var(--card-foreground);
+  }
+  @layer base {
+    body { background: var(--card-background); color: var(--card-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased" style="font-family: var(--font-sans); max-width: 390px; margin: 0 auto; position: relative;">
+    <main class="px-4 pt-4 pb-20">
+
+      <!-- Gradient mesh background -->
+      <div class="liquid-bg"></div>
+
+      <!-- ===== 1. Page Header ===== -->
+      <div class="glass-card-subtle flex items-center justify-between px-4 py-3 mb-4">
+        <h1 class="text-xl font-semibold" style="color: var(--foreground);">更多 · 系统</h1>
+        <span class="glass-badge glass-badge-blue">系统</span>
+      </div>
+
+      <!-- ===== 2. Appearance Mode Card ===== -->
+      <div class="glass-card p-4 mb-4">
+        <div class="mb-1">
+          <span class="section-label">外观模式</span>
+        </div>
+        <p class="text-xs mb-3" style="color: var(--muted-foreground);">切换后匹配对应的日间/夜间系统外观</p>
+        <p class="text-sm font-semibold mb-3" style="color: var(--primary);">日间液态玻璃</p>
+        <div class="glass-segmented">
+          <div class="glass-segmented-item active" onclick="switchAppearance(this, 'light')">日间模式</div>
+          <div class="glass-segmented-item" onclick="switchAppearance(this, 'dark')">夜间模式</div>
+        </div>
+      </div>
+
+      <!-- ===== 3. Pet System Card ===== -->
+      <div class="glass-card p-4 mb-4">
+        <!-- Pet header with toggle -->
+        <div class="flex items-center justify-between mb-1">
+          <span class="section-label">我的宠物</span>
+          <div class="glass-toggle active" onclick="this.classList.toggle('active')"></div>
+        </div>
+        <p class="text-xs mb-3" style="color: var(--muted-foreground);">宠物提醒已开启</p>
+
+        <!-- Pet display area -->
+        <div class="glass-card-subtle p-3 flex items-center gap-3 mb-3">
+          <div class="flex items-center justify-center rounded-full" style="width: 48px; height: 48px; min-width: 48px; background: var(--primary-glass); box-shadow: 0 0 16px var(--primary-glow);">
+            <i data-lucide="paw-print" style="width: 24px; height: 24px; color: var(--primary);"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold truncate" style="color: var(--foreground);">柴犬小健</p>
+            <span class="glass-badge glass-badge-blue mt-1">活泼好动</span>
+          </div>
+          <button class="glass-btn glass-btn-ghost text-xs px-3 py-1">换</button>
+        </div>
+
+        <!-- Pet tabs -->
+        <div class="glass-segmented mb-3">
+          <div class="glass-segmented-item active" onclick="switchPetTab(this, 'preset')">系统预设</div>
+          <div class="glass-segmented-item" onclick="switchPetTab(this, 'custom')">自定义</div>
+        </div>
+
+        <!-- Preset pet chips -->
+        <div id="pet-preset" class="flex flex-wrap gap-2">
+          <div class="glass-card-subtle pet-chip selected rounded-full px-3 py-1.5 text-sm flex items-center gap-1" onclick="selectPetChip(this)">
+            <span>🐕</span><span style="color: var(--foreground);">柴犬</span>
+          </div>
+          <div class="glass-card-subtle pet-chip rounded-full px-3 py-1.5 text-sm flex items-center gap-1" onclick="selectPetChip(this)">
+            <span>🐱</span><span style="color: var(--foreground);">英短</span>
+          </div>
+          <div class="glass-card-subtle pet-chip rounded-full px-3 py-1.5 text-sm flex items-center gap-1" onclick="selectPetChip(this)">
+            <span>🐰</span><span style="color: var(--foreground);">兔兔</span>
+          </div>
+          <div class="glass-card-subtle pet-chip rounded-full px-3 py-1.5 text-sm flex items-center gap-1" onclick="selectPetChip(this)">
+            <span>🐶</span><span style="color: var(--foreground);">金毛</span>
+          </div>
+          <div class="glass-card-subtle pet-chip rounded-full px-3 py-1.5 text-sm flex items-center gap-1" onclick="selectPetChip(this)">
+            <span>🐹</span><span style="color: var(--foreground);">仓鼠</span>
+          </div>
+        </div>
+
+        <!-- Custom pet form (hidden by default) -->
+        <div id="pet-custom" class="custom-form">
+          <input type="text" class="glass-input mb-3" placeholder="输入宠物名称...">
+          <div class="flex gap-2 mb-3">
+            <div class="emoji-option selected" onclick="selectEmoji(this)">🐕</div>
+            <div class="emoji-option" onclick="selectEmoji(this)">🐱</div>
+            <div class="emoji-option" onclick="selectEmoji(this)">🐰</div>
+            <div class="emoji-option" onclick="selectEmoji(this)">🐶</div>
+            <div class="emoji-option" onclick="selectEmoji(this)">🐹</div>
+            <div class="emoji-option" onclick="selectEmoji(this)">🦊</div>
+            <div class="emoji-option" onclick="selectEmoji(this)">🐼</div>
+            <div class="emoji-option" onclick="selectEmoji(this)">🐨</div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <div class="glass-card-subtle personality-chip selected rounded-full px-3 py-1 text-xs" onclick="selectPersonality(this)">活泼好动</div>
+            <div class="glass-card-subtle personality-chip rounded-full px-3 py-1 text-xs" onclick="selectPersonality(this)">温顺安静</div>
+            <div class="glass-card-subtle personality-chip rounded-full px-3 py-1 text-xs" onclick="selectPersonality(this)">调皮捣蛋</div>
+            <div class="glass-card-subtle personality-chip rounded-full px-3 py-1 text-xs" onclick="selectPersonality(this)">慵懒佛系</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 4. Dynamic Adjustment Card ===== -->
+      <div class="glass-card p-4 mb-4">
+        <!-- Dynamic adjustment header with toggle -->
+        <div class="flex items-center justify-between mb-1">
+          <span class="section-label">动态调整</span>
+          <div class="glass-toggle glass-toggle-amber active" onclick="this.classList.toggle('active')"></div>
+        </div>
+        <p class="text-xs mb-4" style="color: var(--muted-foreground);">当你某天没按计划饮食或训练时，系统会自动调整后续计划以弥合偏差</p>
+
+        <!-- 饮食数据 -->
+        <div class="section-label mb-2">饮食数据</div>
+        <div class="glass-card-subtle rounded-xl overflow-hidden mb-4">
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">热量</span>
+            <div class="glass-toggle active" onclick="this.classList.toggle('active')"></div>
+          </div>
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">蛋白质</span>
+            <div class="glass-toggle active" onclick="this.classList.toggle('active')"></div>
+          </div>
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">脂肪</span>
+            <div class="glass-toggle active" onclick="this.classList.toggle('active')"></div>
+          </div>
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">碳水</span>
+            <div class="glass-toggle active" onclick="this.classList.toggle('active')"></div>
+          </div>
+        </div>
+
+        <!-- 餐次范围 -->
+        <div class="section-label mb-2">餐次范围</div>
+        <div class="glass-card-subtle rounded-xl overflow-hidden mb-4">
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">早餐</span>
+            <div class="glass-toggle active" onclick="this.classList.toggle('active')"></div>
+          </div>
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">午餐</span>
+            <div class="glass-toggle active" onclick="this.classList.toggle('active')"></div>
+          </div>
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">晚餐</span>
+            <div class="glass-toggle active" onclick="this.classList.toggle('active')"></div>
+          </div>
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">加餐</span>
+            <div class="glass-toggle" onclick="this.classList.toggle('active')"></div>
+          </div>
+        </div>
+
+        <!-- 训练数据 -->
+        <div class="section-label mb-2">训练数据</div>
+        <div class="glass-card-subtle rounded-xl overflow-hidden mb-4">
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">训练消耗</span>
+            <div class="glass-toggle active" onclick="this.classList.toggle('active')"></div>
+          </div>
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">训练顺延</span>
+            <div class="glass-toggle active" onclick="this.classList.toggle('active')"></div>
+          </div>
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">疲劳恢复</span>
+            <div class="glass-toggle" onclick="this.classList.toggle('active')"></div>
+          </div>
+        </div>
+
+        <!-- 训练部位 -->
+        <div class="section-label mb-2">训练部位</div>
+        <div class="glass-card-subtle rounded-xl overflow-hidden">
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">胸</span>
+            <div class="glass-toggle active" onclick="this.classList.toggle('active')"></div>
+          </div>
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">背</span>
+            <div class="glass-toggle active" onclick="this.classList.toggle('active')"></div>
+          </div>
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">腿</span>
+            <div class="glass-toggle active" onclick="this.classList.toggle('active')"></div>
+          </div>
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">肩</span>
+            <div class="glass-toggle active" onclick="this.classList.toggle('active')"></div>
+          </div>
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">手臂</span>
+            <div class="glass-toggle active" onclick="this.classList.toggle('active')"></div>
+          </div>
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">核心</span>
+            <div class="glass-toggle active" onclick="this.classList.toggle('active')"></div>
+          </div>
+          <div class="glass-row">
+            <span class="text-sm flex-1" style="color: var(--foreground);">有氧</span>
+            <div class="glass-toggle active" onclick="this.classList.toggle('active')"></div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ===== 5. Bottom Tab Bar ===== -->
+    <div class="glass-tab-bar" style="max-width: 390px; left: 50%; transform: translateX(-50%);">
+      <div class="glass-tab-item" data-dom-id="tab-today">
+        <div class="tab-icon-wrap">
+          <i data-lucide="sun" style="width: 20px; height: 20px;"></i>
+        </div>
+        <span>今日</span>
+      </div>
+      <div class="glass-tab-item" data-dom-id="tab-train">
+        <div class="tab-icon-wrap">
+          <i data-lucide="dumbbell" style="width: 20px; height: 20px;"></i>
+        </div>
+        <span>训练</span>
+      </div>
+      <div class="glass-tab-item" data-dom-id="tab-plan">
+        <div class="tab-icon-wrap">
+          <i data-lucide="calendar-days" style="width: 20px; height: 20px;"></i>
+        </div>
+        <span>计划</span>
+      </div>
+      <div class="glass-tab-item active" data-dom-id="tab-more">
+        <div class="tab-icon-wrap">
+          <i data-lucide="ellipsis" style="width: 20px; height: 20px;"></i>
+        </div>
+        <span>更多</span>
+      </div>
+    </div>
+
+    <script>
+      // Initialize Lucide icons
+      lucide.createIcons();
+
+      // Appearance mode switch
+      function switchAppearance(el, mode) {
+        const items = el.parentElement.querySelectorAll('.glass-segmented-item');
+        items.forEach(item => item.classList.remove('active'));
+        el.classList.add('active');
+        document.documentElement.classList.remove('light', 'dark');
+        document.documentElement.classList.add(mode);
+      }
+
+      // Pet tab switch
+      function switchPetTab(el, tab) {
+        const items = el.parentElement.querySelectorAll('.glass-segmented-item');
+        items.forEach(item => item.classList.remove('active'));
+        el.classList.add('active');
+
+        const preset = document.getElementById('pet-preset');
+        const custom = document.getElementById('pet-custom');
+        if (tab === 'preset') {
+          preset.style.display = 'flex';
+          custom.classList.remove('visible');
+        } else {
+          preset.style.display = 'none';
+          custom.classList.add('visible');
+        }
+      }
+
+      // Pet chip selection
+      function selectPetChip(el) {
+        const chips = el.parentElement.querySelectorAll('.pet-chip');
+        chips.forEach(chip => chip.classList.remove('selected'));
+        el.classList.add('selected');
+      }
+
+      // Emoji selection
+      function selectEmoji(el) {
+        const options = el.parentElement.querySelectorAll('.emoji-option');
+        options.forEach(opt => opt.classList.remove('selected'));
+        el.classList.add('selected');
+      }
+
+      // Personality chip selection
+      function selectPersonality(el) {
+        const chips = el.parentElement.querySelectorAll('.personality-chip');
+        chips.forEach(chip => chip.classList.remove('selected'));
+        el.classList.add('selected');
+      }
+    </script>
+</body>
+</html>

@@ -23,6 +23,14 @@ function lineHeightKey(variant: keyof typeof typography.sizes): keyof typeof typ
   return variant as keyof typeof typography.lineHeights;
 }
 
+function fontFamilyFor(variant: keyof typeof typography.sizes, mono: boolean) {
+  if (mono || variant === "display" || variant === "h1" || variant === "h2" || variant === "h3") {
+    return fontFamilies.mono;
+  }
+
+  return fontFamilies.sans;
+}
+
 export function Text({
   variant = "body",
   weight = "regular",
@@ -40,7 +48,7 @@ export function Text({
   const lineHeight = Math.round(size * typography.lineHeights[lhKey]);
 
   const base: TextStyle = {
-    fontFamily: mono ? fontFamilies.mono : fontFamilies.sans,
+    fontFamily: fontFamilyFor(variant, mono),
     fontSize: size,
     fontWeight: typography.weights[weight],
     color: resolveThemeColor(color, theme) ?? theme.colors.ink,

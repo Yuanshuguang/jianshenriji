@@ -1,0 +1,1719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Bento Glass · 健身助手 预览</title>
+<style>
+  /* ============ Token ============ */
+  :root {
+    color-scheme: light;
+    --bg: #EEF6FF;
+    --bg-glow: #F8FBFF;
+    --wallpaper-a: rgba(87,190,255,0.34);
+    --wallpaper-b: rgba(169,139,250,0.28);
+    --wallpaper-c: rgba(78,220,178,0.26);
+    --glass: rgba(255,255,255,0.48);
+    --glass-raised: rgba(255,255,255,0.66);
+    --glass-border: rgba(255,255,255,0.54);
+    --glass-border-bright: rgba(255,255,255,0.86);
+    --glass-shadow: rgba(47,72,112,0.18);
+    --glass-inner: rgba(255,255,255,0.68);
+    --ink: #142033;
+    --ink-mute: #617188;
+    --ink-faint: #94A1B3;
+    --accent: #008CFF;
+    --accent2: #7357FF;
+    --positive: #00A978;
+    --warn: #E4435E;
+    --amber: #C47B00;
+    --radius-xl: 22px;
+    --radius-lg: 18px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+    --tile-gap: 8px;
+    --page-pad: 16px;
+  }
+
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #101827;
+    --bg-glow: #1A2436;
+    --wallpaper-a: rgba(56,189,248,0.20);
+    --wallpaper-b: rgba(167,139,250,0.22);
+    --wallpaper-c: rgba(52,211,153,0.14);
+    --glass: rgba(255,255,255,0.12);
+    --glass-raised: rgba(255,255,255,0.18);
+    --glass-border: rgba(255,255,255,0.20);
+    --glass-border-bright: rgba(255,255,255,0.36);
+    --glass-shadow: rgba(0,0,0,0.32);
+    --glass-inner: rgba(255,255,255,0.22);
+    --ink: #F4F8FF;
+    --ink-mute: #B7C3D4;
+    --ink-faint: #7F8CA1;
+    --accent: #41B6FF;
+    --accent2: #A893FF;
+    --positive: #48D6AC;
+    --warn: #FF7188;
+    --amber: #FFB84D;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background:
+      radial-gradient(circle at 20% 12%, var(--wallpaper-a), transparent 34%),
+      radial-gradient(circle at 84% 18%, var(--wallpaper-b), transparent 38%),
+      radial-gradient(circle at 48% 96%, var(--wallpaper-c), transparent 34%),
+      linear-gradient(160deg, #F5FAFF 0%, #DDEEFF 48%, #F7F5FF 100%);
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh;
+    overflow:hidden;
+    transition: background 260ms ease;
+  }
+  [data-theme="dark"] body {
+    background:
+      radial-gradient(circle at 20% 12%, var(--wallpaper-a), transparent 36%),
+      radial-gradient(circle at 84% 18%, var(--wallpaper-b), transparent 38%),
+      radial-gradient(circle at 48% 96%, var(--wallpaper-c), transparent 34%),
+      linear-gradient(160deg, #07111F 0%, #101827 52%, #151A2B 100%);
+  }
+
+  /* ============ 手机外框 ============ */
+  .phone {
+    width:390px; height:844px;
+    background:
+      radial-gradient(circle at 18% 0%, var(--wallpaper-a), transparent 38%),
+      radial-gradient(circle at 92% 4%, var(--wallpaper-b), transparent 34%),
+      radial-gradient(circle at 50% 82%, var(--wallpaper-c), transparent 42%),
+      linear-gradient(180deg, var(--bg-glow) 0%, var(--bg) 100%);
+    border-radius:46px;
+    overflow:hidden;
+    position:relative;
+    box-shadow: 0 0 0 11px rgba(5,8,16,0.92), 0 40px 80px rgba(47,72,112,0.38);
+    display:flex; flex-direction:column;
+  }
+  .phone::before {
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:
+      linear-gradient(115deg, rgba(255,255,255,0.34), transparent 28%, rgba(255,255,255,0.14) 62%, transparent 100%),
+      radial-gradient(circle at 28% 18%, rgba(255,255,255,0.28), transparent 24%);
+    mix-blend-mode: screen;
+  }
+  [data-theme="dark"] .phone {
+    box-shadow: 0 0 0 11px rgba(4,6,12,0.96), 0 40px 80px rgba(0,0,0,0.58);
+  }
+  @media (max-height: 880px) { .phone { transform: scale(0.92); transform-origin: center; } }
+  @media (max-height: 800px) { .phone { transform: scale(0.82); } }
+  @media (max-height: 720px) { .phone { transform: scale(0.72); } }
+
+  /* ============ 状态栏 ============ */
+  .status-bar {
+    height:44px; display:flex; align-items:center; justify-content:space-between;
+    padding:0 22px; flex-shrink:0;
+    font-family: "SF Mono", "Consolas", monospace; font-size:13px; color:var(--ink);
+  }
+  .status-bar .dots { color: var(--accent); font-size:12px; }
+
+  /* ============ 滚动区 ============ */
+  .scroll {
+    flex:1; overflow-y:auto; overflow-x:hidden;
+    padding: 0 var(--page-pad) 100px;
+    display:flex; flex-direction:column; gap:var(--tile-gap);
+    scrollbar-width:none;
+  }
+  .scroll::-webkit-scrollbar { display:none; }
+
+  /* ============ 页头 ============ */
+  .header { display:flex; flex-direction:column; gap:6px; margin-bottom:4px; padding-top:4px; }
+  .header .row { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+  .header .left { flex:1; display:flex; flex-direction:column; gap:4px; }
+  .kicker {
+    font-family:"SF Mono","Consolas",monospace; font-size:11px; color:var(--ink-mute);
+    text-transform:uppercase; letter-spacing:0.08em;
+  }
+  .title { font-size:28px; font-weight:700; color:var(--ink); line-height:1.2; }
+  .subtitle { font-size:12px; color:var(--ink-mute); }
+  .badge {
+    display:inline-flex; align-items:center; height:24px; padding:0 10px;
+    border-radius:999px; background:rgba(255,255,255,0.36);
+    border:1px solid rgba(0,169,120,0.32); color:var(--positive);
+    font-size:11px; font-weight:600; white-space:nowrap;
+    backdrop-filter: blur(18px) saturate(1.5);
+    -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  }
+  .header-actions { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+  .appearance-toggle {
+    display:flex; align-items:center; gap:3px; height:30px; padding:3px;
+    border-radius:999px; border:1px solid var(--glass-border-bright);
+    background:rgba(255,255,255,0.34);
+    backdrop-filter: blur(24px) saturate(1.7);
+    -webkit-backdrop-filter: blur(24px) saturate(1.7);
+    box-shadow: inset 0 1px 0 var(--glass-inner), 0 10px 24px var(--glass-shadow);
+  }
+  .appearance-toggle button {
+    border:0; height:22px; padding:0 9px; border-radius:999px;
+    background:transparent; color:var(--ink-mute); font-size:11px; font-weight:700;
+    font-family:inherit; cursor:pointer;
+  }
+  .appearance-toggle button.active {
+    color:var(--ink);
+    background:rgba(255,255,255,0.62);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.82), 0 4px 12px rgba(47,72,112,0.16);
+  }
+  [data-theme="dark"] .appearance-toggle button.active {
+    background:rgba(255,255,255,0.20);
+  }
+
+  /* ============ 玻璃格 ============ */
+  .tile {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    padding: 16px;
+    position:relative;
+    overflow:hidden;
+    backdrop-filter: blur(34px) saturate(1.75);
+    -webkit-backdrop-filter: blur(34px) saturate(1.75);
+    box-shadow:
+      inset 0 1px 0 var(--glass-inner),
+      inset 0 -1px 0 rgba(255,255,255,0.18),
+      0 18px 44px var(--glass-shadow);
+  }
+  .tile.raised { background: var(--glass-raised); border-color: var(--glass-border-bright); }
+  .tile.glow-accent { box-shadow: inset 0 1px 0 var(--glass-inner), 0 18px 44px var(--glass-shadow), 0 0 26px rgba(0,140,255,0.14); border-color: rgba(0,140,255,0.28); }
+  .tile.glow-accent2 { box-shadow: inset 0 1px 0 var(--glass-inner), 0 18px 44px var(--glass-shadow), 0 0 26px rgba(115,87,255,0.14); border-color: rgba(115,87,255,0.28); }
+  .tile.glow-positive { box-shadow: inset 0 1px 0 var(--glass-inner), 0 18px 44px var(--glass-shadow), 0 0 22px rgba(0,169,120,0.14); border-color: rgba(0,169,120,0.28); }
+  .tile.glow-warn { box-shadow: inset 0 1px 0 var(--glass-inner), 0 18px 44px var(--glass-shadow), 0 0 22px rgba(228,67,94,0.14); border-color: rgba(228,67,94,0.28); }
+  .tile.glow-amber { box-shadow: inset 0 1px 0 var(--glass-inner), 0 18px 44px var(--glass-shadow), 0 0 22px rgba(196,123,0,0.14); border-color: rgba(196,123,0,0.28); }
+  .tile::before {
+    content:""; position:absolute; top:0; left:0; right:0; height:58%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.08) 42%, transparent 100%);
+    pointer-events:none;
+  }
+  .tile > * { position:relative; }
+
+  /* ============ Bento 行/列 ============ */
+  .bento-row { display:flex; gap:var(--tile-gap); }
+  .bento-col { display:flex; flex-direction:column; gap:var(--tile-gap); }
+  .bento-tile { flex:1; }
+  .bento-tile.flex-2 { flex:2; }
+  .bento-triple { display:flex; gap:var(--tile-gap); }
+  .bento-triple > .tile { flex:1; padding:12px; border-radius:var(--radius-lg); display:flex; flex-direction:column; }
+  .bento-triple > .core-card { flex:1; min-width:0; }
+  #core-metrics { flex-direction:column; gap:10px; }
+  #core-metrics > .core-card {
+    padding:0;
+    border-left:0 !important;
+    border-top:1px solid var(--glass-border);
+    padding-top:10px;
+  }
+  #core-metrics > .core-card:first-child {
+    border-top:0;
+    padding-top:0;
+  }
+  .core-head {
+    display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  }
+  .meal-list-vertical { display:flex; flex-direction:column; gap:8px; }
+
+  /* ============ 标签 ============ */
+  .label {
+    font-family:"SF Mono","Consolas",monospace; font-size:10px;
+    color:var(--ink-mute); text-transform:uppercase; letter-spacing:0.08em;
+  }
+  .label.c-accent { color:var(--accent); }
+  .label.c-accent2 { color:var(--accent2); }
+  .label.c-positive { color:var(--positive); }
+
+  /* ============ 数字 ============ */
+  .num { font-family:"SF Mono","Consolas",monospace; font-weight:700; }
+  .num.h1 { font-size:28px; }
+  .num.h2 { font-size:22px; }
+  .num.display { font-size:36px; }
+  .num.c-accent { color:var(--accent); }
+  .num.c-accent2 { color:var(--accent2); }
+  .num.c-positive { color:var(--positive); }
+  .num.c-warn { color:var(--warn); }
+  .num.c-amber { color:var(--amber); }
+  .num.c-ink { color:var(--ink); }
+  .unit { font-family:"SF Mono","Consolas",monospace; font-size:11px; color:var(--ink-mute); }
+
+  /* ============ 进度环 ============ */
+  .ring-wrap { width:108px; height:108px; position:relative; flex-shrink:0; }
+  .ring-center {
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:2px;
+  }
+
+  /* ============ 进度条 ============ */
+  .bar { width:100%; height:6px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:999px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+  .bar-fill.c-accent { background:var(--accent); }
+  .bar-fill.c-accent2 { background:var(--accent2); }
+  .bar-fill.c-positive { background:var(--positive); }
+  .bar-fill.c-warn { background:var(--warn); }
+
+  /* ============ 按钮 ============ */
+  .btn {
+    height:38px; padding:0 16px; border-radius:999px;
+    border:1px solid var(--glass-border-bright); background:var(--glass);
+    color:var(--accent); font-size:13px; font-weight:600;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    cursor:pointer; transition: opacity 0.15s, transform 0.15s; flex:1;
+    font-family: inherit;
+    backdrop-filter: blur(22px) saturate(1.5);
+    -webkit-backdrop-filter: blur(22px) saturate(1.5);
+    box-shadow: inset 0 1px 0 var(--glass-inner), 0 8px 20px var(--glass-shadow);
+  }
+  .btn:active { opacity:0.84; transform:scale(0.98); }
+  .btn.filled { background:var(--accent); color:#fff; border:none; }
+  .btn.filled.c-accent2 { background:var(--accent2); color:#fff; }
+  .btn.filled.c-positive { background:var(--positive); color:#fff; }
+  .btn.ghost { background:transparent; color:var(--ink-mute); }
+  .btn.sm { height:32px; font-size:12px; padding:0 12px; }
+  .btn.block { width:100%; }
+
+  /* ============ 选择 chip ============ */
+  .chip {
+    height:38px; padding:0 14px; border-radius:999px;
+    background:var(--glass); border:1px solid var(--glass-border);
+    color:var(--ink-mute); font-size:13px; font-weight:600;
+    display:inline-flex; align-items:center; justify-content:center;
+    cursor:pointer; transition: all 0.2s; flex:1; font-family:inherit;
+    white-space:nowrap;
+    backdrop-filter: blur(18px) saturate(1.45);
+    -webkit-backdrop-filter: blur(18px) saturate(1.45);
+  }
+  .chip:active { opacity:0.84; }
+  .chip.active.c-accent { background:rgba(56,189,248,0.15); border-color:var(--accent); color:var(--accent); }
+  .chip.active.c-accent2 { background:rgba(167,139,250,0.15); border-color:var(--accent2); color:var(--accent2); }
+  .chip.active.c-positive { background:rgba(52,211,153,0.15); border-color:var(--positive); color:var(--positive); }
+  .chip.active.c-warn { background:rgba(251,113,133,0.15); border-color:var(--warn); color:var(--warn); }
+  .chip.sm { height:32px; font-size:12px; padding:0 12px; }
+
+  /* ============ 徽章 ============ */
+  .tag {
+    display:inline-flex; align-items:center; height:24px; padding:0 10px;
+    border-radius:var(--radius-sm); font-size:11px; font-weight:600;
+    white-space:nowrap;
+  }
+  .tag.c-accent { background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.3); color:var(--accent); }
+  .tag.c-accent2 { background:rgba(167,139,250,0.15); border:1px solid rgba(167,139,250,0.3); color:var(--accent2); }
+  .tag.c-positive { background:rgba(52,211,153,0.15); border:1px solid rgba(52,211,153,0.3); color:var(--positive); }
+  .tag.c-warn { background:rgba(251,113,133,0.15); border:1px solid rgba(251,113,133,0.3); color:var(--warn); }
+  .tag.c-amber { background:rgba(251,191,36,0.15); border:1px solid rgba(251,191,36,0.3); color:var(--amber); }
+
+  /* ============ 输入框 ============ */
+  .input {
+    width:100%; height:44px; background:var(--glass);
+    border:1px solid var(--glass-border); border-radius:var(--radius-md);
+    padding:0 12px; color:var(--ink); font-size:14px; font-family:inherit;
+    outline:none; transition: border-color 0.2s;
+    backdrop-filter: blur(20px) saturate(1.5);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  }
+  .input:focus { border-color:var(--accent); }
+  .input::placeholder { color:var(--ink-faint); }
+  textarea.input { height:auto; min-height:72px; padding:12px; resize:none; line-height:1.5; }
+
+  /* ============ 文本 ============ */
+  .txt { font-size:14px; color:var(--ink); }
+  .txt.mute { color:var(--ink-mute); }
+  .txt.faint { color:var(--ink-faint); }
+  .txt.sm { font-size:12px; }
+  .txt.bold { font-weight:600; }
+  .txt.mono { font-family:"SF Mono","Consolas",monospace; }
+
+  /* ============ 底部 TabBar ============ */
+  .tabbar {
+    position:absolute; left:16px; right:16px; bottom:12px;
+    height:56px; border-radius:var(--radius-xl);
+    background:var(--glass-raised); border:1px solid var(--glass-border-bright);
+    backdrop-filter: blur(34px) saturate(1.8); -webkit-backdrop-filter: blur(34px) saturate(1.8);
+    display:flex; align-items:center;
+    box-shadow: inset 0 1px 0 var(--glass-inner), 0 18px 44px var(--glass-shadow), 0 0 24px rgba(0,140,255,0.08);
+  }
+  .tab-item {
+    flex:1; height:100%; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:6px;
+    cursor:pointer; font-size:12px; font-weight:600;
+    color:var(--ink-mute); transition: color 0.2s;
+  }
+  .tab-item.active { color:var(--accent); }
+  .tab-dot { width:6px; height:6px; border-radius:999px; background:var(--accent); opacity:0; transition: opacity 0.2s; }
+  .tab-item.active .tab-dot { opacity:1; }
+
+  /* ============ 页面切换 ============ */
+  .page { display:none; }
+  .page.active { display:flex; flex-direction:column; gap:var(--tile-gap); }
+
+  /* ============ 食物匹配列表 ============ */
+  .food-match { display:flex; flex-wrap:wrap; gap:6px; }
+  .food-item {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:4px 10px; border-radius:999px;
+    background:var(--glass); border:1px solid var(--glass-border);
+    font-size:12px; color:var(--ink);
+  }
+  .food-item .g { color:var(--ink-mute); font-family:"SF Mono",monospace; font-size:11px; }
+
+  /* ============ 动作行 ============ */
+  .ex-row { display:flex; align-items:center; gap:12px; padding:4px 0; }
+  .ex-dot {
+    width:28px; height:28px; border-radius:14px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:700; flex-shrink:0;
+  }
+
+  /* ============ 度量行 ============ */
+  .metric-row { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+  .metric-row .ml { font-size:10px; color:var(--ink-mute); text-transform:uppercase; letter-spacing:0.08em; font-family:"SF Mono",monospace; }
+  .metric-row .mv { font-size:13px; font-weight:600; font-family:"SF Mono",monospace; }
+
+  /* 提示 */
+  .hint {
+    position:fixed; top:20px; left:50%; transform:translateX(-50%);
+    background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.4);
+    color:var(--accent); padding:10px 20px; border-radius:999px;
+    font-size:13px; font-weight:600; z-index:100;
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    opacity:0; transition: opacity 0.3s; pointer-events:none;
+  }
+  .hint.show { opacity:1; }
+
+  /* ============ 可折叠详情 ============ */
+  .details-header {
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .details-body {
+    overflow:hidden;
+    max-height:0;
+    opacity:0;
+    transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease, margin-top 0.3s ease;
+    margin-top:0;
+  }
+  .details-body.open {
+    max-height:1200px;
+    opacity:1;
+    margin-top:14px;
+  }
+  .details-body-inner {
+    display:flex; flex-direction:column; gap:var(--tile-gap);
+  }
+  .toggle-arrow {
+    display:inline-block; transition: transform 0.3s ease; margin-left:4px;
+  }
+  .toggle-arrow.open { transform: rotate(180deg); }
+
+  /* 核心指标卡 */
+  .core-card {
+    display:flex; flex-direction:column; gap:3px;
+    align-items:flex-start; justify-content:center;
+    padding:14px 12px;
+  }
+  .core-card .core-val { font-size:26px; font-weight:700; font-family:"SF Mono",monospace; line-height:1.1; }
+  .core-card .core-sub { font-size:10px; color:var(--ink-faint); font-family:"SF Mono",monospace; }
+
+  /* 核心卡 mini 可视化 */
+  .core-mini-bar { width:100%; height:4px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden; margin-top:5px; }
+  .core-mini-bar .fill { height:100%; border-radius:999px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+  .core-stack-bar { width:100%; height:4px; border-radius:999px; overflow:hidden; display:flex; margin-top:5px; background:rgba(255,255,255,0.08); }
+  .core-stack-bar .seg { height:100%; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+  .core-pct { width:100%; font-size:9px; font-family:"SF Mono",monospace; color:var(--ink-faint); margin-top:3px; display:flex; justify-content:space-between; }
+
+  /* 周趋势柱状 */
+  .week-bars { display:flex; align-items:flex-end; gap:4px; height:56px; margin-top:6px; }
+  .week-bar { flex:1; border-radius:4px 4px 0 0; min-height:4px; transition: height 0.5s ease; position:relative; }
+  .week-bar.today { box-shadow: 0 0 8px currentColor; }
+  .week-labels { display:flex; gap:4px; margin-top:4px; }
+  .week-labels span { flex:1; text-align:center; font-size:9px; color:var(--ink-faint); font-family:"SF Mono",monospace; }
+
+  /* 营养配比条 */
+  .ratio-bar { display:flex; height:10px; border-radius:999px; overflow:hidden; margin-top:6px; }
+  .ratio-seg { height:100%; transition: width 0.5s ease; }
+
+  /* 详情子区块标题 */
+  .sub-label { font-size:10px; color:var(--ink-mute); text-transform:uppercase; letter-spacing:0.08em; font-family:"SF Mono",monospace; margin-bottom:4px; }
+
+  /* 开关 Switch */
+  .switch { position:relative; display:inline-block; width:48px; height:26px; border-radius:13px; cursor:pointer; transition: all 0.25s ease; flex-shrink:0; }
+  .switch.off { background:rgba(255,255,255,0.10); border:1px solid var(--glass-border); }
+  .switch.on { background:rgba(251,191,36,0.25); border:1px solid var(--amber); box-shadow: 0 0 12px rgba(251,191,36,0.35); }
+  .switch-thumb { position:absolute; top:3px; width:18px; height:18px; border-radius:50%; transition: all 0.25s cubic-bezier(0.4,0,0.2,1); }
+  .switch.off .switch-thumb { left:3px; background:var(--ink-mute); }
+  .switch.on .switch-thumb { left:25px; background:#FFFFFF; }
+</style>
+</head>
+<body>
+
+<div class="hint" id="hint">已切换页面</div>
+
+<div class="phone">
+  <!-- 状态栏 -->
+  <div class="status-bar">
+    <span id="clock">9:41</span>
+    <span class="dots">●●●</span>
+  </div>
+
+  <!-- 滚动内容 -->
+  <div class="scroll" id="scroll">
+
+    <!-- ============ 今日首页 ============ -->
+    <div class="page active" id="page-today">
+      <div class="header">
+        <div class="kicker" id="today-date">6月23日 · 今日</div>
+        <div class="row">
+          <div class="left">
+            <div class="title">饮食</div>
+            <div class="subtitle">今日饮食记录与推荐</div>
+          </div>
+          <span class="badge">离线</span>
+        </div>
+      </div>
+
+      <!-- 宠物提醒 -->
+      <div class="tile" id="diet-pet-reminder" style="display:none; padding:12px;"></div>
+
+      <!-- ===== 统一数据模块：核心数据 + 详情展开 ===== -->
+      <div class="tile glow-accent" id="data-module" style="display:flex; flex-direction:column; gap:var(--tile-gap);">
+        <div class="details-header">
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <span class="label">DATA / 今日数据</span>
+            <span class="txt sm faint">摄入 · 消耗 · 赤字</span>
+          </div>
+        </div>
+
+        <div class="bento-triple" id="core-metrics">
+          <div class="core-card">
+            <div class="core-head">
+              <div class="label">INTAKE / 今日摄入</div>
+              <div class="core-val c-accent" id="core-intake">980</div>
+            </div>
+            <div class="core-mini-bar"><div class="fill" id="intake-bar" style="width:59%; background:var(--accent);"></div></div>
+            <div class="core-pct"><span id="intake-pct">59%</span><span>/ 1650</span></div>
+          </div>
+          <div class="core-card" style="border-left:1px solid var(--glass-border); padding-left:12px;">
+            <div class="core-head">
+              <div class="label">BURN / 今日消耗</div>
+              <div class="core-val c-positive" id="core-burn">2150</div>
+            </div>
+            <div class="core-stack-bar">
+              <div class="seg" id="burn-bmr-seg" style="width:85%; background:var(--positive); opacity:0.45;"></div>
+              <div class="seg" id="burn-train-seg" style="width:15%; background:var(--positive);"></div>
+            </div>
+            <div class="core-pct"><span id="burn-bmr-txt">1820 基础</span><span id="burn-train-txt">+330 训练</span></div>
+          </div>
+          <div class="core-card" style="border-left:1px solid var(--glass-border); padding-left:12px;">
+            <div class="core-head">
+              <div class="label">DEFICIT / 赤字</div>
+              <div class="core-val c-accent2" id="core-deficit">+1170</div>
+            </div>
+            <div class="core-mini-bar"><div class="fill" id="deficit-bar" style="width:100%; background:var(--accent2);"></div></div>
+            <div class="core-pct"><span id="deficit-status">已达标</span><span>目标 ≥500</span></div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end;">
+          <button class="btn sm" id="details-toggle" onclick="toggleDetails()" style="flex:0 0 auto;">
+            查看详情<span class="toggle-arrow" id="toggle-arrow">▾</span>
+          </button>
+        </div>
+
+        <div class="details-body" id="details-body">
+          <div class="details-body-inner">
+
+            <!-- 热量环 + 目标/实际/剩余 -->
+            <div class="tile glow-accent" style="padding:14px;">
+              <div class="label">CALORIES / 热量详情</div>
+              <div style="display:flex; align-items:center; gap:16px; margin-top:10px;">
+                <div class="ring-wrap">
+                  <svg width="96" height="96" viewBox="0 0 96 96">
+                    <circle cx="48" cy="48" r="38" stroke="rgba(255,255,255,0.08)" stroke-width="9" fill="none"/>
+                    <circle id="ring-today" cx="48" cy="48" r="38" stroke="url(#grad-today)" stroke-width="9" fill="none"
+                      stroke-linecap="round" stroke-dasharray="238.8" stroke-dashoffset="238.8"
+                      transform="rotate(-90 48 48)" style="transition: stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1);"/>
+                    <defs>
+                      <linearGradient id="grad-today" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#38BDF8"/>
+                        <stop offset="100%" stop-color="#A78BFA"/>
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div class="ring-center">
+                    <div class="num h2 c-accent" id="ring-value">670</div>
+                    <div class="label" style="font-size:9px;">还可吃</div>
+                  </div>
+                </div>
+                <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
+                  <div class="metric-row"><span class="ml">目标</span><span class="mv" style="color:var(--ink)" id="m-target">1650</span></div>
+                  <div class="metric-row"><span class="ml">实际</span><span class="mv c-accent" id="m-actual">980</span></div>
+                  <div class="metric-row"><span class="ml">消耗</span><span class="mv" style="color:var(--ink)" id="m-burn">2150</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 宏量营养三连 -->
+            <div class="bento-triple" id="macros">
+              <div class="tile glow-accent" style="padding:12px; gap:4px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;"><span class="label c-accent">P</span><span class="txt sm mute">蛋白质</span></div>
+                <div class="num h2 c-ink" style="margin-top:2px;" data-macro="protein-c">78</div>
+                <div class="unit" data-macro="protein-t">/ 118g</div>
+                <div class="bar" style="margin-top:4px;"><div class="bar-fill c-accent" data-macro="protein-bar" style="width:66%;"></div></div>
+              </div>
+              <div class="tile glow-accent2" style="padding:12px; gap:4px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;"><span class="label c-accent2">F</span><span class="txt sm mute">脂肪</span></div>
+                <div class="num h2 c-ink" style="margin-top:2px;" data-macro="fat-c">28</div>
+                <div class="unit" data-macro="fat-t">/ 43g</div>
+                <div class="bar" style="margin-top:4px;"><div class="bar-fill c-accent2" data-macro="fat-bar" style="width:65%;"></div></div>
+              </div>
+              <div class="tile glow-positive" style="padding:12px; gap:4px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;"><span class="label c-positive">C</span><span class="txt sm mute">碳水</span></div>
+                <div class="num h2 c-ink" style="margin-top:2px;" data-macro="carbs-c">102</div>
+                <div class="unit" data-macro="carbs-t">/ 165g</div>
+                <div class="bar" style="margin-top:4px;"><div class="bar-fill c-positive" data-macro="carbs-bar" style="width:62%;"></div></div>
+              </div>
+            </div>
+
+            <!-- 周趋势柱状 -->
+            <div class="tile" style="padding:14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="sub-label">WEEKLY / 近 7 天热量</span>
+                <span class="txt sm mute" id="week-avg">日均 1557 kcal</span>
+              </div>
+              <div class="week-bars" id="week-bars"></div>
+              <div class="week-labels" id="week-labels"></div>
+              <div style="display:flex; gap:12px; margin-top:8px; flex-wrap:wrap;">
+                <span class="txt faint" style="font-size:10px;"><span style="color:var(--accent);">●</span> 达标</span>
+                <span class="txt faint" style="font-size:10px;"><span style="color:var(--warn);">●</span> 超额</span>
+                <span class="txt faint" style="font-size:10px;"><span style="color:var(--positive);">●</span> 不足</span>
+              </div>
+            </div>
+
+            <!-- 营养配比分析 -->
+            <div class="tile" style="padding:14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="sub-label">RATIO / 营养配比分析</span>
+                <span class="txt sm mute" id="ratio-total">1630 kcal</span>
+              </div>
+              <div class="ratio-bar" id="ratio-bar">
+                <div class="ratio-seg" style="width:29%; background:var(--accent);" title="蛋白质"></div>
+                <div class="ratio-seg" style="width:24%; background:var(--accent2);" title="脂肪"></div>
+                <div class="ratio-seg" style="width:47%; background:var(--positive);" title="碳水"></div>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-top:8px; gap:6px;">
+                <div style="flex:1; display:flex; align-items:center; gap:6px; min-width:0;">
+                  <span style="width:8px; height:8px; border-radius:2px; background:var(--accent); display:inline-block; flex-shrink:0;"></span>
+                  <div style="min-width:0;"><div class="txt sm bold">蛋白质</div><div class="txt faint" style="font-size:10px;" id="ratio-p">29% · 118g</div></div>
+                </div>
+                <div style="flex:1; display:flex; align-items:center; gap:6px; min-width:0;">
+                  <span style="width:8px; height:8px; border-radius:2px; background:var(--accent2); display:inline-block; flex-shrink:0;"></span>
+                  <div style="min-width:0;"><div class="txt sm bold">脂肪</div><div class="txt faint" style="font-size:10px;" id="ratio-f">24% · 43g</div></div>
+                </div>
+                <div style="flex:1; display:flex; align-items:center; gap:6px; min-width:0;">
+                  <span style="width:8px; height:8px; border-radius:2px; background:var(--positive); display:inline-block; flex-shrink:0;"></span>
+                  <div style="min-width:0;"><div class="txt sm bold">碳水</div><div class="txt faint" style="font-size:10px;" id="ratio-c">47% · 165g</div></div>
+                </div>
+              </div>
+              <div class="txt faint" style="font-size:11px; margin-top:8px; line-height:1.5;" id="ratio-tip">
+                蛋白质占比略高，有利于减脂期保肌；碳水比例适中，训练日可适当上调。
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- 饮食记录 -->
+      <div class="tile">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span class="label">MEALS / 饮食记录</span>
+          <span class="txt sm mute" id="meals-count">0 种食物</span>
+        </div>
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+          <button class="btn sm" id="mode-prepared" onclick="switchMode('prepared')">准备吃什么</button>
+          <button class="btn sm" style="color:var(--accent2);" id="mode-actual" onclick="switchMode('actual')">实际吃了什么</button>
+        </div>
+        <div id="input-prepared">
+          <textarea class="input" id="food-input" placeholder="输入今天准备吃的食物，例如：鸡蛋、鸡胸肉、米饭、牛奶" oninput="onFoodInput(this.value)"></textarea>
+          <div class="food-match" id="food-match" style="margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <!-- 今日餐次 -->
+      <div class="tile" id="meal-plan">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <span class="label">MEALS / 今日餐次</span>
+          <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px;">
+            <span class="num c-accent" style="font-size:13px;" id="plan-total">0 kcal</span>
+            <span class="txt faint" style="font-size:10px;" id="plan-source">准备计划</span>
+          </div>
+        </div>
+        <div id="plan-list">
+          <div class="meal-list-vertical">
+            <div class="tile" style="padding:12px; border-radius:var(--radius-lg);"><div style="display:flex; justify-content:space-between;"><div class="txt bold sm">早餐</div><div class="txt mono faint" style="font-size:11px;">待安排</div></div><div class="txt faint sm" style="margin-top:6px;">输入食物后生成</div></div>
+            <div class="tile" style="padding:12px; border-radius:var(--radius-lg);"><div style="display:flex; justify-content:space-between;"><div class="txt bold sm">中餐</div><div class="txt mono faint" style="font-size:11px;">待安排</div></div><div class="txt faint sm" style="margin-top:6px;">输入食物后生成</div></div>
+            <div class="tile" style="padding:12px; border-radius:var(--radius-lg);"><div style="display:flex; justify-content:space-between;"><div class="txt bold sm">晚餐</div><div class="txt mono faint" style="font-size:11px;">待安排</div></div><div class="txt faint sm" style="margin-top:6px;">输入食物后生成</div></div>
+            <div class="tile" style="padding:12px; border-radius:var(--radius-lg);"><div style="display:flex; justify-content:space-between;"><div class="txt bold sm">加餐</div><div class="txt mono faint" style="font-size:11px;">待安排</div></div><div class="txt faint sm" style="margin-top:6px;">按剩余热量安排</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 动态调整 -->
+      <div class="tile glow-amber" id="adjust-card" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="label">ADJUSTMENT / 后续调整</span>
+          <span class="tag c-amber" id="adj-delta">+0 kcal</span>
+        </div>
+        <div class="txt bold" style="color:var(--amber); margin-top:8px;" id="adj-title">—</div>
+        <div class="txt sm mute" style="margin-top:4px;" id="adj-reason">—</div>
+      </div>
+    </div>
+
+    <!-- ============ 训练页 ============ -->
+    <div class="page" id="page-train">
+      <div class="header">
+        <div class="kicker">今日训练</div>
+        <div class="row">
+          <div class="left">
+            <div class="title">训练</div>
+            <div class="subtitle">按真实状态反馈，系统顺延未完成项并联动饮食</div>
+          </div>
+          <span class="badge" style="background:rgba(251,191,36,0.15); border-color:rgba(251,191,36,0.3); color:var(--amber);">待记录</span>
+        </div>
+      </div>
+
+      <!-- 宠物提醒 -->
+      <div class="tile" id="train-pet-reminder" style="display:none; padding:12px;"></div>
+
+      <div class="bento-row">
+        <div class="bento-tile flex-2">
+          <div class="tile glow-accent2">
+            <div class="label">BURN / 消耗进度</div>
+            <div style="display:flex; align-items:center; gap:16px; margin-top:10px;">
+              <div class="ring-wrap">
+                <svg width="108" height="108" viewBox="0 0 108 108">
+                  <circle cx="54" cy="54" r="44" stroke="rgba(255,255,255,0.08)" stroke-width="10" fill="none"/>
+                  <circle cx="54" cy="54" r="44" stroke="#A78BFA" stroke-width="10" fill="none"
+                    stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="69"
+                    transform="rotate(-90 54 54)"/>
+                </svg>
+                <div class="ring-center">
+                  <div class="num h2 c-accent2">380</div>
+                  <div class="label" style="font-size:9px;">实际 kcal</div>
+                </div>
+              </div>
+              <div style="flex:1; display:flex; flex-direction:column; gap:12px;">
+                <div class="metric-row"><span class="ml">目标消耗</span><span class="mv" style="color:var(--ink)">380</span></div>
+                <div class="metric-row"><span class="ml">训练偏差</span><span class="mv c-positive">+0</span></div>
+                <div class="metric-row"><span class="ml">下一次</span><span class="mv c-accent">胸部</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bento-tile">
+          <div class="tile glow-accent" style="height:100%; display:flex; flex-direction:column; justify-content:center; gap:6px;">
+            <div class="label">FOCUS / 部位</div>
+            <div class="num h2 c-accent2">背部</div>
+            <div class="txt sm mute">60 分钟</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tile glow-accent2">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span class="label">PLAN / 今日训练计划</span>
+          <span class="tag c-accent2">4 个动作</span>
+        </div>
+        <div class="ex-row">
+          <div class="ex-dot" style="background:rgba(167,139,250,0.15); border:1px solid var(--accent2); color:var(--accent2);">背</div>
+          <div style="flex:1;"><div class="txt bold sm">高位下拉</div><div class="txt faint mono" style="font-size:11px;">4 × 10 · 12 分钟</div></div>
+        </div>
+        <div class="ex-row">
+          <div class="ex-dot" style="background:rgba(167,139,250,0.15); border:1px solid var(--accent2); color:var(--accent2);">背</div>
+          <div style="flex:1;"><div class="txt bold sm">坐姿划船</div><div class="txt faint mono" style="font-size:11px;">4 × 10 · 12 分钟</div></div>
+        </div>
+        <div class="ex-row">
+          <div class="ex-dot" style="background:rgba(167,139,250,0.15); border:1px solid var(--accent2); color:var(--accent2);">背</div>
+          <div style="flex:1;"><div class="txt bold sm">哑铃划船</div><div class="txt faint mono" style="font-size:11px;">3 × 12 · 10 分钟</div></div>
+        </div>
+        <div class="ex-row">
+          <div class="ex-dot" style="background:rgba(52,211,153,0.15); border:1px solid var(--positive); color:var(--positive);">氧</div>
+          <div style="flex:1;"><div class="txt bold sm">跑步机快走</div><div class="txt faint mono" style="font-size:11px;">20 分钟</div></div>
+        </div>
+      </div>
+
+      <div class="tile glow-accent">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span class="label">ACTUAL / 实际训练</span>
+          <span class="num c-accent" style="font-size:13px;">380 kcal</span>
+        </div>
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+          <button class="chip sm active c-positive" onclick="pickStatus(this,'done')">完成计划</button>
+          <button class="chip sm c-warn" onclick="pickStatus(this,'missed')">今天没练</button>
+          <button class="chip sm c-accent2" onclick="pickStatus(this,'changed')">改练了</button>
+        </div>
+        <textarea class="input" placeholder="例如：跑步30分钟、卧推60kg 5组" style="margin-bottom:10px;"></textarea>
+        <div class="bento-row">
+          <div class="bento-tile"><input class="input" placeholder="实际分钟" value="60"></div>
+          <div class="bento-tile"><input class="input" placeholder="疲劳 1-5" value="3"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 设置页 ============ -->
+    <div class="page" id="page-more">
+      <div class="header">
+        <div class="kicker">更多 · 设置</div>
+        <div class="row">
+          <div class="left">
+            <div class="title">设置</div>
+            <div class="subtitle">自定义食物 / 修改身体数据 / 调整目标与训练习惯</div>
+          </div>
+          <span class="badge">0 项</span>
+        </div>
+      </div>
+
+      <div class="tile glow-accent" id="appearance-card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+          <div style="flex:1;">
+            <span class="label">APPEARANCE / 外观模式</span>
+            <div class="txt bold" id="appearance-title" style="color:var(--accent); margin-top:6px;">日间液态玻璃</div>
+            <div class="txt sm mute" style="margin-top:4px; line-height:1.5;">切换后匹配对应的日间 / 夜间系统外观，磨砂玻璃、文字层级和背景色会一起变化。</div>
+          </div>
+          <span class="tag c-accent" id="appearance-status">日间</span>
+        </div>
+        <div class="appearance-toggle" aria-label="外观模式" style="margin-top:12px; width:100%; height:38px;">
+          <button id="theme-light" class="active" type="button" onclick="setTheme('light')" style="flex:1; height:30px;">日间模式</button>
+          <button id="theme-dark" type="button" onclick="setTheme('dark')" style="flex:1; height:30px;">夜间模式</button>
+        </div>
+      </div>
+
+      <div class="tile glow-accent">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span class="label">MY MENU / 我的菜单</span>
+          <span class="tag c-accent">0 个</span>
+        </div>
+        <div class="bento-row" style="margin-bottom:10px;">
+          <button class="btn sm">拍照/上传</button>
+          <button class="btn sm" style="color:var(--accent2);">识别营养表</button>
+        </div>
+        <input class="input" placeholder="食物名称，例如：我常吃的鸡肉卷" style="margin-bottom:8px;">
+        <input class="input" placeholder="别名，用空格或顿号分隔" style="margin-bottom:8px;">
+        <textarea class="input" placeholder="粘贴营养成分表文字" style="margin-bottom:8px;"></textarea>
+        <div class="bento-row" style="margin-bottom:8px;">
+          <input class="input" placeholder="kcal" style="font-size:12px;">
+          <input class="input" placeholder="蛋白g" style="font-size:12px;">
+          <input class="input" placeholder="脂肪g" style="font-size:12px;">
+          <input class="input" placeholder="碳水g" style="font-size:12px;">
+        </div>
+        <button class="btn filled block">保存到我的菜单</button>
+      </div>
+
+      <!-- 我的宠物 -->
+      <div class="tile glow-accent2" id="pet-card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="label">PET / 我的宠物</span>
+          <span class="tag c-accent2" id="pet-status">未选择</span>
+        </div>
+        <div id="pet-current" style="display:none; flex-direction:row; align-items:center; gap:14px; margin-top:10px;">
+          <div style="width:56px; height:56px; border-radius:50%; background:rgba(167,139,250,0.12); border:1.5px solid var(--accent2); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <span id="pet-current-emoji" style="font-size:28px; line-height:1;">🐾</span>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div class="txt bold" style="color:var(--accent2);" id="pet-current-name">—</div>
+            <div class="txt sm mute" style="margin-top:2px; line-height:1.4;" id="pet-current-catch">—</div>
+            <div class="txt faint" style="font-size:10px; margin-top:2px;" id="pet-current-meta">—</div>
+          </div>
+          <button class="btn sm" style="color:var(--warn);" onclick="clearPet()">换</button>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button class="btn sm filled c-accent2" id="pet-tab-preset" onclick="switchPetTab('preset')">系统预设</button>
+          <button class="btn sm" style="color:var(--accent);" id="pet-tab-custom" onclick="switchPetTab('custom')">自定义</button>
+        </div>
+        <div id="pet-preset-panel">
+          <div style="margin-top:10px;">
+            <div class="sub-label" style="color:var(--ink-faint); margin-bottom:6px;">全球最萌 · 10 种</div>
+            <div id="pet-cute-list" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+          </div>
+          <div style="margin-top:10px;">
+            <div class="sub-label" style="color:var(--ink-faint); margin-bottom:6px;">短视频热门 · 10 种</div>
+            <div id="pet-viral-list" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+          </div>
+        </div>
+        <div id="pet-custom-panel" style="display:none; margin-top:10px; gap:10px; flex-direction:column;">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <div style="width:52px; height:52px; border-radius:50%; background:rgba(56,189,248,0.12); border:1.5px solid var(--accent); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <span id="pet-draft-emoji" style="font-size:26px; line-height:1;">🐾</span>
+            </div>
+            <div style="flex:1;"><input class="input" id="pet-draft-name" placeholder="宠物名字" oninput="updatePetDraft()"></div>
+          </div>
+          <input class="input" id="pet-draft-emoji-input" placeholder="Emoji 头像（粘贴一个表情）" oninput="updatePetDraft()">
+          <div>
+            <div class="sub-label" style="color:var(--ink-faint); margin-bottom:6px;">性格</div>
+            <div id="pet-personality-list" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+          </div>
+          <button class="btn filled block" style="color:var(--accent);" onclick="saveCustomPet()">保存自定义宠物</button>
+          <div class="txt sm mute" id="pet-message" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- 动态调整开关 -->
+      <div class="tile glow-amber" id="adjust-toggle-card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+          <div style="flex:1;">
+            <span class="label">ADJUSTMENT / 动态调整</span>
+            <div class="txt bold" id="adjust-toggle-status" style="color:var(--amber); margin-top:6px;">已开启</div>
+            <div class="txt sm mute" id="adjust-toggle-desc" style="margin-top:4px; line-height:1.5;">当你某天没按计划饮食或训练时，系统会自动调整后续计划以弥补偏差。</div>
+          </div>
+          <div class="switch on" id="adjust-switch" onclick="toggleAdjustment()">
+            <div class="switch-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 饮食方案模板 -->
+      <div class="tile" id="diet-plan-card">
+        <div class="details-header" style="cursor:pointer;" onclick="toggleDietPlan()">
+          <div>
+            <span class="label">DIET PLAN / 饮食方案</span>
+            <span class="txt sm faint" style="margin-left:8px;" id="diet-plan-subtitle">13 套流行方案 · 点击选择</span>
+          </div>
+          <button class="btn sm">
+            浏览方案<span class="toggle-arrow" id="diet-toggle-arrow">▾</span>
+          </button>
+        </div>
+        <div class="details-body" id="diet-plan-body">
+          <div class="details-body-inner" id="diet-plan-list"></div>
+        </div>
+      </div>
+
+      <!-- 身体数据 -->
+      <div class="tile">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="label">BODY / 身体数据</span>
+          <span class="num c-accent" style="font-size:18px;">72.5 kg</span>
+        </div>
+        <div class="txt sm mute" style="margin-top:6px;">28 岁 · 175 cm · 规律训练</div>
+        <button class="btn block" style="margin-top:10px;">修改身体数据</button>
+      </div>
+
+      <div class="tile">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="label">GOAL / 目标</span>
+          <span class="num c-positive" style="font-size:18px;">68 kg</span>
+        </div>
+        <div class="txt sm mute" style="margin-top:6px;">56 天周期</div>
+        <button class="btn block" style="color:var(--positive); margin-top:10px;">修改目标</button>
+      </div>
+
+      <div class="tile">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="label">TRAINING / 训练习惯</span>
+          <span class="num c-accent2" style="font-size:18px;">4 天/周</span>
+        </div>
+        <div class="txt sm mute" style="margin-top:6px;">每次 60 分钟 · 有氧比例 0.3</div>
+        <button class="btn block" style="color:var(--accent2); margin-top:10px;">修改训练习惯</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TabBar -->
+  <div class="tabbar">
+    <div class="tab-item active" onclick="switchTab(0,'page-today')">饮食<div class="tab-dot"></div></div>
+    <div class="tab-item" onclick="switchTab(1,'page-train')">训练<div class="tab-dot"></div></div>
+    <div class="tab-item" onclick="switchTab(2,'page-more')">更多<div class="tab-dot"></div></div>
+  </div>
+</div>
+
+<script>
+  // ============ 外观模式（日间 / 夜间） ============
+  const THEME_KEY = 'fitness-liquid-theme';
+  function setTheme(theme) {
+    const nextTheme = theme === 'dark' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = nextTheme;
+    localStorage.setItem(THEME_KEY, nextTheme);
+    const light = document.getElementById('theme-light');
+    const dark = document.getElementById('theme-dark');
+    if (light && dark) {
+      light.classList.toggle('active', nextTheme === 'light');
+      dark.classList.toggle('active', nextTheme === 'dark');
+    }
+    const title = document.getElementById('appearance-title');
+    const status = document.getElementById('appearance-status');
+    const card = document.getElementById('appearance-card');
+    if (title && status && card) {
+      const isLight = nextTheme === 'light';
+      title.textContent = isLight ? '日间液态玻璃' : '夜间液态玻璃';
+      title.style.color = isLight ? 'var(--accent)' : 'var(--accent2)';
+      status.textContent = isLight ? '日间' : '夜间';
+      status.className = isLight ? 'tag c-accent' : 'tag c-accent2';
+      card.classList.toggle('glow-accent', isLight);
+      card.classList.toggle('glow-accent2', !isLight);
+    }
+  }
+  setTheme(localStorage.getItem(THEME_KEY) || 'light');
+
+  // ============ 全局状态 ============
+  let dynamicAdjustmentEnabled = true;
+  let selectedDietPlanId = null;
+  let expandedPlanId = null;
+  let selectedPetId = null;
+  let customPet = null;
+  let petTab = "preset";
+  let petDraft = { name:"", emoji:"🐾", personality:"lively" };
+
+  // ============ 宠物系统 ============
+  const cutePets = [
+    { id:"panda", name:"大熊猫", emoji:"🐼", personality:"cute", catch:"竹子管够，但你也得管够蛋白质哦～" },
+    { id:"koala", name:"考拉", emoji:"🐨", personality:"gentle", catch:"慢慢吃，不着急，我陪你～" },
+    { id:"red-panda", name:"小熊猫", emoji:"🐾", personality:"lively", catch:"蹦蹦跳跳才可爱，你今天动了吗？" },
+    { id:"arctic-fox", name:"北极狐", emoji:"🦊", personality:"gentle", catch:"雪地里也能闪闪发光，你也可以～" },
+    { id:"sea-otter", name:"海獭", emoji:"🦦", personality:"cute", catch:"牵手手睡觉最安心，记得好好休息呀～" },
+    { id:"hamster", name:"仓鼠", emoji:"🐹", personality:"lively", catch:"腮帮子塞满才安心，但别学我吃太多！" },
+    { id:"rabbit", name:"兔子", emoji:"🐰", personality:"gentle", catch:"胡萝卜要吃，蔬菜也要多样哦～" },
+    { id:"quokka", name:"短尾矮袋鼠", emoji:"🦘", personality:"cute", catch:"全网最爱笑的我，陪你一起开心吃～" },
+    { id:"penguin", name:"帝企鹅", emoji:"🐧", personality:"strict", catch:"直立行走也能到南极，纪律是关键！" },
+    { id:"fennec-fox", name:"耳廓狐", emoji:"🦊", personality:"lively", catch:"大耳朵听得见你偷吃零食！" }
+  ];
+  const viralPets = [
+    { id:"shiba", name:"柴犬", emoji:"🐕", personality:"lively", catch:"柴柴笑一个！今天也要元气满满！" },
+    { id:"british-shorthair", name:"英短蓝猫", emoji:"🐈", personality:"gentle", catch:"蓝胖子盯着你吃饭，记得吃够蛋白～" },
+    { id:"ragdoll", name:"布偶猫", emoji:"🐱", personality:"gentle", catch:"抱抱就软成一团，记得温柔对待自己～" },
+    { id:"corgi", name:"柯基", emoji:"🐕", personality:"lively", catch:"小短腿跑得快！你也动起来呀～" },
+    { id:"husky", name:"哈士奇", emoji:"🐺", personality:"lively", catch:"拆家小能手警告：别拆自己的身体！" },
+    { id:"teacup-dog", name:"茶杯犬", emoji:"🐶", personality:"cute", catch:"我这么小都能按时吃饭，你也可以～" },
+    { id:"guinea-pig", name:"荷兰猪", emoji:"🐹", personality:"cute", catch:"吱吱！蔬菜不能少呀～" },
+    { id:"chinchilla", name:"龙猫", emoji:"🐭", personality:"gentle", catch:"毛茸茸的我提醒你：少油少糖才清爽～" },
+    { id:"parrot", name:"鹦鹉", emoji:"🦜", personality:"strict", catch:"重复一遍！蛋白质！蔬菜！水！" },
+    { id:"hedgehog", name:"刺猬", emoji:"🦔", personality:"cute", catch:"卷起来是保护自己，吃好才是真本领～" }
+  ];
+  const personalityLabels = { gentle:"温柔型", lively:"活泼型", strict:"严厉型", cute:"卖萌型" };
+  const allPets = [...cutePets, ...viralPets];
+
+  function getActivePet() {
+    if (customPet) return { kind:"custom", pet: customPet };
+    if (selectedPetId) {
+      const p = allPets.find(x => x.id === selectedPetId);
+      if (p) return { kind:"preset", pet: p };
+    }
+    return null;
+  }
+
+  function withPersonality(p, base) {
+    if (p === "gentle") return base;
+    if (p === "lively") return base + "！";
+    if (p === "strict") return "听好——" + base + "。";
+    return base + "～";
+  }
+
+  function generateDietReminder(pet, ctx) {
+    const personality = pet.personality;
+    const ratio = ctx.intake / Math.max(1, ctx.target);
+    if (ctx.intake === 0) return { emoji: pet.emoji, title: pet.name + "饿啦", body: withPersonality(personality, "你今天还没记录吃过什么，快来告诉我你准备吃什么，我帮你看看营养够不够"), tone:"info" };
+    if (ratio > 1.15) {
+      const over = Math.round(ctx.intake - ctx.target);
+      return { emoji: pet.emoji, title:"吃多啦", body: withPersonality(personality, `今天已经多摄入 ${over} kcal，超目标 ${Math.round((ratio-1)*100)}%。建议接下来少吃高热量食物，多喝水`), tone:"warn" };
+    }
+    if (ctx.protein / Math.max(1, ctx.targetP) < 0.7 && ctx.intake > 0) {
+      const gap = Math.round(ctx.targetP - ctx.protein);
+      return { emoji: pet.emoji, title:"蛋白质不够", body: withPersonality(personality, `还差约 ${gap}g 蛋白质。可以加一份鸡胸肉、鸡蛋或希腊酸奶`), tone:"warn" };
+    }
+    if (ctx.fat / Math.max(1, ctx.targetF) > 1.2 && ctx.intake > 0) {
+      return { emoji: pet.emoji, title:"油脂偏多", body: withPersonality(personality, `脂肪已超目标 ${Math.round((ctx.fat/ctx.targetF-1)*100)}%，接下来选少油烹饪，避开油炸和坚果过量`), tone:"warn" };
+    }
+    if (ctx.carbs / Math.max(1, ctx.targetC) < 0.6 && ctx.intake > 0) {
+      const gap = Math.round(ctx.targetC - ctx.carbs);
+      return { emoji: pet.emoji, title:"碳水偏少", body: withPersonality(personality, `还差约 ${gap}g 碳水。训练日碳水不足会没力气，可以加些米饭、红薯或燕麦`), tone:"info" };
+    }
+    if (ratio >= 0.85 && ratio <= 1.05) {
+      return { emoji: pet.emoji, title:"吃得刚好", body: withPersonality(personality, `热量摄入 ${Math.round(ratio*100)}%，三大营养素也在合理范围，继续保持`), tone:"praise" };
+    }
+    return { emoji: pet.emoji, title:"继续加油", body: withPersonality(personality, `已摄入 ${Math.round(ratio*100)}% 目标热量，还剩 ${Math.max(0, Math.round(ctx.target - ctx.intake))} kcal，合理安排剩余餐次`), tone:"info" };
+  }
+
+  function generateTrainingReminder(pet, ctx) {
+    const personality = pet.personality;
+    if (ctx.status === "pending") {
+      if (!ctx.title) return { emoji: pet.emoji, title:"今天休息日", body: withPersonality(personality, "今天没有安排训练，可以散散步或做做拉伸，保持身体活跃"), tone:"info" };
+      return { emoji: pet.emoji, title:"该动起来啦", body: withPersonality(personality, `今天的计划是「${ctx.title}」，预计消耗 ${Math.round(ctx.cal)} kcal。准备好了就开始吧`), tone:"cheer" };
+    }
+    if (ctx.status === "done") return { emoji: pet.emoji, title:"太棒了", body: withPersonality(personality, `完成训练！实际消耗 ${Math.round(ctx.actual)} kcal，记得补充蛋白质和水分，好好休息`), tone:"praise" };
+    if (ctx.status === "missed") return { emoji: pet.emoji, title:"今天偷懒了", body: withPersonality(personality, "没训练没关系，但记得明天补上。长期坚持比一次完美更重要"), tone:"warn" };
+    return { emoji: pet.emoji, title:"改练了", body: withPersonality(personality, `记录了替代训练，消耗 ${Math.round(ctx.actual)} kcal。灵活调整也是坚持的一种`), tone:"info" };
+  }
+
+  function renderPetReminder(containerId, reminder) {
+    const el = document.getElementById(containerId);
+    if (!reminder) { el.style.display = "none"; return; }
+    const toneColors = { info:"var(--accent)", warn:"var(--warn)", praise:"var(--positive)", cheer:"var(--accent2)" };
+    const toneLabels = { info:"提示", warn:"提醒", praise:"表扬", cheer:"加油" };
+    const c = toneColors[reminder.tone];
+    el.style.display = "block";
+    el.innerHTML = `<div style="display:flex; align-items:flex-start; gap:12px;">
+      <div style="width:44px; height:44px; border-radius:50%; background:${c}1a; border:1.5px solid ${c}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <span style="font-size:22px; line-height:1;">${reminder.emoji}</span>
+      </div>
+      <div style="flex:1; min-width:0;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <div class="txt bold" style="color:${c};">${reminder.title}</div>
+          <span class="tag c-${reminder.tone==='warn'?'warn':reminder.tone==='praise'?'positive':'accent'}" style="font-size:10px;">${toneLabels[reminder.tone]}</span>
+        </div>
+        <div class="txt sm mute" style="margin-top:4px; line-height:1.6;">${reminder.body}</div>
+      </div>
+    </div>`;
+  }
+
+  function updatePetReminders() {
+    const pet = getActivePet();
+    const dietEl = document.getElementById("diet-pet-reminder");
+    const trainEl = document.getElementById("train-pet-reminder");
+    if (!pet) {
+      if (dietEl) dietEl.style.display = "none";
+      if (trainEl) trainEl.style.display = "none";
+      return;
+    }
+    // 饮食提醒
+    const intake = parseInt(document.getElementById("core-intake").textContent) || 0;
+    const target = 1650;
+    const protein = parseInt(document.querySelector('[data-macro="protein-c"]').textContent) || 0;
+    const fat = parseInt(document.querySelector('[data-macro="fat-c"]').textContent) || 0;
+    const carbs = parseInt(document.querySelector('[data-macro="carbs-c"]').textContent) || 0;
+    renderPetReminder("diet-pet-reminder", generateDietReminder(pet.pet, {
+      intake, target, protein, targetP:118, fat, targetF:43, carbs, targetC:165
+    }));
+    // 训练提醒
+    renderPetReminder("train-pet-reminder", generateTrainingReminder(pet.pet, {
+      title:"背部 + 轻有氧", cal:330, status:"pending", actual:0
+    }));
+  }
+
+  function renderPetLists() {
+    const renderChip = (pet) => {
+      const sel = selectedPetId === pet.id && !customPet;
+      return `<div onclick="selectPresetPet('${pet.id}')" style="display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; border:1.5px solid ${sel ? 'var(--accent2)' : 'var(--glass-border)'}; background:${sel ? 'rgba(167,139,250,0.12)' : 'transparent'}; cursor:pointer;">
+        <span style="font-size:18px;">${pet.emoji}</span>
+        <span class="txt sm bold" style="color:${sel ? 'var(--accent2)' : 'var(--ink)'};">${pet.name}</span>
+      </div>`;
+    };
+    document.getElementById("pet-cute-list").innerHTML = cutePets.map(renderChip).join("");
+    document.getElementById("pet-viral-list").innerHTML = viralPets.map(renderChip).join("");
+  }
+
+  function renderPersonalityChips() {
+    const keys = Object.keys(personalityLabels);
+    document.getElementById("pet-personality-list").innerHTML = keys.map(k => {
+      const sel = petDraft.personality === k;
+      return `<div onclick="selectPersonality('${k}')" style="padding:6px 12px; border-radius:999px; border:1px solid ${sel ? 'var(--accent)' : 'var(--glass-border)'}; background:${sel ? 'rgba(56,189,248,0.12)' : 'transparent'}; cursor:pointer;">
+        <span class="txt sm bold" style="color:${sel ? 'var(--accent)' : 'var(--ink-mute)'};">${personalityLabels[k]}</span>
+      </div>`;
+    }).join("");
+  }
+
+  function switchPetTab(tab) {
+    petTab = tab;
+    document.getElementById("pet-preset-panel").style.display = tab === "preset" ? "block" : "none";
+    document.getElementById("pet-custom-panel").style.display = tab === "custom" ? "flex" : "none";
+    const b1 = document.getElementById("pet-tab-preset");
+    const b2 = document.getElementById("pet-tab-custom");
+    if (tab === "preset") {
+      b1.className = "btn sm filled c-accent2";
+      b2.className = "btn sm";
+      b2.style.color = "var(--accent)";
+    } else {
+      b2.className = "btn sm filled c-accent";
+      b1.className = "btn sm";
+      b1.style.color = "var(--accent2)";
+    }
+  }
+
+  function selectPresetPet(id) {
+    if (selectedPetId === id && !customPet) {
+      selectedPetId = null;
+    } else {
+      customPet = null;
+      selectedPetId = id;
+    }
+    updatePetCurrent();
+    renderPetLists();
+    updatePetReminders();
+  }
+
+  function selectPersonality(k) {
+    petDraft.personality = k;
+    renderPersonalityChips();
+  }
+
+  function updatePetDraft() {
+    petDraft.name = document.getElementById("pet-draft-name").value;
+    petDraft.emoji = document.getElementById("pet-draft-emoji-input").value || "🐾";
+    document.getElementById("pet-draft-emoji").textContent = petDraft.emoji;
+  }
+
+  function saveCustomPet() {
+    if (!petDraft.name.trim()) {
+      const msg = document.getElementById("pet-message");
+      msg.textContent = "先给宠物起个名字";
+      msg.style.display = "block";
+      return;
+    }
+    customPet = { name: petDraft.name.trim(), emoji: petDraft.emoji.trim() || "🐾", personality: petDraft.personality, catchphrase: "我会一直陪你！" };
+    selectedPetId = null;
+    const msg = document.getElementById("pet-message");
+    msg.textContent = "已保存：" + customPet.name + "，它将出现在饮食和训练页";
+    msg.style.display = "block";
+    updatePetCurrent();
+    renderPetLists();
+    updatePetReminders();
+  }
+
+  function clearPet() {
+    selectedPetId = null;
+    customPet = null;
+    petDraft = { name:"", emoji:"🐾", personality:"lively" };
+    document.getElementById("pet-draft-name").value = "";
+    document.getElementById("pet-draft-emoji-input").value = "";
+    document.getElementById("pet-draft-emoji").textContent = "🐾";
+    const msg = document.getElementById("pet-message");
+    msg.textContent = "已清除宠物，重新选择吧";
+    msg.style.display = "block";
+    updatePetCurrent();
+    renderPetLists();
+    renderPersonalityChips();
+    updatePetReminders();
+  }
+
+  function updatePetCurrent() {
+    const pet = getActivePet();
+    const cur = document.getElementById("pet-current");
+    const status = document.getElementById("pet-status");
+    if (pet) {
+      cur.style.display = "flex";
+      status.textContent = "已选择";
+      document.getElementById("pet-current-emoji").textContent = pet.pet.emoji;
+      document.getElementById("pet-current-name").textContent = pet.pet.name;
+      document.getElementById("pet-current-catch").textContent = pet.pet.catch || pet.pet.catchphrase || "";
+      document.getElementById("pet-current-meta").textContent = personalityLabels[pet.pet.personality] + " · " + (pet.kind === "custom" ? "自定义" : "预设");
+    } else {
+      cur.style.display = "none";
+      status.textContent = "未选择";
+    }
+  }
+
+  // 初始化宠物
+  renderPetLists();
+  renderPersonalityChips();
+  updatePetCurrent();
+  updatePetReminders();
+
+  // ============ 饮食方案库 ============
+  const dietPlans = [
+    { id:"balanced-high-carb", cat:"carb", name:"均衡高碳饮食法", tag:"碳水 45-60%，蛋白足量、脂肪适度压低",
+      logic:"碳水供能占每日总热量 45%~60%，蛋白质足量、脂肪适度压低，三大营养素均衡偏高碳。",
+      eat:"主食以糙米、燕麦、红薯、米饭为主，三餐都安排主食；蛋白质 1.6~2.2g/kg 体重，少油烹饪。",
+      pros:["训练精力足、不掉力量","不容易暴食","保护基础代谢"],
+      cons:["减脂速度偏慢","必须严格控制总热量","吃多容易热量超标"],
+      fit:"力量训练爱好者、学生上班族、减脂新手、怕冷、代谢偏低人群" },
+    { id:"carb-cycling", cat:"carb", name:"碳循环饮食法", tag:"训练日高碳、休息日低碳，周期性调整",
+      logic:"根据训练强度安排碳水，训练日高碳、休息日中低碳，通过周期性调整碳水，既保证训练表现，又防止代谢适应停滞。",
+      eat:"周循环：3 天高碳 + 2 天中碳 + 2 天低碳。高碳日碳水 4~6g/kg，低碳日 1.5~2.5g/kg，蛋白质全天统一。",
+      pros:["减脂不乏力","不容易平台期","最大限度保住肌肉"],
+      cons:["需要精准计算热量和营养素","操作繁琐","不适合懒人"],
+      fit:"有一定健身基础、减脂遇到平台、不想掉肌肉的力量训练者" },
+    { id:"low-carb", cat:"carb", name:"低碳饮食法", tag:"碳水 20-40%，拉高蛋白、适量优质脂肪",
+      logic:"碳水供能 20%~40%，拉高蛋白质、适量优质脂肪，大幅度减少精米白面甜食。",
+      eat:"主食少量放在早餐或训练后，大量蔬菜 + 鸡胸肉、鱼虾、牛肉、鸡蛋。",
+      pros:["饱腹感强、控饿效果好","掉秤速度快","胰岛素平稳","水肿下降明显"],
+      cons:["训练无力","情绪容易烦躁","长期低碳容易脱发、姨妈紊乱（女生）"],
+      fit:"大基数体重、久坐少运动、爱吃甜食容易暴饮暴食人群" },
+    { id:"keto", cat:"carb", name:"生酮饮食", tag:"每日碳水 20-50g，高脂高蛋白供能",
+      logic:"每日总碳水 20~50g 以内，几乎戒掉所有主食，依靠高脂肪 + 高蛋白供能，让身体燃烧脂肪产生酮体供能。",
+      eat:"五花肉、肥牛、牛油果、橄榄油、鸡蛋、绿叶菜，杜绝米面糖、豆类、大部分水果。",
+      pros:["极强饱腹感","前期掉秤速度极快","抑制食欲"],
+      cons:["初期酮流感（乏力、头晕、便秘口臭）","很难长期坚持","反弹风险高","不适合肝肾不好、孕妇、青少年"],
+      fit:"小基数短期冲刺刷脂、顽固性肥胖、胰岛素抵抗人群" },
+    { id:"carb-backloading", cat:"carb", name:"碳水后置饮食法", tag:"白天少吃主食，训练后晚餐集中摄入碳水",
+      logic:"白天尽量少吃主食，把全天大部分碳水放在力量训练之后的晚餐摄入。训练后胰岛素敏感性最高，碳水优先用来恢复肌肉糖原，不容易转化成脂肪储存。",
+      eat:"白天蛋白质 + 蔬菜 + 少量脂肪，训练后晚餐摄入全天大部分碳水（米饭、红薯、燕麦等）。",
+      pros:["保留训练状态","腹部不容易堆积脂肪","适合晚上训练的上班族"],
+      cons:["白天容易饥饿、乏力","早起空腹有氧人群不友好"],
+      fit:"晚上训练的上班族、想保肌肉又控体脂的人群" },
+    { id:"slow-carb", cat:"carb", name:"慢碳饮食法", tag:"精制碳水全替换为低 GI 粗粮，不算热量",
+      logic:"不刻意减少碳水总量，只把精制碳水（白米饭、面条、糕点、含糖饮料）全部替换为低 GI 粗粮慢碳。",
+      eat:"可选主食：燕麦、糙米、藜麦、玉米、红薯、山药、杂豆。",
+      pros:["不用计算热量，上手最简单","血糖平稳","不容易馋甜食"],
+      cons:["减脂速度温和","必须戒掉所有精加工甜食饮料才会见效"],
+      fit:"懒人减脂、日常不怎么健身，只想健康慢慢瘦的人" },
+    { id:"if-16-8", cat:"fasting", name:"16+8 间歇性轻断食", tag:"8 小时进食窗，16 小时空腹，热度第一",
+      logic:"一天 24 小时里，只在连续 8 小时内吃完所有食物，剩下 16 小时只喝无糖液体（水、黑咖啡、无糖茶）。",
+      eat:"常见吃法：10:00-18:00 进食，其余时间空腹。",
+      pros:["操作最简单，不用算三大营养素","自然压缩总进食量","改善胰岛素抵抗","省时省事"],
+      cons:["空腹时间长容易饥饿、低血糖","不适合三餐不规律、胃病、低血糖、女生生理期"],
+      fit:"上班族、懒人减脂、爱吃宵夜人群" },
+    { id:"if-5-2", cat:"fasting", name:"5+2 轻断食", tag:"5 天正常吃，2 天低热量（男≤600/女≤500）",
+      logic:"一周 5 天正常均衡饮食，不需要刻意节食；剩余 2 天非连续日低热量进食（男性≤600 大卡，女性≤500 大卡）。",
+      eat:"5 天正常均衡饮食；2 天非连续低热量日，男≤600 kcal / 女≤500 kcal。",
+      pros:["不用压缩每日吃饭时间","社交聚餐更容易坚持","对代谢伤害小"],
+      cons:["断食日容易饥饿乏力","需要简单控制热量"],
+      fit:"经常聚餐、无法固定吃饭时间、上班族" },
+    { id:"if-alt-day", cat:"fasting", name:"隔日断食", tag:"一天正常吃，下一天 300-500 kcal 或全断",
+      logic:"一天正常吃，下一天只吃 300~500 大卡或者全天只喝水。",
+      eat:"交替进行：正常日随意，断食日 300-500 kcal 或仅喝水。",
+      pros:["减脂速度最快"],
+      cons:["执行难度极高","极易暴食、乏力掉肌肉","只适合短期冲刺，不推荐长期"],
+      fit:"短期冲刺减脂、意志力极强的人群" },
+    { id:"high-protein-balanced", cat:"balanced", name:"高蛋白均衡饮食", tag:"蛋白 1.8-2.2g/kg，三餐均衡少油少糖，新手万能",
+      logic:"蛋白质拉满（1.8~2.2g/kg 体重），碳水、脂肪合理分配，三餐均衡，少油少糖。",
+      eat:"三餐均衡，每餐都含优质蛋白（鸡胸、鱼、蛋、奶、豆制品），主食粗细搭配，少油少糖烹饪。",
+      pros:["容错率最高","不伤代谢","保肌肉","不容易反弹","几乎没有禁忌人群"],
+      cons:["减脂速度平缓","需要长期坚持"],
+      fit:"几乎所有人群，尤其是减脂新手、怕反弹、追求健康的人群" },
+    { id:"mediterranean", cat:"balanced", name:"地中海饮食", tag:"全球公认最健康，蔬果全谷深海鱼坚果橄榄油",
+      logic:"大量蔬果、全谷物、深海鱼、坚果、橄榄油，少量红肉。全球公认最健康饮食模式。",
+      eat:"每天大量蔬菜水果 + 全谷物主食 + 深海鱼每周 2-3 次 + 坚果一把 + 橄榄油烹饪，红肉少量。",
+      pros:["抗炎","保护心血管","养胃","适合长期生活化减脂"],
+      cons:["减脂速度慢","偏向健康塑形而非快速掉秤"],
+      fit:"追求长期健康、心血管亚健康、中老年人群、生活化减脂" },
+    { id:"paleo", cat:"niche", name:"原始人饮食", tag:"戒精加工/谷物/乳制品/豆类，只吃肉蛋鱼蔬果坚果",
+      logic:"戒掉所有精加工食品、谷物、乳制品、豆类，只吃肉类、蛋类、鱼虾、蔬菜、坚果、低糖水果。",
+      eat:"允许：肉、蛋、鱼虾、蔬菜、坚果、低糖水果；禁止：精加工食品、谷物、乳制品、豆类。",
+      pros:["戒精加工食品","适合麸质乳糖不耐","减少炎症水肿"],
+      cons:["饮食选择受限","社交不便","长期执行难度中等"],
+      fit:"麸质乳糖不耐、容易炎症水肿肥胖人群" },
+    { id:"military-3day", cat:"niche", name:"3 日军人饮食", tag:"3 天严格极低热量固定食谱，快速脱水掉秤",
+      logic:"3 天严格极低热量饮食，搭配固定食谱快速脱水掉秤，属于短期应急减脂，不能长期做，极易反弹。",
+      eat:"3 天固定食谱（冰激凌、热狗、金枪鱼、鸡蛋等组合），每日约 1000-1400 kcal，之后恢复正常饮食。",
+      pros:["3 天快速掉秤","食谱固定不用动脑"],
+      cons:["极易反弹","营养不均衡","不能长期执行","主要为脱水而非减脂"],
+      fit:"短期应急（如婚礼前 3 天）、需要快速掉水重的人群" }
+  ];
+  const dietCategories = [
+    { id:"carb", label:"碳水调控类" },
+    { id:"fasting", label:"时间限制性断食" },
+    { id:"balanced", label:"均衡健康类" },
+    { id:"niche", label:"小众短期减脂" }
+  ];
+
+  function toggleDietPlan() {
+    const body = document.getElementById('diet-plan-body');
+    const arrow = document.getElementById('diet-toggle-arrow');
+    body.classList.toggle('open');
+    arrow.classList.toggle('open');
+    if (body.classList.contains('open') && !document.getElementById('diet-plan-list').innerHTML) {
+      renderDietPlans();
+    }
+  }
+
+  function renderDietPlans() {
+    const list = document.getElementById('diet-plan-list');
+    list.innerHTML = dietCategories.map(cat => {
+      const plans = dietPlans.filter(p => p.cat === cat.id);
+      return `<div style="margin-top:4px;">
+        <div class="sub-label" style="color:var(--ink-faint); margin-bottom:6px;">${cat.label}</div>
+        ${plans.map(plan => {
+          const sel = plan.id === selectedDietPlanId;
+          const exp = plan.id === expandedPlanId;
+          return `<div style="margin-bottom:4px;">
+            <div onclick="selectDietPlan('${plan.id}')" style="display:flex; align-items:center; gap:10px; padding:10px; border-radius:var(--radius-md); cursor:pointer; background:${sel ? 'rgba(56,189,248,0.08)' : 'transparent'}; border:1px solid ${sel ? 'var(--accent)' : 'transparent'}; transition: all 0.2s;">
+              <div style="width:16px; height:16px; border-radius:50%; border:1.5px solid ${sel ? 'var(--accent)' : 'var(--ink-faint)'}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                ${sel ? '<div style="width:7px; height:7px; border-radius:50%; background:var(--accent);"></div>' : ''}
+              </div>
+              <div style="flex:1; min-width:0;">
+                <div class="txt sm bold" style="color:${sel ? 'var(--accent)' : 'var(--ink)'};">${plan.name}</div>
+                <div class="txt faint" style="font-size:11px; margin-top:2px; ${exp ? '' : 'white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'}">${plan.tag}</div>
+              </div>
+              <span class="txt faint" style="font-size:14px;">${exp ? '▴' : '▾'}</span>
+            </div>
+            ${exp ? `
+              <div style="padding:10px 14px; display:flex; flex-direction:column; gap:8px;">
+                <div><div class="sub-label c-accent">核心逻辑</div><div class="txt sm mute" style="margin-top:2px; line-height:1.6;">${plan.logic}</div></div>
+                <div><div class="sub-label c-positive">怎么吃</div><div class="txt sm mute" style="margin-top:2px; line-height:1.6;">${plan.eat}</div></div>
+                <div><div class="sub-label c-positive">优点</div>${plan.pros.map(p => `<div class="txt sm mute" style="line-height:1.5;">· ${p}</div>`).join('')}</div>
+                <div><div class="sub-label c-warn">缺点</div>${plan.cons.map(c => `<div class="txt sm mute" style="line-height:1.5;">· ${c}</div>`).join('')}</div>
+                <div><div class="sub-label c-accent2">适合人群</div><div class="txt sm mute" style="margin-top:2px; line-height:1.6;">${plan.fit}</div></div>
+              </div>
+            ` : ''}
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('');
+  }
+
+  function selectDietPlan(id) {
+    if (selectedDietPlanId === id && expandedPlanId === id) {
+      // 再次点击同一个：取消选择 + 收起
+      selectedDietPlanId = null;
+      expandedPlanId = null;
+    } else {
+      selectedDietPlanId = id;
+      expandedPlanId = id;
+    }
+    updateDietPlanSubtitle();
+    renderDietPlans();
+  }
+
+  function updateDietPlanSubtitle() {
+    const sub = document.getElementById('diet-plan-subtitle');
+    const card = document.getElementById('diet-plan-card');
+    if (selectedDietPlanId) {
+      const plan = dietPlans.find(p => p.id === selectedDietPlanId);
+      sub.textContent = plan.name;
+      sub.style.color = 'var(--accent)';
+      card.classList.add('glow-accent');
+    } else {
+      sub.textContent = '13 套流行方案 · 点击选择';
+      sub.style.color = 'var(--ink-faint)';
+      card.classList.remove('glow-accent');
+    }
+  }
+
+  // 动态调整开关
+  function toggleAdjustment() {
+    dynamicAdjustmentEnabled = !dynamicAdjustmentEnabled;
+    const sw = document.getElementById('adjust-switch');
+    const status = document.getElementById('adjust-toggle-status');
+    const desc = document.getElementById('adjust-toggle-desc');
+    const card = document.getElementById('adjust-toggle-card');
+    if (dynamicAdjustmentEnabled) {
+      sw.className = 'switch on';
+      status.textContent = '已开启';
+      status.style.color = 'var(--amber)';
+      desc.textContent = '当你某天没按计划饮食或训练时，系统会自动调整后续计划以弥补偏差。';
+      card.classList.add('glow-amber');
+    } else {
+      sw.className = 'switch off';
+      status.textContent = '已关闭';
+      status.style.color = 'var(--ink-mute)';
+      desc.textContent = '后续计划将保持固定，不会因每日偏差而自动调整。';
+      card.classList.remove('glow-amber');
+      // 关闭时立即隐藏饮食页的调整卡
+      document.getElementById('adjust-card').style.display = 'none';
+    }
+  }
+
+  // ============ 时钟 ============
+  function updateClock() {
+    const d = new Date();
+    document.getElementById('clock').textContent = d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0');
+    document.getElementById('today-date').textContent = `${d.getMonth()+1}月${d.getDate()}日 · 今日`;
+  }
+  updateClock();
+  setInterval(updateClock, 30000);
+
+  // ============ Tab 切换 ============
+  const tabs = document.querySelectorAll('.tab-item');
+  const pages = document.querySelectorAll('.page');
+  const scroll = document.getElementById('scroll');
+  function switchTab(idx, pageId) {
+    tabs.forEach((t,i) => t.classList.toggle('active', i===idx));
+    pages.forEach(p => p.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+    scroll.scrollTop = 0;
+    showHint(['饮食','训练','更多'][idx]);
+  }
+
+  // ============ 提示 ============
+  let hintTimer;
+  function showHint(msg) {
+    const h = document.getElementById('hint');
+    h.textContent = msg;
+    h.classList.add('show');
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => h.classList.remove('show'), 1500);
+  }
+
+  // ============ 食物库（模拟）============
+  const foodDB = [
+    {name:'鸡蛋', aliases:['鸡蛋','蛋'], kcal:147, p:12.6, f:9.5, c:2.2, unit:50, unitName:'个'},
+    {name:'鸡胸肉', aliases:['鸡胸肉','鸡胸'], kcal:133, p:31, f:1.2, c:0, unit:100, unitName:'g'},
+    {name:'米饭', aliases:['米饭','白饭'], kcal:130, p:2.7, f:0.3, c:28.2, unit:150, unitName:'碗'},
+    {name:'牛奶', aliases:['牛奶'], kcal:54, p:3, f:3.2, c:3.4, unit:300, unitName:'ml'},
+    {name:'香蕉', aliases:['香蕉'], kcal:89, p:1.1, f:0.3, c:23, unit:120, unitName:'根'},
+    {name:'燕麦', aliases:['燕麦'], kcal:389, p:16.9, f:6.9, c:66, unit:50, unitName:'g'},
+    {name:'牛肉', aliases:['牛肉'], kcal:250, p:26, f:15, c:0, unit:100, unitName:'g'},
+    {name:'红薯', aliases:['红薯','地瓜'], kcal:86, p:1.6, f:0.1, c:20, unit:200, unitName:'个'},
+    {name:'豆腐', aliases:['豆腐'], kcal:76, p:8, f:4.8, c:1.9, unit:150, unitName:'块'},
+    {name:'黄瓜', aliases:['黄瓜'], kcal:15, p:0.7, f:0.1, c:2.9, unit:100, unitName:'g'},
+    {name:'番茄', aliases:['番茄','西红柿'], kcal:18, p:0.9, f:0.2, c:3.9, unit:150, unitName:'个'},
+  ];
+
+  let currentMode = 'prepared';
+  let matchedFoods = [];
+
+  function switchMode(mode) {
+    currentMode = mode;
+    const preparedBtn = document.getElementById('mode-prepared');
+    const actualBtn = document.getElementById('mode-actual');
+    const input = document.getElementById('food-input');
+    preparedBtn.classList.toggle('filled', mode==='prepared');
+    actualBtn.classList.toggle('filled', mode==='actual');
+    actualBtn.classList.toggle('c-accent2', mode==='actual');
+    input.placeholder = mode === 'prepared'
+      ? '输入今天准备吃的食物，例如：鸡蛋、鸡胸肉、米饭、牛奶'
+      : '记录实际吃过的食物，例如：多吃一碗米饭、鸡胸肉少吃50g、香蕉';
+    updatePlan(matchedFoods);
+    showHint(mode === 'prepared' ? '准备吃什么' : '实际吃了什么');
+  }
+  // 默认 prepared 激活
+  document.getElementById('mode-prepared').classList.add('filled');
+
+  function onFoodInput(text) {
+    matchedFoods = [];
+    const matchDiv = document.getElementById('food-match');
+    matchDiv.innerHTML = '';
+    if (!text.trim()) {
+      document.getElementById('meals-count').textContent = '0 种食物';
+      updatePlan([]);
+      return;
+    }
+    foodDB.forEach(food => {
+      if (food.aliases.some(a => text.includes(a))) {
+        matchedFoods.push(food);
+        const el = document.createElement('div');
+        el.className = 'food-item';
+        el.innerHTML = `${food.name} <span class="g">${food.unit}${food.unitName}</span>`;
+        matchDiv.appendChild(el);
+      }
+    });
+    document.getElementById('meals-count').textContent = `${matchedFoods.length} 种食物`;
+    updatePlan(matchedFoods);
+  }
+
+  // ============ 今日餐次 ============
+  function updatePlan(foods) {
+    const planCard = document.getElementById('meal-plan');
+    const planList = document.getElementById('plan-list');
+    const planTotal = document.getElementById('plan-total');
+    const planSource = document.getElementById('plan-source');
+    planCard.style.display = 'block';
+    planSource.textContent = currentMode === 'actual' ? '实际记录' : '准备计划';
+    planTotal.className = currentMode === 'actual' ? 'num c-accent2' : 'num c-accent';
+
+    // 简单分配
+    const breakfast = foods.filter(f => ['鸡蛋','燕麦'].includes(f.name));
+    const lunch = foods.filter(f => ['鸡胸肉','米饭','牛肉','豆腐'].includes(f.name));
+    const snack = foods.filter(f => ['香蕉','牛奶'].includes(f.name));
+    const dinner = foods.filter(f => !breakfast.includes(f) && !lunch.includes(f) && !snack.includes(f));
+
+    function formatFoodPortion(food) {
+      if (food.name === '鸡蛋') return `${food.name} 1个`;
+      if (food.name === '米饭') return `${food.name} 1碗`;
+      if (food.name === '香蕉') return `${food.name} 1根`;
+      if (food.name === '牛奶') return `${food.name} ${food.unit}ml`;
+      return `${food.name} ${food.unit}g`;
+    }
+
+    function mealHTML(name, items, emptyText) {
+      const total = items.reduce((s,f) => s + Math.round(f.kcal * f.unit / 100), 0);
+      const hasItems = items.length > 0;
+      const foodStr = hasItems ? items.map(formatFoodPortion).join(' · ') : emptyText;
+      return `<div class="tile" style="padding:12px; border-radius:var(--radius-lg);">
+        <div style="display:flex; justify-content:space-between; gap:8px;">
+          <div class="txt bold sm">${name}</div>
+          <div class="txt mono ${hasItems ? 'mute' : 'faint'}" style="font-size:11px;">${hasItems ? total + ' kcal' : '待安排'}</div>
+        </div>
+        <div class="txt ${hasItems ? 'mute' : 'faint'} sm" style="margin-top:6px; line-height:1.45;">${foodStr}</div>
+      </div>`;
+    }
+
+    planList.innerHTML = `<div class="meal-list-vertical">
+      ${mealHTML('早餐', breakfast, '输入食物后生成')}
+      ${mealHTML('中餐', lunch, '输入食物后生成')}
+      ${mealHTML('晚餐', dinner, '输入食物后生成')}
+      ${mealHTML('加餐', snack, '按剩余热量安排')}
+    </div>`;
+    const total = foods.reduce((s,f) => s + Math.round(f.kcal * f.unit / 100), 0);
+    planTotal.textContent = `${total} kcal`;
+
+    // 更新热量环
+    const actual = total;
+    const target = 1650;
+    const burn = 2150;
+    const remaining = Math.max(0, target - actual);
+    const deficit = burn - actual;
+    const pct = Math.min(1, actual / target);
+    document.getElementById('ring-value').textContent = remaining;
+    document.getElementById('m-actual').textContent = actual;
+    document.getElementById('ring-today').style.strokeDashoffset = RING_CIRCUM * (1 - pct);
+
+    // 更新核心三指标 + mini 可视化
+    document.getElementById('core-intake').textContent = actual;
+    document.getElementById('core-burn').textContent = burn;
+    const defEl = document.getElementById('core-deficit');
+    defEl.textContent = (deficit >= 0 ? '+' : '') + deficit;
+    defEl.className = 'core-val ' + (deficit >= 0 ? 'c-accent2' : 'c-warn');
+
+    // 摄入进度条：actual/target，颜色随完成度变化
+    const intakePct = Math.min(1, actual / target);
+    const intakeBar = document.getElementById('intake-bar');
+    intakeBar.style.width = Math.min(100, intakePct * 100) + '%';
+    let intakeColor;
+    if (intakePct > 1) { intakeColor = 'var(--warn)'; }
+    else if (intakePct > 0.9) { intakeColor = 'var(--amber)'; }
+    else { intakeColor = 'var(--accent)'; }
+    intakeBar.style.background = intakeColor;
+    document.getElementById('intake-pct').textContent = Math.round(intakePct * 100) + '%';
+    document.getElementById('core-intake').style.color = intakeColor;
+
+    // 消耗堆叠条：基础代谢 + 训练
+    const bmrBase = 1820;
+    const trainCal = burn - bmrBase;
+    const burnTotal = Math.max(1, burn);
+    document.getElementById('burn-bmr-seg').style.width = (bmrBase / burnTotal * 100) + '%';
+    document.getElementById('burn-train-seg').style.width = (Math.max(0, trainCal) / burnTotal * 100) + '%';
+    document.getElementById('burn-bmr-txt').textContent = bmrBase + ' 基础';
+    document.getElementById('burn-train-txt').textContent = '+' + Math.max(0, Math.round(trainCal)) + ' 训练';
+
+    // 赤字对比条：实际赤字 vs 目标赤字(500)
+    const deficitGoal = 500;
+    const deficitBar = document.getElementById('deficit-bar');
+    const deficitRatio = Math.min(1, Math.max(0, deficit / deficitGoal));
+    deficitBar.style.width = (deficitRatio * 100) + '%';
+    if (deficit >= deficitGoal) {
+      deficitBar.style.background = 'var(--accent2)';
+      document.getElementById('deficit-status').textContent = '已达标';
+    } else if (deficit > 0) {
+      deficitBar.style.background = 'var(--amber)';
+      document.getElementById('deficit-status').textContent = Math.round(deficitRatio * 100) + '% 达标';
+    } else {
+      deficitBar.style.background = 'var(--warn)';
+      deficitBar.style.width = '100%';
+      document.getElementById('deficit-status').textContent = '盈余';
+    }
+
+    // 更新宏量
+    const macros = foods.reduce((acc, f) => {
+      acc.p += f.p * f.unit / 100;
+      acc.f += f.f * f.unit / 100;
+      acc.c += f.c * f.unit / 100;
+      return acc;
+    }, {p:0, f:0, c:0});
+
+    document.querySelector('[data-macro="protein-c"]').textContent = Math.round(macros.p);
+    document.querySelector('[data-macro="fat-c"]').textContent = Math.round(macros.f);
+    document.querySelector('[data-macro="carbs-c"]').textContent = Math.round(macros.c);
+    document.querySelector('[data-macro="protein-bar"]').style.width = Math.min(100, macros.p / 118 * 100) + '%';
+    document.querySelector('[data-macro="fat-bar"]').style.width = Math.min(100, macros.f / 43 * 100) + '%';
+    document.querySelector('[data-macro="carbs-bar"]').style.width = Math.min(100, macros.c / 165 * 100) + '%';
+
+    // 更新营养配比
+    updateRatio(macros.p, macros.f, macros.c);
+
+    // 更新宠物饮食提醒
+    const pet = getActivePet();
+    if (pet) {
+      renderPetReminder("diet-pet-reminder", generateDietReminder(pet.pet, {
+        intake: actual, target, protein: Math.round(macros.p), targetP:118,
+        fat: Math.round(macros.f), targetF:43, carbs: Math.round(macros.c), targetC:165
+      }));
+    }
+
+    // 动态调整（受开关控制）
+    const adjCard = document.getElementById('adjust-card');
+    const delta = actual - target;
+    if (!dynamicAdjustmentEnabled) {
+      adjCard.style.display = 'none';
+    } else if (delta > 50) {
+      adjCard.style.display = 'block';
+      document.getElementById('adj-delta').textContent = `+${delta} kcal`;
+      document.getElementById('adj-delta').className = 'tag c-warn';
+      document.getElementById('adj-title').textContent = '热量超额，分摊未来 3 天';
+      document.getElementById('adj-reason').textContent = `今日多摄入 ${delta} kcal，将在未来 3 天每天下调 ${Math.round(delta/3)} kcal`;
+    } else if (delta < -50) {
+      adjCard.style.display = 'block';
+      document.getElementById('adj-delta').textContent = `${delta} kcal`;
+      document.getElementById('adj-delta').className = 'tag c-positive';
+      document.getElementById('adj-title').textContent = '摄入不足，建议补足蛋白质';
+      document.getElementById('adj-reason').textContent = `今日少摄入 ${Math.abs(delta)} kcal，优先补足蛋白质和基础脂肪`;
+    } else {
+      adjCard.style.display = 'none';
+    }
+  }
+
+  // ============ 训练状态切换 ============
+  function pickStatus(el, status) {
+    el.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    showHint('已记录：' + el.textContent);
+  }
+
+  // ============ 可折叠详情 ============
+  let detailsOpen = false;
+  function toggleDetails() {
+    detailsOpen = !detailsOpen;
+    const body = document.getElementById('details-body');
+    const arrow = document.getElementById('toggle-arrow');
+    const btn = document.getElementById('details-toggle');
+    body.classList.toggle('open', detailsOpen);
+    arrow.classList.toggle('open', detailsOpen);
+    btn.firstChild.textContent = detailsOpen ? '收起详情' : '查看详情';
+    if (detailsOpen) renderWeekBars();
+  }
+
+  // ============ 周趋势柱状 ============
+  const weekData = [1620, 1700, 1580, 1820, 1600, 1500, 980];
+  const weekLabels = ['17','18','19','20','21','22','今'];
+  function renderWeekBars() {
+    const container = document.getElementById('week-bars');
+    const labels = document.getElementById('week-labels');
+    if (container.children.length > 0) return; // 只渲染一次
+    const max = Math.max(...weekData, 1900);
+    const min = 1400;
+    weekData.forEach((v, i) => {
+      const bar = document.createElement('div');
+      bar.className = 'week-bar' + (i === 6 ? ' today' : '');
+      const h = ((v - min) / (max - min)) * 52 + 4;
+      bar.style.height = h + 'px';
+      if (v > 1700) bar.style.background = 'var(--warn)';
+      else if (v < 1500) bar.style.background = 'var(--positive)';
+      else bar.style.background = 'var(--accent)';
+      bar.style.color = bar.style.background;
+      container.appendChild(bar);
+
+      const lbl = document.createElement('span');
+      lbl.textContent = weekLabels[i];
+      labels.appendChild(lbl);
+    });
+    const avg = Math.round(weekData.reduce((a,b) => a+b, 0) / weekData.length);
+    document.getElementById('week-avg').textContent = `日均 ${avg} kcal`;
+  }
+
+  // ============ 营养配比更新 ============
+  function updateRatio(p, f, c) {
+    const totalCal = p * 4 + f * 9 + c * 4;
+    if (totalCal === 0) return;
+    const pPct = Math.round(p * 4 / totalCal * 100);
+    const fPct = Math.round(f * 9 / totalCal * 100);
+    const cPct = 100 - pPct - fPct;
+    document.getElementById('ratio-bar').innerHTML =
+      `<div class="ratio-seg" style="width:${pPct}%; background:var(--accent);"></div>` +
+      `<div class="ratio-seg" style="width:${fPct}%; background:var(--accent2);"></div>` +
+      `<div class="ratio-seg" style="width:${cPct}%; background:var(--positive);"></div>`;
+    document.getElementById('ratio-p').textContent = `${pPct}% · ${Math.round(p)}g`;
+    document.getElementById('ratio-f').textContent = `${fPct}% · ${Math.round(f)}g`;
+    document.getElementById('ratio-c').textContent = `${cPct}% · ${Math.round(c)}g`;
+    document.getElementById('ratio-total').textContent = `${Math.round(totalCal)} kcal`;
+    // 智能提示
+    let tip = '';
+    if (pPct > 35) tip = '蛋白质占比偏高，有利于减脂期保肌，注意饮水。';
+    else if (fPct > 35) tip = '脂肪占比偏高，建议适当减少坚果和油脂摄入。';
+    else if (cPct > 55) tip = '碳水占比偏高，训练日可接受，休息日建议下调。';
+    else tip = '营养配比均衡，蛋白质充足，适合持续减脂。';
+    document.getElementById('ratio-tip').textContent = tip;
+  }
+
+  // ============ 初始动画 ============
+  const RING_CIRCUM = 2 * Math.PI * 38; // r=38
+  setTimeout(() => {
+    document.getElementById('ring-today').style.strokeDashoffset = RING_CIRCUM * (1 - 980/1650);
+  }, 300);
+  // 初始配比
+  updateRatio(78, 28, 102);
+
+  showHint('饮食 · 可输入食物试试');
+</script>
+
+</body>
+</html>

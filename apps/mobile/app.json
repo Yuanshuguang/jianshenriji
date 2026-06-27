@@ -1,10 +1,25 @@
 {
   "expo": {
-    "name": "Fitness Calendar",
+    "name": "健身日历",
     "slug": "fitness-calendar",
     "scheme": "fitnesscalendar",
+    "version": "0.1.0",
+    "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "platforms": ["ios", "android", "web"],
+    "android": {
+      "package": "com.fitnesscalendar.app",
+      "versionCode": 1,
+      "permissions": ["INTERNET", "VIBRATE"],
+      "allowBackup": false,
+      "adaptiveIcon": {
+        "backgroundColor": "#1E293B"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.fitnesscalendar.app",
+      "supportsTablet": true
+    },
     "web": {
       "bundler": "metro",
       "output": "static"

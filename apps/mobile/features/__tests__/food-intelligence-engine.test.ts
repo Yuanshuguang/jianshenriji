@@ -32,6 +32,46 @@ test("归一化：多余空白与中文标点被折叠成单空格", () => {
   assert.ok(!result.normalizedText.includes("、"));
 });
 
+test("meal plan keeps macro totals", () => {
+  const mealPlan = buildMealPlan([
+    {
+      foodId: "macro-food",
+      name: "macro-food",
+      grams: 100,
+      totals: {
+        calories: 200,
+        proteinG: 20,
+        fatG: 5,
+        carbsG: 25
+      }
+    }
+  ], [
+    {
+      id: "macro-food",
+      name: "macro-food",
+      aliases: [],
+      category: "dish",
+      caloriesPer100g: 200,
+      proteinPer100g: 20,
+      fatPer100g: 5,
+      carbsPer100g: 25,
+      defaultUnitGram: 100,
+      source: "custom"
+    }
+  ]);
+  const totals = mealPlan.reduce((sum, meal) => ({
+    calories: sum.calories + meal.totals.calories,
+    proteinG: sum.proteinG + meal.totals.proteinG,
+    fatG: sum.fatG + meal.totals.fatG,
+    carbsG: sum.carbsG + meal.totals.carbsG
+  }), { calories: 0, proteinG: 0, fatG: 0, carbsG: 0 });
+
+  assert.equal(totals.calories, 200);
+  assert.equal(totals.proteinG, 20);
+  assert.equal(totals.fatG, 5);
+  assert.equal(totals.carbsG, 25);
+});
+
 test("基础识别：白菜 豆腐 米饭 至少匹配 3 项", () => {
   const result = parseFoodIntelligence("白菜 豆腐 米饭");
   const ids = result.items.map((item) => item.food.id);
@@ -226,6 +266,79 @@ test("未识别词条进入 unmatched", () => {
   assert.ok(hasUnknown, "expected unmatched to contain unknown words, got [" + result.unmatched.join(",") + "]");
 });
 
+test("无意义口语不进入 unmatched，真实未知食物仍保留", () => {
+  const clean = parseFoodIntelligence("早上赶时间，就啃了一个全麦贝果，喝了杯拿铁，顺手吃了两颗茶叶蛋。");
+  assert.deepEqual(clean.unmatched, []);
+
+  const noisy = parseFoodIntelligence("夜里看球没忍住，点了烤冷面一份，炸串三串，外加一罐啤酒。");
+  assert.deepEqual(noisy.unmatched, []);
+
+  const batchNoiseCases = [
+    "早上起晚了，抓了两个包子，一杯豆浆，路上又吃了个茶叶蛋。",
+    "中午食堂随便打的，一碗米饭，一份番茄炒蛋，一份西兰花。",
+    "下午健身前垫了一根香蕉，一根蛋白棒，还有半瓶无糖可乐。",
+    "晚上练完胸，吃了一块鸡胸肉，一碗糙米饭，一盒轻食沙拉。",
+    "中午外卖一份黄焖鸡米饭，加一罐雪碧。",
+    "训练后喝了一勺蛋白粉，吃了一袋即食鸡胸肉。",
+    "晚上看电影吃了一包奥利奥，一袋辣条。"
+  ];
+  for (const input of batchNoiseCases) {
+    const result = parseFoodIntelligence(input);
+    assert.deepEqual(result.unmatched, [], input);
+  }
+
+  const unknown = parseFoodIntelligence("晚上嘴馋吃了神秘的太空食物");
+  assert.ok(unknown.unmatched.some((word) => word.includes("神秘") || word.includes("太空")));
+});
+
+test("复合量词：小包、小杯、大碗等参与份量估算且不残留 unmatched", () => {
+  const snack = parseFoodIntelligence("上午开会太困，喝了一小杯美式咖啡，吃了一小包苏打饼干。");
+  const coffee = snack.items.find((item) => item.food.id === "americano");
+  const cracker = snack.items.find((item) => item.food.id === "soda-cracker");
+  assert.deepEqual(snack.unmatched, []);
+  assert.equal(coffee?.unit, "杯");
+  assert.equal(coffee?.grams, 210);
+  assert.equal(cracker?.unit, "包");
+  assert.equal(cracker?.grams, 42);
+
+  const rice = parseFoodIntelligence("中午吃了一大碗米饭");
+  const riceItem = rice.items.find((item) => item.food.id === "rice-cooked");
+  assert.deepEqual(rice.unmatched, []);
+  assert.equal(riceItem?.unit, "碗");
+  assert.equal(riceItem?.grams, 225);
+});
+
+test("场景词里的饭不应重复识别，但一碗饭仍可作为米饭识别", () => {
+  const canteen = parseFoodIntelligence("中午食堂打饭，一碗米饭，一份番茄炒蛋，一盘西兰花。");
+  assert.equal(canteen.items.filter((item) => item.food.id === "rice-cooked").length, 1);
+  assert.deepEqual(canteen.unmatched, []);
+
+  const sharedMeal = parseFoodIntelligence("中午和同事拼饭，一份红烧肉，一碗米饭。");
+  assert.equal(sharedMeal.items.filter((item) => item.food.id === "rice-cooked").length, 1);
+  assert.deepEqual(sharedMeal.unmatched, []);
+
+  const plainRice = parseFoodIntelligence("晚上吃了一碗饭");
+  assert.equal(plainRice.items[0]?.food.id, "rice-cooked");
+  assert.equal(plainRice.items[0]?.unit, "碗");
+});
+
+test("扩展场景语境：通勤、出差、娱乐和聚餐口语不残留 unmatched", () => {
+  const cases = [
+    "早上赶地铁，路上啃了一个全麦贝果，喝了一杯拿铁。",
+    "办公室抽屉里翻出来一根蛋白棒，又吃了一把腰果。",
+    "晚上朋友聚餐，一顿火锅，喝了一瓶大麦茶。",
+    "跑完步补了一盒高蛋白酸奶，一盒蓝莓。",
+    "夜里打游戏，吃了一包威化饼干，一罐无糖可乐。",
+    "早上赶飞机，吃了一个全麦贝果，一杯美式咖啡。",
+    "午饭在高铁上，一个便利店饭团，一盒酸奶。"
+  ];
+
+  for (const input of cases) {
+    const result = parseFoodIntelligence(input);
+    assert.deepEqual(result.unmatched, [], input);
+  }
+});
+
 test("confidence 范围 [0, 1]，且多匹配时给出整体置信度", () => {
   const result = parseFoodIntelligence("白菜 鸡蛋 米饭");
   assert.ok(result.items.length >= 3);
@@ -240,14 +353,99 @@ test("通用词优先：未说品牌时不要被 CSV 品牌食品抢走", () => 
   const ids = result.items.map((item) => item.food.id);
   assert.ok(ids.includes("milk-tea"), "expected generic milk-tea, got [" + ids.join(",") + "]");
   assert.ok(ids.includes("chips"), "expected generic chips, got [" + ids.join(",") + "]");
-  assert.ok(ids.includes("nuts"), "expected generic nuts, got [" + ids.join(",") + "]");
+  assert.ok(ids.includes("cashew"), "expected specific cashew, got [" + ids.join(",") + "]");
 
   const chips = result.items.find((item) => item.food.id === "chips");
-  const nuts = result.items.find((item) => item.food.id === "nuts");
+  const cashew = result.items.find((item) => item.food.id === "cashew");
   assert.equal(chips?.unit, "包");
   assert.ok(chips && chips.grams >= 50 && chips.grams <= 90, "expected one pack of chips, got " + chips?.grams + "g");
-  assert.equal(nuts?.unit, "把");
-  assert.ok(nuts && nuts.grams >= 20 && nuts.grams <= 35, "expected one handful of nuts, got " + nuts?.grams + "g");
+  assert.equal(cashew?.unit, "把");
+  assert.ok(cashew && cashew.grams >= 20 && cashew.grams <= 35, "expected one handful of cashew, got " + cashew?.grams + "g");
+});
+
+test("电商食品类目：品牌未知时回退通用食品，别名不过度抢词", () => {
+  const soda = parseFoodIntelligence("晚上吃了一包康师傅三+二苏打饼干");
+  assert.equal(soda.items[0]?.food.id, "soda-cracker");
+  assert.equal(soda.items[0]?.unit, "包");
+
+  const yeastProtein = parseFoodIntelligence("吃了酵母蛋白");
+  assert.equal(yeastProtein.items[0]?.food.id, "yeast-protein");
+
+  const tiramisu = parseFoodIntelligence("吃了一块提拉米苏");
+  assert.equal(tiramisu.items[0]?.food.id, "csv-ext2076");
+  assert.equal(tiramisu.items[0]?.food.name, "提拉米苏");
+});
+
+test("电商食品类目：常见零食和冲调营养兜底可识别", () => {
+  const cases: Array<[string, string]> = [
+    ["吃了一包威化饼干", "wafer-biscuit"],
+    ["下午吃了一个凤梨酥", "pineapple-cake"],
+    ["早上喝了一袋黑芝麻糊", "black-sesame-paste"],
+    ["训练后喝了一勺植物蛋白", "plant-protein"],
+    ["早餐喝了一份代餐粉", "meal-replacement-powder"]
+  ];
+
+  for (const [input, expectedId] of cases) {
+    const result = parseFoodIntelligence(input);
+    assert.equal(result.items[0]?.food.id, expectedId, `${input}: expected ${expectedId}`);
+  }
+});
+
+test("类目兜底：酒水饮品、生鲜海鲜、外卖和街头小吃可识别", () => {
+  const cases: Array<[string, string]> = [
+    ["喝了一瓶气泡水", "fallback-sparkling-water"],
+    ["晚上喝了一罐啤酒", "fallback-beer"],
+    ["喝了一杯芝士奶盖茶", "fallback-cheese-tea"],
+    ["吃了一份三文鱼", "fallback-salmon"],
+    ["吃了两只生蚝", "fallback-oyster"],
+    ["吃了一份花甲", "fallback-clam"],
+    ["晚上吃了一份烤冷面", "fallback-grilled-cold-noodle"],
+    ["夜宵吃了三串炸串", "fallback-fried-skewer"],
+    ["中午点了一份麻辣香锅", "fallback-spicy-hot-pot-dry"],
+    ["午餐吃了一盒外卖便当", "fallback-bento"]
+  ];
+
+  for (const [input, expectedId] of cases) {
+    const result = parseFoodIntelligence(input);
+    assert.equal(result.items[0]?.food.id, expectedId, `${input}: expected ${expectedId}`);
+  }
+});
+
+test("类目兜底第二批：电商、外卖、生鲜、烧烤、便利店和茶饮高频入口可识别", () => {
+  const cases: Array<[string, string]> = [
+    ["中午吃了一碗牛肉泡馍", "fallback-b2-beef-paomo"],
+    ["晚上吃了一份手抓饭", "fallback-b2-lamb-pilaf"],
+    ["下午吃了一个烤包子", "fallback-b2-roast-baozi"],
+    ["中午吃了一碗豆花米线", "fallback-b2-tofu-rice-noodle"],
+    ["晚上吃了一锅酸汤鱼", "fallback-b2-sour-soup-fish"],
+    ["中午吃了一碗老友粉", "fallback-b2-laoyou-fen"],
+    ["晚上吃了一份文昌鸡", "fallback-b2-wenchang-chicken"],
+    ["下午喝了一碗清补凉", "fallback-b2-qingbuliang"],
+    ["早上喝了一杯咸豆浆", "fallback-b2-salty-soymilk"],
+    ["早餐吃了一个三丁包", "fallback-b2-sanding-bun"],
+    ["早上吃了一个麻球", "fallback-b2-sesame-ball"],
+    ["夜宵吃了两串五花肉串", "fallback-b2-pork-belly-skewer"],
+    ["晚上吃了两串烤鸡胗", "fallback-b2-bbq-gizzard"],
+    ["晚上吃了一份锡纸花甲", "fallback-b2-foil-clam"],
+    ["便利店买了一个金枪鱼饭团", "fallback-b2-tuna-onigiri"],
+    ["中午吃了一盒咖喱猪排饭", "fallback-b2-katsu-curry-rice"],
+    ["晚上吃了一包火鸡面", "fallback-b2-buldak-ramen"],
+    ["午餐吃了一份藜麦沙拉", "fallback-b2-quinoa-salad"],
+    ["训练后吃了一个全麦三明治", "fallback-b2-wholemeal-sandwich"],
+    ["下午喝了一杯燕麦拿铁", "fallback-b2-oat-latte"],
+    ["下午喝了一杯丝袜奶茶", "fallback-b2-silk-stocking-tea"],
+    ["晚上吃了一个椰子冻", "fallback-b2-coconut-jelly"],
+    ["下午吃了一块黑森林蛋糕", "fallback-b2-black-forest-cake"],
+    ["晚上喝了一罐IPA啤酒", "fallback-b2-ipa-beer"],
+    ["晚上喝了一杯茅台", "fallback-b2-maotai"],
+    ["吃了一片阿胶糕", "fallback-b2-ejiao-cake"]
+  ];
+
+  for (const [input, expectedId] of cases) {
+    const result = parseFoodIntelligence(input);
+    const ids = result.items.map((item) => item.food.id);
+    assert.equal(result.items[0]?.food.id, expectedId, `${input}: expected ${expectedId}, got [${ids.join(",")}]`);
+  }
 });
 
 test("新 CSV 食物可用：旧库没有的食物能命中，并使用修正后的日常份量", () => {
@@ -282,6 +480,78 @@ test("语义量词：一顿/一餐按每日目标热量动态估算", () => {
   assert.equal(fallbackHotpot?.reason, "common-unit");
 });
 
+test("真实长文本回归：多餐次、重量、下午茶和复合零食不应误拆", () => {
+  const result = parseFoodIntelligence(
+    "早上吃了一笼小笼包，一碗鸭血粉丝汤，一杯豆浆。中午吃了一碗米饭，一份大概 300g 的辣椒炒肉，一碗鸡蛋羹，半斤牛肉，300g 酸奶。下午茶吃了 3 个鸡肉燕麦饭团，半斤麻辣花生米，两包蒜香面包干，半个黄庄月饼，一个蛋黄酥饼"
+  );
+  const byId = new Map(result.items.map((item) => [item.food.id, item]));
+  const ids = result.items.map((item) => item.food.id);
+
+  assert.equal(byId.get("hunan-chili-fried-pork")?.food.name, "辣椒炒肉");
+  assert.equal(byId.get("hunan-chili-fried-pork")?.grams, 300);
+  assert.equal(byId.get("beef")?.grams, 250);
+  assert.equal(byId.get("yogurt")?.grams, 300);
+  assert.equal(byId.get("chicken-oat-onigiri")?.quantity, 3);
+  assert.equal(byId.get("chicken-oat-onigiri")?.unit, "个");
+  assert.equal(byId.get("spicy-peanuts")?.grams, 250);
+  assert.equal(byId.get("garlic-bread-crisps")?.quantity, 2);
+  assert.equal(byId.get("garlic-bread-crisps")?.unit, "包");
+  assert.equal(byId.get("huangzhuang-mooncake")?.quantity, 0.5);
+  assert.equal(byId.get("egg-yolk-pastry-light")?.quantity, 1);
+
+  assert.ok(!ids.includes("tea"), "下午茶不应被识别为茶");
+  assert.ok(!ids.includes("chicken-breast"), "鸡肉燕麦饭团不应被拆成鸡胸肉");
+  assert.ok(!ids.includes("oatmeal"), "鸡肉燕麦饭团不应被拆成燕麦");
+  assert.ok(!ids.includes("sushi"), "饭团不应回落到寿司");
+  assert.ok(!ids.includes("bread"), "蒜香面包干不应回落到普通面包");
+});
+
+test("细分份量：经典小吃、烘焙零食和月饼按更精确默认份量估算", () => {
+  const result = parseFoodIntelligence("一碗鸭血粉丝汤，半个黄庄月饼，一个蛋黄酥饼，两包蒜香面包干");
+  const byId = new Map(result.items.map((item) => [item.food.id, item]));
+
+  assert.equal(byId.get("duck-blood-vermicelli-soup")?.grams, 350);
+  assert.equal(byId.get("huangzhuang-mooncake")?.grams, 23);
+  assert.equal(byId.get("egg-yolk-pastry-light")?.grams, 45);
+  assert.equal(byId.get("garlic-bread-crisps")?.grams, 60);
+});
+
+test("电商健身减脂食品：高频入口识别为独立食品而不是拆成通用词", () => {
+  const cases: Array<[string, string, number]> = [
+    ["吃了一袋即食鸡胸肉", "ready-chicken-breast", 100],
+    ["训练后吃了一根蛋白棒", "protein-bar", 50],
+    ["晚餐吃了一包魔芋面", "konjac-noodles", 200],
+    ["中午吃了一盒轻食沙拉", "light-meal-salad", 300],
+    ["早上吃了一个全麦贝果", "whole-wheat-bagel", 90],
+    ["早餐喝了一盒蛋清液", "egg-white-liquid", 250],
+    ["中午吃了一盒藜麦鸡胸碗", "quinoa-chicken-bowl", 350],
+    ["加餐吃了两根鸡肉肠", "chicken-sausage", 80]
+  ];
+
+  for (const [input, expectedId, expectedGrams] of cases) {
+    const result = parseFoodIntelligence(input);
+    const item = result.items.find((entry) => entry.food.id === expectedId);
+    assert.ok(item, `${input}: expected ${expectedId}, got [${result.items.map((entry) => entry.food.id).join(",")}]`);
+    assert.equal(item?.grams, expectedGrams, input);
+  }
+});
+
+test("细分类展示：咖啡和坚果优先显示具体食品", () => {
+  const latte = parseFoodIntelligence("早上喝了一杯拿铁");
+  assert.equal(latte.items[0]?.food.id, "latte");
+  assert.equal(latte.items[0]?.food.name, "拿铁");
+
+  const americano = parseFoodIntelligence("训练前喝了一杯美式咖啡");
+  assert.equal(americano.items[0]?.food.id, "americano");
+  assert.equal(americano.items[0]?.food.name, "美式咖啡");
+
+  const nuts = parseFoodIntelligence("下午吃了一把腰果和一把开心果");
+  const ids = nuts.items.map((item) => item.food.id);
+  assert.ok(ids.includes("cashew"), "expected cashew, got [" + ids.join(",") + "]");
+  assert.ok(ids.includes("pistachio"), "expected pistachio, got [" + ids.join(",") + "]");
+  assert.ok(!ids.includes("nuts"), "specific nuts should not fall back to generic nuts");
+});
+
 const spokenCases: Array<{ name: string; text: string; expected: Array<[string, number | undefined, string | undefined]>; meal?: Array<"breakfast" | "lunch" | "dinner" | "snack" | "unknown"> }> = [
   { name: "早餐：油条豆浆一碗 + 白煮蛋两个", text: "早上吃了一根油条一杯豆浆两个鸡蛋", expected: [["youtiao", 1, "根"], ["doujiang", 1, "杯"], ["egg", 2, "个"]] },
   { name: "早餐：包子 + 豆浆", text: "早餐两个肉包一杯豆浆", expected: [["baozi", 2, "个"], ["doujiang", 1, "杯"]] },
@@ -306,7 +576,7 @@ const spokenCases: Array<{ name: string; text: string; expected: Array<[string, 
   { name: "麻辣：冒菜一份", text: "中午吃了一份冒菜", expected: [["hotpot", 1, "份"]] },
   { name: "凉菜：凉皮 + 肉夹馍", text: "中午吃了一份凉皮和一个肉夹馍", expected: [["liangpi", 1, "份"], ["chinese-burger", 1, "个"]] },
   { name: "烧烤：羊肉串 + 烤翅", text: "晚上吃了五串羊肉串和两只烤翅", expected: [["lamb-skewers", 5, "串"], ["bbq-wing", 2, "只"]] },
-  { name: "咖啡：拿铁一杯 + 蛋糕", text: "上午喝了一杯拿铁和一块蛋糕", expected: [["coffee", undefined, "杯"], ["cake", undefined, "块"]] },
+  { name: "咖啡：拿铁一杯 + 蛋糕", text: "上午喝了一杯拿铁和一块蛋糕", expected: [["latte", undefined, "杯"], ["cake", undefined, "块"]] },
   { name: "饮料：柠檬汽水", text: "下午喝了一瓶雪碧", expected: [["sprite", undefined, "瓶"]] },
   { name: "汤品：排骨萝卜汤", text: "中午喝了一碗萝卜汤", expected: [["white-radish-soup", undefined, "碗"]] },
   { name: "汤品：紫菜蛋花汤", text: "晚上喝了一碗蛋花汤", expected: [["seaweed-soup", undefined, "碗"]] },
@@ -316,6 +586,7 @@ const spokenCases: Array<{ name: string; text: string; expected: Array<[string, 
   { name: "粤式：烧鸭饭 + 肠粉", text: "中午吃了一份烧鸭饭和一份肠粉", expected: [["roast-duck", undefined, "份"], ["guangzhou-rice-roll", undefined, "份"]] },
   { name: "茶：铁观音", text: "下午喝了一杯铁观音", expected: [["tea", undefined, "杯"]] },
   { name: "饮料：大麦茶", text: "下午喝了一杯大麦茶", expected: [["wheat-barley-tea", undefined, "杯"]] },
+  { name: "饮料：米酒不应误识别成酒酿", text: "早上喝了一杯米酒", expected: [["rice-wine", undefined, "杯"]] },
   { name: "健身餐：鸡腿 + 米饭", text: "晚上吃了两块鸡胸肉和一碗米饭", expected: [["chicken-breast", undefined, "块"], ["rice-cooked", undefined, "碗"]] },
   { name: "健身餐：全麦三明治", text: "早餐吃了两片全麦面包", expected: [["oat-bread", undefined, "片"]] },
   { name: "健身餐：希腊酸奶 + 蓝莓", text: "下午吃了一盒酸奶和一颗蓝莓", expected: [["yogurt", undefined, "盒"], ["blueberry", undefined, "颗"]] },

@@ -1,4 +1,6 @@
 import { calculateGoalEnergyPlan, generateTrainingQueue, type DailyLogEntry, type DynamicAdjustmentSettings, type Food, type Gender, type MealAdjustmentKey, type MuscleGroup, type NutritionAdjustmentKey, type TrainingAdjustmentKey } from "@fitness-calendar/shared";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 import { type CustomPet } from "../features/pet";
@@ -110,26 +112,52 @@ type FitnessState = {
   isOnboardingComplete: () => boolean;
 };
 
-const browserStorage: StateStorage = {
-  getItem: (name) => {
-    if (typeof localStorage === "undefined") {
-      return indexedStorage().getItem(name);
-    }
+function reportStorageError(operation: string, error: unknown) {
+  console.error(`[fitness-store] ${operation} failed`, error);
+}
 
-    const value = localStorage.getItem(name);
-    return value ?? indexedStorage().getItem(name);
-  },
+const nativeStorage: StateStorage = {
+  getItem: (name) => AsyncStorage.getItem(name),
   setItem: (name, value) => {
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(name, value);
-    }
-    indexedStorage().setItem(name, value);
+    void AsyncStorage.setItem(name, value).catch((error: unknown) => reportStorageError("native setItem", error));
   },
   removeItem: (name) => {
-    if (typeof localStorage !== "undefined") {
-      localStorage.removeItem(name);
+    void AsyncStorage.removeItem(name).catch((error: unknown) => reportStorageError("native removeItem", error));
+  }
+};
+
+const browserStorage: StateStorage = {
+  getItem: (name) => {
+    try {
+      if (typeof localStorage === "undefined") {
+        return null;
+      }
+
+      return localStorage.getItem(name);
+    } catch (error) {
+      reportStorageError("web getItem", error);
+      return null;
     }
-    indexedStorage().removeItem(name);
+  },
+  setItem: (name, value) => {
+    try {
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(name, value);
+      }
+    } catch (error) {
+      reportStorageError("web setItem", error);
+    }
+    void indexedStorage().setItem(name, value);
+  },
+  removeItem: (name) => {
+    try {
+      if (typeof localStorage !== "undefined") {
+        localStorage.removeItem(name);
+      }
+    } catch (error) {
+      reportStorageError("web removeItem", error);
+    }
+    void indexedStorage().removeItem(name);
   }
 };
 
@@ -158,7 +186,8 @@ function indexedStorage() {
           req.onsuccess = () => resolve(req.result ?? null);
           req.onerror = () => resolve(null);
         });
-      } catch {
+      } catch (error) {
+        reportStorageError("indexedDB getItem", error);
         return null;
       }
     },
@@ -167,17 +196,23 @@ function indexedStorage() {
         const d = await db();
         const tx = d.transaction("store", "readwrite");
         tx.objectStore("store").put(value, name);
-      } catch { /* pass */ }
+      } catch (error) {
+        reportStorageError("indexedDB setItem", error);
+      }
     },
     async removeItem(name: string) {
       try {
         const d = await db();
         const tx = d.transaction("store", "readwrite");
         tx.objectStore("store").delete(name);
-      } catch { /* pass */ }
+      } catch (error) {
+        reportStorageError("indexedDB removeItem", error);
+      }
     }
   };
 }
+
+const appStorage = Platform.OS === "web" ? browserStorage : nativeStorage;
 
 const defaultProfile: UserProfile = {
   gender: "male",
@@ -266,7 +301,7 @@ export const useFitnessStore = create<FitnessState>()(
       todayTrainingPlan: defaultTodayTrainingPlan,
       dynamicAdjustmentEnabled: true,
       dynamicAdjustmentSettings: defaultDynamicAdjustmentSettings,
-      appearanceMode: "light",
+      appearanceMode: "dark",
       selectedDietPlanId: null,
       selectedPetId: null,
       customPet: null,
@@ -324,7 +359,7 @@ export const useFitnessStore = create<FitnessState>()(
     {
       name: "fitness-calendar-state",
       version: 5,
-      storage: createJSONStorage(() => browserStorage),
+      storage: createJSONStorage(() => appStorage),
       migrate: (persistedState) => {
         const state = persistedState as Partial<FitnessState>;
         const migratedState = {

@@ -35,17 +35,17 @@ export function BentoTabBar({ items, activeIndex, onPress }: BentoTabBarProps) {
 
   return (
     <View style={shell}>
-      <GlassTile raised glow="accent" radius={radius.xl} padding={0}>
-        <View style={{ flexDirection: "row", height: 56 }}>
+      <GlassTile raised glow="accent" radius={radius.xl} padding={0} style={{ borderColor: colors.glassBorderBright }}>
+        <View style={{ flexDirection: "row", height: 58 }}>
           {items.map((item, i) => {
             const focused = i === activeIndex;
             return (
               <Pressable
                 key={item.key}
                 onPress={() => onPress(i)}
-                style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+                style={{ flex: 1, alignItems: "center", justifyContent: "center", minHeight: 48 }}
               >
-                <Text weight="semibold" color={focused ? colors.accent : colors.inkMute} style={{ fontSize: 12 }}>
+                <Text weight="semibold" color={focused ? colors.positive : colors.inkMute} style={{ fontSize: 12 }}>
                   {item.label}
                 </Text>
                 {focused ? (
@@ -54,7 +54,7 @@ export function BentoTabBar({ items, activeIndex, onPress }: BentoTabBarProps) {
                       width: 6,
                       height: 6,
                       borderRadius: 999,
-                      backgroundColor: colors.accent,
+                      backgroundColor: colors.positive,
                       marginTop: 6,
                     }}
                   />

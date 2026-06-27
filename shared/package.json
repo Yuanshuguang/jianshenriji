@@ -7,7 +7,7 @@
   "scripts": {
     "import:curated-foods": "node scripts/import-curated-foods.js",
     "check:food-data": "node scripts/check-food-data-health.js",
-    "test": "tsx --test ../apps/mobile/features/__tests__/*.test.ts"
+    "test": "node -e \"console.log('shared package has no package-local tests')\""
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

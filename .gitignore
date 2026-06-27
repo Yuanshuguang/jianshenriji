@@ -7,3 +7,16 @@ dist/
 *.log
 apps/mobile/web-preview/
 output/
+.playwright-cli/
+test-results/
+*.png
+*.gif
+!apps/mobile/public/**/*.gif
+apps/mobile/android/build/
+apps/mobile/android/.gradle/
+apps/mobile/android/local.properties
+apps/mobile/android/app/build/
+apps/mobile/ios/Pods/
+apps/mobile/ios/build/
+apps/mobile/ios/*.xcworkspace/xcuserdata/
+apps/mobile/ios/*.xcodeproj/xcuserdata/

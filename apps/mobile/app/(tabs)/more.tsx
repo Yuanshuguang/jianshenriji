@@ -45,6 +45,8 @@ const trainingAdjustmentOptions: Array<{ key: TrainingAdjustmentKey; label: stri
   { key: "fatigue", label: "疲劳恢复" }
 ];
 const muscleAdjustmentOptions: MuscleGroup[] = ["chest", "back", "legs", "shoulders", "arms", "core", "cardio"];
+const allowedPetImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const maxPetImageBytes = 1024 * 1024;
 
 export default function MoreScreen() {
   const dynamicAdjustmentEnabled = useFitnessStore((state) => state.dynamicAdjustmentEnabled);
@@ -117,6 +119,16 @@ export default function MoreScreen() {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
+    if (!allowedPetImageTypes.has(file.type)) {
+      setPetMessage("只支持 JPG、PNG 或 WebP 图片");
+      input.value = "";
+      return;
+    }
+    if (file.size > maxPetImageBytes) {
+      setPetMessage("图片不能超过 1MB，请先压缩后再上传");
+      input.value = "";
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       setCustomPetDraft((d) => ({ ...d, photoUri: reader.result as string }));
@@ -360,7 +372,7 @@ export default function MoreScreen() {
               ? createElement("input", {
                   ref: petImageInputRef,
                   type: "file",
-                  accept: "image/*",
+                  accept: "image/jpeg,image/png,image/webp",
                   capture: "environment",
                   onChange: onPetImageSelected,
                   style: { display: "none" }

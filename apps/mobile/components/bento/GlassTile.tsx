@@ -27,14 +27,14 @@ export function GlassTile({
   const theme = useBentoTheme();
   const shadowStyle: ViewStyle = Platform.OS === "web"
     ? {
-        boxShadow: `0px 8px ${raised ? 20 : 16}px ${glow ? `${theme.colors[glow]}29` : "rgba(0,0,0,0.14)"}`,
+        boxShadow: `0px ${raised ? 14 : 10}px ${raised ? 28 : 20}px ${glow ? `${theme.colors[glow]}24` : "rgba(0,0,0,0.22)"}`,
       }
     : {
         shadowColor: glow ? theme.colors[glow] : "#000",
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: theme.isDark ? (raised ? 0.45 : 0.35) : (raised ? 0.22 : 0.16),
-        shadowRadius: raised ? 20 : 16,
-        elevation: raised ? 8 : 4,
+        shadowOpacity: raised ? 0.32 : 0.22,
+        shadowRadius: raised ? 28 : 20,
+        elevation: raised ? 7 : 3,
       };
 
   const base: ViewStyle = {

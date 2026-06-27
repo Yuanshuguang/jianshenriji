@@ -1,0 +1,201 @@
+/*
+ * iOS 27 Liquid Glass Design Tokens
+ * 健身日历 APP · 液态玻璃风格
+ *
+ * 核心视觉特征：
+ *   - 半透明磨砂玻璃材质 (backdrop-filter: blur + saturate)
+ *   - 多层玻璃叠加产生深度感
+ *   - 鲜艳的系统色彩透过玻璃层
+ *   - 极大圆角 (接近药丸形)
+ *   - 微妙的边框高光模拟光线折射
+ *   - 渐变背景透过玻璃可见
+ */
+
+:root {
+  /* ===== GLASS MATERIAL TOKENS ===== */
+  --glass-bg: rgba(255, 255, 255, 0.45);
+  --glass-bg-raised: rgba(255, 255, 255, 0.62);
+  --glass-bg-elevated: rgba(255, 255, 255, 0.78);
+  --glass-bg-subtle: rgba(255, 255, 255, 0.25);
+  --glass-blur: 24px;
+  --glass-blur-heavy: 40px;
+  --glass-blur-light: 12px;
+  --glass-saturate: 1.8;
+
+  --glass-border: rgba(255, 255, 255, 0.35);
+  --glass-border-bright: rgba(255, 255, 255, 0.65);
+  --glass-border-subtle: rgba(255, 255, 255, 0.18);
+  --glass-highlight: rgba(255, 255, 255, 0.5);
+  --glass-inner-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  --glass-outer-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --glass-outer-shadow-raised: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+
+  /* ===== BACKGROUND ===== */
+  --background: #f2f2f7;
+  --background-gradient: linear-gradient(145deg, #e8f0fe 0%, #f2f2f7 30%, #fce4ec 60%, #f2f2f7 100%);
+  --foreground: #1d1d1f;
+
+  /* ===== CARD ===== */
+  --card: var(--glass-bg);
+  --card-foreground: #1d1d1f;
+  --card-hover: var(--glass-bg-raised);
+
+  /* ===== PRIMARY / ACCENT ===== */
+  --primary: #007AFF;
+  --primary-foreground: #ffffff;
+  --primary-glow: rgba(0, 122, 255, 0.25);
+  --primary-glass: rgba(0, 122, 255, 0.12);
+
+  /* ===== SECONDARY ===== */
+  --secondary: rgba(120, 120, 128, 0.12);
+  --secondary-foreground: #1d1d1f;
+
+  /* ===== MUTED ===== */
+  --muted: rgba(120, 120, 128, 0.08);
+  --muted-foreground: #8e8e93;
+
+  /* ===== ACCENT ===== */
+  --accent: rgba(120, 120, 128, 0.06);
+  --accent-foreground: #1d1d1f;
+
+  /* ===== STATE COLORS ===== */
+  --destructive: #FF3B30;
+  --destructive-foreground: #ffffff;
+  --destructive-glow: rgba(255, 59, 48, 0.2);
+  --destructive-glass: rgba(255, 59, 48, 0.1);
+
+  --success: #30D158;
+  --success-foreground: #ffffff;
+  --success-glow: rgba(48, 209, 88, 0.2);
+  --success-glass: rgba(48, 209, 88, 0.1);
+
+  --warning: #FF9F0A;
+  --warning-foreground: #ffffff;
+  --warning-glow: rgba(255, 159, 10, 0.2);
+  --warning-glass: rgba(255, 159, 10, 0.1);
+
+  /* ===== BORDER ===== */
+  --border: var(--glass-border);
+  --input: var(--glass-border);
+  --ring: var(--primary);
+
+  /* ===== ICON ===== */
+  --icon: #1d1d1f;
+  --icon-muted: #8e8e93;
+
+  /* ===== CHART COLORS ===== */
+  --chart-1: #30D158;
+  --chart-2: #007AFF;
+  --chart-3: #FF9F0A;
+  --chart-4: #5856D6;
+  --chart-5: #FF2D55;
+
+  /* ===== TYPOGRAPHY ===== */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --font-serif: -apple-system, BlinkMacSystemFont, 'SF Pro Display', serif, system-ui;
+  --font-mono: 'SF Mono', ui-monospace, 'Cascadia Code', monospace;
+  --tracking-normal: 0em;
+
+  /* ===== RADIUS ===== */
+  --radius: 1.4rem;
+  --radius-lg: 1.6rem;
+  --radius-xl: 2rem;
+
+  /* ===== SHADOWS ===== */
+  --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.07), 0 2px 6px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.1), 0 8px 20px rgba(0, 0, 0, 0.05);
+  --shadow-2xl: 0 28px 80px rgba(0, 0, 0, 0.12);
+
+  /* ===== SPACING ===== */
+  --spacing: 0.25rem;
+
+  /* ===== SIDEBAR ===== */
+  --sidebar: var(--glass-bg);
+  --sidebar-foreground: #1d1d1f;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--glass-bg-raised);
+  --sidebar-accent-foreground: #1d1d1f;
+  --sidebar-border: var(--glass-border);
+  --sidebar-ring: var(--primary);
+}
+
+/* ===== DARK MODE ===== */
+.dark {
+  --glass-bg: rgba(30, 30, 30, 0.55);
+  --glass-bg-raised: rgba(44, 44, 46, 0.7);
+  --glass-bg-elevated: rgba(58, 58, 60, 0.8);
+  --glass-bg-subtle: rgba(30, 30, 30, 0.3);
+  --glass-blur: 28px;
+  --glass-blur-heavy: 48px;
+  --glass-saturate: 2.0;
+
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-border-bright: rgba(255, 255, 255, 0.2);
+  --glass-border-subtle: rgba(255, 255, 255, 0.06);
+  --glass-highlight: rgba(255, 255, 255, 0.08);
+  --glass-inner-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06);
+  --glass-outer-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --glass-outer-shadow-raised: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  --background: #000000;
+  --background-gradient: linear-gradient(145deg, #0a1628 0%, #000000 30%, #1a0a1e 60%, #000000 100%);
+  --foreground: #f5f5f7;
+
+  --card: var(--glass-bg);
+  --card-foreground: #f5f5f7;
+  --card-hover: var(--glass-bg-raised);
+
+  --primary: #0A84FF;
+  --primary-foreground: #ffffff;
+  --primary-glow: rgba(10, 132, 255, 0.3);
+  --primary-glass: rgba(10, 132, 255, 0.15);
+
+  --secondary: rgba(120, 120, 128, 0.2);
+  --secondary-foreground: #f5f5f7;
+
+  --muted: rgba(120, 120, 128, 0.12);
+  --muted-foreground: #98989d;
+
+  --accent: rgba(120, 120, 128, 0.1);
+  --accent-foreground: #f5f5f7;
+
+  --destructive: #FF453A;
+  --destructive-glow: rgba(255, 69, 58, 0.3);
+  --destructive-glass: rgba(255, 69, 58, 0.15);
+
+  --success: #30D158;
+  --success-glow: rgba(48, 209, 88, 0.3);
+  --success-glass: rgba(48, 209, 88, 0.15);
+
+  --warning: #FFD60A;
+  --warning-glow: rgba(255, 214, 10, 0.25);
+  --warning-glass: rgba(255, 214, 10, 0.12);
+
+  --border: var(--glass-border);
+  --input: var(--glass-border);
+  --ring: var(--primary);
+
+  --icon: #f5f5f7;
+  --icon-muted: #98989d;
+
+  --chart-1: #30D158;
+  --chart-2: #0A84FF;
+  --chart-3: #FFD60A;
+  --chart-4: #5E5CE6;
+  --chart-5: #FF375F;
+
+  --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.45), 0 8px 20px rgba(0, 0, 0, 0.25);
+  --shadow-2xl: 0 28px 80px rgba(0, 0, 0, 0.5);
+}

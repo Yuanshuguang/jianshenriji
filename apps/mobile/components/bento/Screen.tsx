@@ -48,11 +48,11 @@ export type ScreenHeaderProps = ViewProps & {
 
 export function ScreenHeader({ kicker, onKickerPress, title, subtitle, badge, style }: ScreenHeaderProps) {
   return (
-    <View style={[{ gap: 6, marginBottom: bento.tileGap }, style]}>
+    <View style={[{ gap: 5, marginBottom: bento.tileGap }, style]}>
       {kicker ? (
         onKickerPress ? (
           <Pressable onPress={onKickerPress} style={{ alignSelf: "flex-start" }}>
-            <Label color={colors.accent} variant="label">
+            <Label color={colors.inkMute} variant="label">
               {kicker}
             </Label>
           </Pressable>
@@ -63,8 +63,8 @@ export function ScreenHeader({ kicker, onKickerPress, title, subtitle, badge, st
         )
       ) : null}
       <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-        <View style={{ flex: 1, gap: 4 }}>
-          <Text variant="h1" weight="bold">
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text variant="h2" weight="bold">
             {title}
           </Text>
           {subtitle ? (

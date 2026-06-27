@@ -1,0 +1,242 @@
+{
+  "project": {
+    "name": "健身日历 Apple 风格",
+    "path": "c:\\Users\\Administrator\\Documents\\健身日历\\fitness-calendar-apple-style",
+    "operation": "create",
+    "deviceType": "mobile",
+    "language": "zh-CN",
+    "dashboardMode": false,
+    "replicationMode": null,
+    "sourceUrl": null,
+    "visualSpecExcerpt": null,
+    "styleDefinitionBrief": "Apple HIG inspired fitness app UI — restrained, clean, SF Pro-like typography, system blue accent, soft radius cards, whisper-light shadows, editorial data presentation",
+    "designRead": "mobile app / fitness enthusiasts / restrained Apple-like / information-dense / avoid glassmorphism or neon glow",
+    "designDials": {
+      "layoutVariance": 2,
+      "motionIntensity": 1,
+      "visualDensity": 3
+    },
+    "styleContinuityAnchors": {
+      "colorSystem": "Apple system blue #007AFF primary, system grays for text/background, state green/red for success/error",
+      "shapeSystem": "soft radius 1.2rem for cards, pill-shaped buttons, rounded inputs",
+      "typographySystem": "DM Sans for interface, JetBrains Mono for numeric data, clean hierarchy",
+      "spacingSystem": "0.24rem base, generous whitespace, 16px page padding",
+      "componentLanguage": "border-led cards with whisper shadows, pill CTAs, clean segmented controls",
+      "surfaceAndDepth": "whisper-light shadows (0.04-0.08 alpha), border-first surfaces, no glow",
+      "imageryAndIconography": "minimal icons, no emoji in UI, clean line icons",
+      "interactionTone": "subtle hover/focus, no decorative animations"
+    },
+    "specsConstraints": null,
+    "sharedProjectShellContract": {
+      "navigationShell": "bottom tab bar with 4 tabs (今日/训练/计划/更多), SF-style icons, active state uses primary blue",
+      "primaryColorSystem": "single brand hue #007AFF (Apple Blue), no secondary/accent brand colors",
+      "typographySystem": "DM Sans for all interface text, JetBrains Mono for numeric/spec data, type scale: display 48, h1 28, h2 22, h3 17, body 14, caption 12, label 11, micro 10",
+      "radiusScale": "1.2rem default, pill for buttons/chips, slightly smaller for inner cards",
+      "surfaceDepthModel": "border-first cards, whisper shadows at rest, subtle hover lift",
+      "ctaStyle": "pill-shaped primary buttons, secondary ghost buttons, segmented controls for mode switching",
+      "alignmentRules": "left-aligned content, right-aligned metrics, centered tab bar"
+    },
+    "generationTree": {
+      "root": {
+        "nodeId": "gen-project-shell",
+        "kind": "project-shell",
+        "pageIds": ["page-today", "page-train", "page-plan", "page-more"],
+        "output": "partials/project-shell.html",
+        "sharedRegions": ["tabBar"],
+        "privateRegions": [],
+        "mutableSlots": ["activeTab", "pageTitle"],
+        "status": "planned",
+        "children": [
+          {
+            "nodeId": "gen-page-today",
+            "kind": "page-leaf",
+            "pageIds": ["page-today"],
+            "output": "pages/today.html",
+            "sharedRegions": [],
+            "privateRegions": ["page body"],
+            "mutableSlots": ["activeTab"],
+            "status": "planned",
+            "children": []
+          },
+          {
+            "nodeId": "gen-page-train",
+            "kind": "page-leaf",
+            "pageIds": ["page-train"],
+            "output": "pages/train.html",
+            "sharedRegions": [],
+            "privateRegions": ["page body"],
+            "mutableSlots": ["activeTab"],
+            "status": "planned",
+            "children": []
+          },
+          {
+            "nodeId": "gen-page-plan",
+            "kind": "page-leaf",
+            "pageIds": ["page-plan"],
+            "output": "pages/plan.html",
+            "sharedRegions": [],
+            "privateRegions": ["page body"],
+            "mutableSlots": ["activeTab"],
+            "status": "planned",
+            "children": []
+          },
+          {
+            "nodeId": "gen-page-more",
+            "kind": "page-leaf",
+            "pageIds": ["page-more"],
+            "output": "pages/more.html",
+            "sharedRegions": [],
+            "privateRegions": ["page body"],
+            "mutableSlots": ["activeTab"],
+            "status": "planned",
+            "children": []
+          }
+        ]
+      }
+    }
+  },
+  "designSource": {
+    "operatingMode": "library-bound",
+    "libraryIdentity": {
+      "name": "苹果",
+      "id": "dl_builtin_apple",
+      "version": null,
+      "scope": "built-in-global",
+      "path": "c:\\Users\\Administrator\\.trae-cn\\design_libraries\\dl_builtin_apple",
+      "versionSource": "metadata.json"
+    },
+    "libraryPath": "c:\\Users\\Administrator\\.trae-cn\\design_libraries\\dl_builtin_apple",
+    "cssFilePath": "c:\\Users\\Administrator\\.trae-cn\\design_libraries\\dl_builtin_apple\\colors_and_type.css",
+    "brandPrefix": "",
+    "themeMode": "light",
+    "designDecisionSummary": "Apple HIG inspired: primary blue #007AFF, DM Sans font, 1.2rem radius, whisper shadows, system gray palette, pill buttons, editorial calm voice",
+    "componentContractKind": "legacy-json",
+    "forbiddenInventedComponents": [],
+    "allowedComponents": ["button", "card", "input", "navigation"],
+    "styleConstraints": {
+      "radiusMax": 20,
+      "spacingBase": 4,
+      "fontSizeBody": 14,
+      "fontSizeMin": 10,
+      "controlHeightDefault": 44,
+      "controlHeightLarge": 48
+    },
+    "productContext": {
+      "kitType": "consumer-app",
+      "productType": "fitness & nutrition tracking mobile app"
+    },
+    "iconAssets": null
+  },
+  "pages": [
+    {
+      "nodeId": "page-today",
+      "title": "今日总览",
+      "htmlSrc": "pages/today.html",
+      "pageIndex": 1,
+      "pageType": "information-dense",
+      "visualNorthStar": "Apple Health-style daily dashboard with clean card sections, circular progress ring, segmented macro nutrients display, and meal comparison rows",
+      "compositionPattern": "mobile-dashboard",
+      "continuityAnchors": {
+        "colorSystem": "Apple system blue primary, system grays, state green/red",
+        "shapeSystem": "1.2rem radius cards, pill buttons",
+        "typographySystem": "DM Sans + JetBrains Mono for numbers",
+        "componentLanguage": "border-led cards, whisper shadows",
+        "surfaceAndDepth": "whisper shadows, border-first"
+      },
+      "componentPlan": [
+        { "slug": "card", "contractFile": "components/card.json" },
+        { "slug": "button", "contractFile": "components/button.json" },
+        { "slug": "input", "contractFile": "components/input.json" }
+      ],
+      "imagePlan": [],
+      "chartsRequired": false,
+      "miniProgramStyle": false
+    },
+    {
+      "nodeId": "page-train",
+      "title": "训练",
+      "htmlSrc": "pages/train.html",
+      "pageIndex": 2,
+      "pageType": "information-dense",
+      "visualNorthStar": "Apple Fitness-style training dashboard with dual progress rings, exercise list cards, segmented status controls, and clean metric rows",
+      "compositionPattern": "mobile-dashboard",
+      "continuityAnchors": {
+        "colorSystem": "Apple system blue primary, system grays, state green/red",
+        "shapeSystem": "1.2rem radius cards, pill buttons",
+        "typographySystem": "DM Sans + JetBrains Mono for numbers",
+        "componentLanguage": "border-led cards, whisper shadows",
+        "surfaceAndDepth": "whisper shadows, border-first"
+      },
+      "componentPlan": [
+        { "slug": "card", "contractFile": "components/card.json" },
+        { "slug": "button", "contractFile": "components/button.json" },
+        { "slug": "input", "contractFile": "components/input.json" }
+      ],
+      "imagePlan": [],
+      "chartsRequired": false,
+      "miniProgramStyle": false
+    },
+    {
+      "nodeId": "page-plan",
+      "title": "计划",
+      "htmlSrc": "pages/plan.html",
+      "pageIndex": 3,
+      "pageType": "information-dense",
+      "visualNorthStar": "Apple Settings-style plan overview with clean info cards, collapsible diet plan selector, radio-style selection rows, and secondary action buttons",
+      "compositionPattern": "mobile-list",
+      "continuityAnchors": {
+        "colorSystem": "Apple system blue primary, system grays, state green/red",
+        "shapeSystem": "1.2rem radius cards, pill buttons",
+        "typographySystem": "DM Sans + JetBrains Mono for numbers",
+        "componentLanguage": "border-led cards, whisper shadows",
+        "surfaceAndDepth": "whisper shadows, border-first"
+      },
+      "componentPlan": [
+        { "slug": "card", "contractFile": "components/card.json" },
+        { "slug": "button", "contractFile": "components/button.json" }
+      ],
+      "imagePlan": [],
+      "chartsRequired": false,
+      "miniProgramStyle": false
+    },
+    {
+      "nodeId": "page-more",
+      "title": "更多",
+      "htmlSrc": "pages/more.html",
+      "pageIndex": 4,
+      "pageType": "information-dense",
+      "visualNorthStar": "Apple Settings-style settings page with toggle switches, segmented controls, pet avatar section, and clean grouped list rows",
+      "compositionPattern": "mobile-list",
+      "continuityAnchors": {
+        "colorSystem": "Apple system blue primary, system grays, state green/red",
+        "shapeSystem": "1.2rem radius cards, pill buttons",
+        "typographySystem": "DM Sans + JetBrains Mono for numbers",
+        "componentLanguage": "border-led cards, whisper shadows",
+        "surfaceAndDepth": "whisper shadows, border-first"
+      },
+      "componentPlan": [
+        { "slug": "card", "contractFile": "components/card.json" },
+        { "slug": "button", "contractFile": "components/button.json" },
+        { "slug": "navigation", "contractFile": "components/navigation.json" }
+      ],
+      "imagePlan": [],
+      "chartsRequired": false,
+      "miniProgramStyle": false
+    }
+  ],
+  "assets": [],
+  "wiringPlan": [
+    { "from": "page-today", "to": "page-train", "domId": "tab-train", "label": "训练" },
+    { "from": "page-train", "to": "page-plan", "domId": "tab-plan", "label": "计划" },
+    { "from": "page-plan", "to": "page-more", "domId": "tab-more", "label": "更多" }
+  ],
+  "hiddenInteractionPlan": [
+    { "from": "page-train", "to": "page-today", "domId": "tab-today", "label": "今日" },
+    { "from": "page-plan", "to": "page-today", "domId": "tab-today", "label": "今日" },
+    { "from": "page-more", "to": "page-today", "domId": "tab-today", "label": "今日" },
+    { "from": "page-today", "to": "page-plan", "domId": "tab-plan", "label": "计划" },
+    { "from": "page-today", "to": "page-more", "domId": "tab-more", "label": "更多" },
+    { "from": "page-train", "to": "page-more", "domId": "tab-more", "label": "更多" },
+    { "from": "page-plan", "to": "page-train", "domId": "tab-train", "label": "训练" }
+  ]
+}

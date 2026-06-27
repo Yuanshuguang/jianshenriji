@@ -23,9 +23,9 @@ export type SemanticColor = "accent" | "accent2" | "positive" | "warn" | "amber"
 
 /** 字体族（回退系统字体） */
 export const fontFamilies = {
-  sans: "System", // 后续加载 Outfit 后改为 "Outfit"
-  mono: "System", // 后续加载 GeistMono 后改为 "GeistMono"
-  cjk: "System",
+  sans: "Barlow",
+  mono: "Barlow Condensed",
+  cjk: "Barlow",
 } as const;
 
 /** 玻璃格样式工厂 */

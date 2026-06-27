@@ -30,8 +30,8 @@ export function Badge({
   const base: ViewStyle = {
     height: heights[size],
     paddingHorizontal: pad[size],
-    borderRadius: radius.sm,
-    backgroundColor: `${accentColor}22`, // 13% 透明度叠加
+    borderRadius: radius.pill,
+    backgroundColor: `${accentColor}1F`,
     borderWidth: 1,
     borderColor: `${accentColor}44`,
     alignItems: "center",

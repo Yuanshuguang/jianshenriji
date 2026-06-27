@@ -32,6 +32,7 @@ export type FoodIntelligenceResult = {
 type Candidate = {
   food: Food;
   normalizedTerm: string;
+  termKind: "name" | "alias";
   sourceRank: number;
   categoryRank: number;
 };
@@ -44,6 +45,11 @@ type MatchRange = {
 
 type MealMarker = {
   meal: FoodMealSlot;
+  start: number;
+  end: number;
+};
+
+type ProtectedRange = {
   start: number;
   end: number;
 };
@@ -89,12 +95,85 @@ const actionWords = [
   "了",
   "的"
 ];
+const fillerWords = ["大概", "约", "大约", "差不多"];
+const conversationalNoiseWords = [
+  "赶时间",
+  "赶地铁",
+  "赶飞机",
+  "起晚",
+  "起床晚",
+  "路上",
+  "在车上",
+  "在高铁上",
+  "就啃",
+  "顺手",
+  "随手",
+  "开会",
+  "太困",
+  "犯困",
+  "嘴馋",
+  "嘴巴闲不住",
+  "小把",
+  "小饿",
+  "公司楼下",
+  "办公室",
+  "办公室抽屉里翻出来",
+  "抽屉里翻出来",
+  "随便",
+  "食堂",
+  "食堂打饭",
+  "打饭",
+  "外卖",
+  "便利店买",
+  "出差",
+  "加班到十点",
+  "饮料是",
+  "健身前",
+  "健身前垫",
+  "跑步前",
+  "跑完步补",
+  "训练后",
+  "训练日",
+  "健身餐",
+  "三点多",
+  "有点饿",
+  "没胃口",
+  "练完腿",
+  "练完胸",
+  "练完背",
+  "练完肩",
+  "夜里",
+  "看球",
+  "看电影",
+  "刷剧",
+  "打游戏",
+  "没忍住",
+  "外加",
+  "挺乱",
+  "湘菜",
+  "其实就是",
+  "清淡点",
+  "想清淡点",
+  "最后还",
+  "很简单",
+  "公司",
+  "茶来",
+  "撸串",
+  "周末早",
+  "正餐",
+  "同事拼",
+  "朋友聚餐",
+  "朋友带",
+  "减脂餐"
+];
 
-const countUnits = ["个", "颗", "只", "枚", "根", "条", "片", "块", "份", "顿", "餐", "碗", "杯", "瓶", "罐", "包", "袋", "把", "串", "勺", "盒", "盘", "桶", "球", "张", "笼", "拳头"];
-const countUnitPattern = "(个|颗|只|枚|根|条|片|块|份|顿|餐|碗|杯|瓶|罐|包|袋|把|串|勺|盒|盘|桶|球|张|笼|拳头)";
+const countUnits = ["个", "颗", "只", "枚", "根", "条", "片", "块", "份", "顿", "餐", "碗", "杯", "瓶", "罐", "包", "袋", "把", "串", "勺", "盒", "盘", "桶", "锅", "球", "张", "笼", "拳头"];
+const countUnitPattern = "(个|颗|只|枚|根|条|片|块|份|顿|餐|碗|杯|瓶|罐|包|袋|把|串|勺|盒|盘|桶|锅|球|张|笼|拳头)";
+const unitSizeModifierPattern = "(?:超大|大|小|中|中等|普通)?";
 const chineseDigitPattern = "[零一二两三四五六七八九十半]";
-const quantityPattern = `([0-9]+(?:\\.[0-9]+)?|${chineseDigitPattern}+)\\s*${countUnitPattern}`;
+const quantityPattern = `([0-9]+(?:\\.[0-9]+)?|${chineseDigitPattern}+)\\s*${unitSizeModifierPattern}\\s*${countUnitPattern}`;
 const pureQuantityPattern = new RegExp(`^${quantityPattern}$`);
+const explicitWeightPattern = "([0-9]+(?:\\.[0-9]+)?|半|一|二|两|三|四|五|六|七|八|九|十)\\s*(kg|公斤|千克|斤|g|克)";
 
 const chineseDigits: Record<string, number> = {
   零: 0,
@@ -159,11 +238,12 @@ function detectPhoneGrams(text: string): number | null {
 
 /** 模糊前缀增量：一大碗、大碗、超大份等 */
 function detectSizeModifier(text: string): number {
-  const matched = text.match(/(超?大?)(碗|份|块|盘|杯|瓶|个|根|条|片|把|包|袋)/);
+  const matched = text.match(/(超大|大|小|中等|中|普通)\s*(碗|份|块|盘|杯|瓶|个|根|条|片|把|包|袋|盒|桶)/);
   if (!matched) return 1;
   const sizeWord = matched[1] || "";
-  if (sizeWord.includes("超大")) return 2;
-  if (sizeWord.includes("大")) return 1.5;
+  if (sizeWord === "超大") return 2;
+  if (sizeWord === "大") return 1.5;
+  if (sizeWord === "小") return 0.7;
   return 1;
 }
 
@@ -176,7 +256,7 @@ export function parseFoodIntelligence(text: string, customFoods: Food[] = [], se
   const mealMarkers = detectMealMarkers(normalizedText);
   const fallbackMeal = mealMarkers[0]?.meal ?? servingContext.defaultMeal ?? "unknown";
   const candidates = buildCandidates(customFoods);
-  const ranges = findFoodRanges(normalizedText, candidates);
+  const ranges = findFoodRanges(normalizedText, candidates, mealMarkers);
   const items = ranges.map((range, index) => buildItem(normalizedText, range, ranges, index, mealMarkers, fallbackMeal, servingContext, normalizedText));
   const unmatched = extractUnmatched(normalizedText, ranges);
   const confidence = items.length === 0
@@ -195,7 +275,7 @@ export function parseFoodIntelligence(text: string, customFoods: Food[] = [], se
 export function normalizeFoodText(value: string): string {
   return value
     .toLowerCase()
-    .replace(/[，。；、,.!?！？\n\r\t]/g, " ")
+    .replace(/[，。；：、,.!?:！？\n\r\t]/g, " ")
     .replace(/馅儿/g, "馅")
     .replace(/([早中晚])一个/g, "$1上")
     .replace(/\s+/g, " ")
@@ -203,14 +283,20 @@ export function normalizeFoodText(value: string): string {
 }
 
 function buildCandidates(customFoods: Food[]): Candidate[] {
-  return getFoodCatalog(customFoods)
-    .flatMap((food) => [food.name, ...food.aliases].map((term) => ({
+  const catalog = getFoodCatalog(customFoods);
+
+  return catalog
+    .flatMap((food) => [food.name, ...food.aliases].map((term, index) => ({
       food,
       normalizedTerm: normalizeFoodText(term),
+      termKind: index === 0 ? "name" as const : "alias" as const,
       sourceRank: food.source === "custom" ? 4 : food.id.startsWith("csv-") ? 2 : food.source === "builtin" || !food.source ? 3 : 1,
       categoryRank: food.category === "dish" || food.category === "fastfood" ? 2 : 1
     })))
-    .filter((item) => item.normalizedTerm.length > 0 && !isInvalidFoodTerm(item.normalizedTerm))
+    .filter((item) => (
+      item.normalizedTerm.length > 0
+      && !isInvalidFoodTerm(item.normalizedTerm, item.termKind)
+    ))
     .sort((a, b) => {
       if (a.normalizedTerm.length !== b.normalizedTerm.length) return b.normalizedTerm.length - a.normalizedTerm.length;
       if (a.sourceRank !== b.sourceRank) return b.sourceRank - a.sourceRank;
@@ -218,9 +304,19 @@ function buildCandidates(customFoods: Food[]): Candidate[] {
     });
 }
 
-function isInvalidFoodTerm(term: string): boolean {
+const overBroadAliasTerms = new Set([
+  "蛋白",
+  "饼干",
+  "苏打饼干",
+  "梳打饼干",
+  "蛋糕",
+  "提拉米苏"
+]);
+
+function isInvalidFoodTerm(term: string, termKind: Candidate["termKind"] = "name"): boolean {
   const normalized = normalizeFoodText(term);
   if (!normalized) return true;
+  if (termKind === "alias" && overBroadAliasTerms.has(normalized)) return true;
   if (mealKeywords.some((item) => item.terms.includes(normalized))) return true;
   if (actionWords.includes(normalized)) return true;
   if (pureQuantityPattern.test(normalized)) return true;
@@ -229,7 +325,7 @@ function isInvalidFoodTerm(term: string): boolean {
   return false;
 }
 
-function findFoodRanges(text: string, candidates: Candidate[]): MatchRange[] {
+function findFoodRanges(text: string, candidates: Candidate[], protectedRanges: ProtectedRange[] = []): MatchRange[] {
   const ranges: MatchRange[] = [];
 
   for (const candidate of candidates) {
@@ -245,7 +341,11 @@ function findFoodRanges(text: string, candidates: Candidate[]): MatchRange[] {
         const start = text.indexOf(variant, offset);
         if (start < 0) break;
         const end = start + variant.length;
-        if (!ranges.some((range) => start < range.end && end > range.start)) {
+        if (
+          !isBlockedFoodTermContext(text, variant, start, end)
+          && !protectedRanges.some((range) => start >= range.start && end <= range.end)
+          && !ranges.some((range) => start < range.end && end > range.start)
+        ) {
           ranges.push({ start, end, candidate });
         }
         offset = end;
@@ -254,6 +354,13 @@ function findFoodRanges(text: string, candidates: Candidate[]): MatchRange[] {
   }
 
   return ranges.sort((a, b) => a.start - b.start);
+}
+
+function isBlockedFoodTermContext(text: string, term: string, start: number, end: number): boolean {
+  if (term !== "饭") return false;
+  const prev = text.slice(Math.max(0, start - 1), start);
+  const next = text.slice(end, end + 1);
+  return prev === "打" || prev === "拼" || prev === "盒" || next === "团";
 }
 
 function buildItem(
@@ -316,13 +423,15 @@ function getFoodPhraseContext(
   nextRange: MatchRange | undefined,
   mealMarker: MealMarker | undefined
 ): string {
-  const hardLeft = Math.max(previousRange?.end ?? 0, mealMarker?.end ?? 0, lastSeparatorIndex(text, range.start - 1) + 1);
+  const segmentLeft = Math.max(previousRange?.end ?? 0, mealMarker?.end ?? 0);
+  const hardLeft = Math.max(segmentLeft, lastSeparatorIndex(text, range.start - 1) + 1);
   const hardRight = Math.min(
     nextRange ? (findQuantityPrefixStart(text, nextRange.start, range.end) ?? nextRange.start) : text.length,
     nextSeparatorIndex(text, range.end) ?? text.length
   );
-  const ownQuantityStart = findQuantityPrefixStart(text, range.start, hardLeft);
-  const left = ownQuantityStart ?? trimLeadingActionWords(text, hardLeft, range.start);
+  const ownMeasureStart = findMeasurePrefixStart(text, range.start, segmentLeft);
+  const ownQuantityStart = findQuantityPrefixStart(text, range.start, segmentLeft);
+  const left = ownMeasureStart ?? ownQuantityStart ?? trimLeadingActionWords(text, hardLeft, range.start);
   return text.slice(left, hardRight).trim();
 }
 
@@ -366,7 +475,13 @@ function nextSeparatorIndex(text: string, afterIndex: number): number | null {
 
 function findQuantityPrefixStart(text: string, foodStart: number, minStart: number): number | null {
   const prefix = text.slice(minStart, foodStart);
-  const match = prefix.match(new RegExp(`(?:${actionWords.join("|")})*\\s*${quantityPattern}(?:和手机差不多重的|差不多重的|拳头大的|拳头大|大的|大|的)?$`));
+  const match = prefix.match(new RegExp(`(?:${actionWords.join("|")})*\\s*(?:${quantityPattern}|${unitSizeModifierPattern}\\s*${countUnitPattern})(?:和手机差不多重的|差不多重的|拳头大的|拳头大|大的|大|的)?$`));
+  return match?.index === undefined ? null : minStart + match.index;
+}
+
+function findMeasurePrefixStart(text: string, foodStart: number, minStart: number): number | null {
+  const prefix = text.slice(minStart, foodStart);
+  const match = prefix.match(new RegExp(`(?:${actionWords.join("|")})*\\s*(?:大概|约|大约|差不多)?\\s*${explicitWeightPattern}\\s*(?:的)?\\s*$`, "i"));
   return match?.index === undefined ? null : minStart + match.index;
 }
 
@@ -383,9 +498,9 @@ function estimateServing(context: string, food: Food, meal: FoodMealSlot, servin
     return { grams: Math.round(phoneGrams * multiplier), unit: "手机", reason: "abstract-phone-anchor" };
   }
 
-  const explicitWeight = context.match(/([0-9]+(?:\.[0-9]+)?)\s*(kg|公斤|千克|斤|g|克)/i);
+  const explicitWeight = context.match(new RegExp(explicitWeightPattern, "i"));
   if (explicitWeight) {
-    const value = Number(explicitWeight[1]);
+    const value = parseWeightValue(explicitWeight[1]);
     const unit = explicitWeight[2].toLowerCase();
     if (unit === "kg" || unit === "公斤" || unit === "千克") return { grams: Math.round(value * 1000), unit, reason: "explicit-weight" };
     if (unit === "斤") return { grams: Math.round(value * 500), unit, reason: "explicit-weight" };
@@ -447,7 +562,7 @@ function extractCountAndUnit(context: string): { quantity: number; unit: string 
   const digit = matches.at(-1);
   if (digit) return { quantity: parseQuantity(digit[1]), unit: digit[2] };
 
-  const unitOnly = context.match(new RegExp(`^\\s*${countUnitPattern}`));
+  const unitOnly = context.match(new RegExp(`^\\s*(?:${actionWords.join("|")})*\\s*${unitSizeModifierPattern}\\s*${countUnitPattern}`));
   if (unitOnly) return { quantity: 1, unit: unitOnly[1] };
   return null;
 }
@@ -455,6 +570,13 @@ function extractCountAndUnit(context: string): { quantity: number; unit: string 
 function parseQuantity(value: string): number {
   const numeric = Number(value);
   if (!Number.isNaN(numeric)) return numeric;
+  return parseChineseNumber(value);
+}
+
+function parseWeightValue(value: string): number {
+  const numeric = Number(value);
+  if (!Number.isNaN(numeric)) return numeric;
+  if (value === "半") return 0.5;
   return parseChineseNumber(value);
 }
 
@@ -589,13 +711,23 @@ function extractUnmatched(text: string, ranges: MatchRange[]): string[] {
     if (word) remainder = remainder.replace(new RegExp(word, "g"), " ");
   }
 
+  for (const word of fillerWords) {
+    remainder = remainder.replace(new RegExp(word, "g"), " ");
+  }
+
+  for (const word of conversationalNoiseWords) {
+    remainder = remainder.replace(new RegExp(word, "g"), " ");
+  }
+
   for (const group of mealKeywords) {
     for (const term of group.terms) {
       remainder = remainder.replace(new RegExp(term, "g"), " ");
     }
   }
 
+  remainder = remainder.replace(new RegExp(explicitWeightPattern, "gi"), " ");
   remainder = remainder.replace(new RegExp(quantityPattern, "g"), " ");
+  remainder = remainder.replace(new RegExp(`(?:超大|大|小|中等|中|普通)\\s*${countUnitPattern}`, "g"), " ");
 
   return Array.from(new Set(
     remainder

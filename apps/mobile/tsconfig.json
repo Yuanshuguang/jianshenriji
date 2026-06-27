@@ -3,6 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "ignoreDeprecations": "6.0",
+    "types": ["node"],
     "baseUrl": ".",
     "paths": {
       "@fitness-calendar/shared": [
@@ -15,8 +16,5 @@
     "components",
     "features",
     "store"
-  ],
-  "exclude": [
-    "features/__tests__"
   ]
 }

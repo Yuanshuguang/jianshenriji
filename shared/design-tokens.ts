@@ -8,44 +8,44 @@
  */
 
 export const colors = {
-  // 背景层（日间）
-  bg: "#EEF6FF",
-  bgGlow: "#F8FBFF",
+  // 背景层：统一为动作库式深蓝运动工具风。
+  bg: "#17314B",
+  bgGlow: "#244765",
 
-  // 玻璃层（rgba，便于叠加）
-  glass: "rgba(255,255,255,0.48)",
-  glassRaised: "rgba(255,255,255,0.66)",
-  glassBorder: "rgba(255,255,255,0.54)",
-  glassBorderBright: "rgba(255,255,255,0.86)",
+  // 卡片层（rgba，便于叠加）
+  glass: "rgba(31,61,91,0.94)",
+  glassRaised: "rgba(49,82,113,0.96)",
+  glassBorder: "rgba(152,190,224,0.22)",
+  glassBorderBright: "rgba(188,222,252,0.34)",
 
   // 文字层
-  ink: "#142033",
-  inkMute: "#617188",
-  inkFaint: "#94A1B3",
+  ink: "#EFF7FF",
+  inkMute: "#9DB8D1",
+  inkFaint: "#6E8CA7",
 
   // 强调色
-  accent: "#008CFF", // iOS 蓝 · 热量 / 主操作
-  accent2: "#7357FF", // 柔紫 · 训练 / 赤字
-  positive: "#00A978", // 绿 · 达标 / 完成
-  warn: "#E4435E", // 红 · 超额 / 警告
-  amber: "#C47B00", // 琥珀 · 接近上限 / 注意
+  accent: "#2F9DFF", // 蓝 · 数据 / 热量 / 主操作
+  accent2: "#7866FF", // 紫蓝 · 训练 / 赤字
+  positive: "#58D98B", // 薄荷绿 · 动作 / 达标 / 完成
+  warn: "#FF6B86", // 红 · 超额 / 警告
+  amber: "#FFC55C", // 琥珀 · 接近上限 / 注意
 } as const;
 
 export const darkColors = {
-  bg: "#101827",
-  bgGlow: "#1A2436",
-  glass: "rgba(255,255,255,0.12)",
-  glassRaised: "rgba(255,255,255,0.18)",
-  glassBorder: "rgba(255,255,255,0.20)",
-  glassBorderBright: "rgba(255,255,255,0.36)",
-  ink: "#F4F8FF",
-  inkMute: "#B7C3D4",
-  inkFaint: "#7F8CA1",
-  accent: "#41B6FF",
-  accent2: "#A893FF",
-  positive: "#48D6AC",
-  warn: "#FF7188",
-  amber: "#FFB84D",
+  bg: "#102840",
+  bgGlow: "#183A58",
+  glass: "rgba(30,60,90,0.96)",
+  glassRaised: "rgba(48,82,114,0.98)",
+  glassBorder: "rgba(154,190,224,0.22)",
+  glassBorderBright: "rgba(189,222,252,0.34)",
+  ink: "#F2F8FF",
+  inkMute: "#A9BED2",
+  inkFaint: "#7790A8",
+  accent: "#35A8FF",
+  accent2: "#8273FF",
+  positive: "#5DE394",
+  warn: "#FF728C",
+  amber: "#FFD06A",
 } as const;
 
 /** 辉光色（用于阴影 / 光晕，rgba 字符串） */
@@ -59,9 +59,9 @@ export const glows = {
 
 export const typography = {
   // 字体族（在 RN 端通过 expo-font 加载后映射；未加载时回退系统字体）
-  fontSans: "Outfit",
-  fontMono: "GeistMono",
-  fontCJK: "PingFang SC",
+  fontSans: "Barlow",
+  fontMono: "Barlow Condensed",
+  fontCJK: "Barlow",
 
   sizes: {
     display: 48,
@@ -122,9 +122,9 @@ export const radius = {
 } as const;
 
 export const bento = {
-  pagePadding: 16,
-  tileGap: 8,
-  tileRadius: 22,
+  pagePadding: 14,
+  tileGap: 10,
+  tileRadius: 24,
   tileRadiusSmall: 18,
   tilePadding: 16,
 } as const;

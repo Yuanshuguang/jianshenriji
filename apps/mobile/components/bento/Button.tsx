@@ -33,7 +33,7 @@ export function Button({
 
   let baseStyle: ViewStyle = {
     height: heights[size],
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     paddingHorizontal: 16,
     alignItems: "center",
     justifyContent: "center",
@@ -51,7 +51,7 @@ export function Button({
   } else if (variant === "glass") {
     baseStyle = {
       ...baseStyle,
-      backgroundColor: colors.glass,
+      backgroundColor: colors.glassRaised,
       borderWidth: 1,
       borderColor: colors.glassBorderBright,
     };
@@ -60,7 +60,7 @@ export function Button({
     baseStyle = { ...baseStyle, backgroundColor: "transparent" };
   }
 
-  const textColor = variant === "filled" ? "#FFFFFF" : variant === "glass" ? accentColor : colors.inkMute;
+  const textColor = variant === "filled" ? "#10243A" : variant === "glass" ? accentColor : colors.inkMute;
 
   return (
     <Pressable
