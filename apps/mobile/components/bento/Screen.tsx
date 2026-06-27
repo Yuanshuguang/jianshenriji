@@ -47,17 +47,19 @@ export type ScreenHeaderProps = ViewProps & {
 };
 
 export function ScreenHeader({ kicker, onKickerPress, title, subtitle, badge, style }: ScreenHeaderProps) {
+  const theme = useBentoTheme();
+  const c = theme.colors;
   return (
     <View style={[{ gap: 5, marginBottom: bento.tileGap }, style]}>
       {kicker ? (
         onKickerPress ? (
           <Pressable onPress={onKickerPress} style={{ alignSelf: "flex-start" }}>
-            <Label color={colors.inkMute} variant="label">
+            <Label color={c.inkMute} variant="label">
               {kicker}
             </Label>
           </Pressable>
         ) : (
-          <Label color={colors.inkMute} variant="label">
+          <Label color={c.inkMute} variant="label">
             {kicker}
           </Label>
         )
@@ -68,7 +70,7 @@ export function ScreenHeader({ kicker, onKickerPress, title, subtitle, badge, st
             {title}
           </Text>
           {subtitle ? (
-            <Text variant="caption" color={colors.inkMute}>
+            <Text variant="caption" color={c.inkMute}>
               {subtitle}
             </Text>
           ) : null}

@@ -17,7 +17,7 @@ export { SelectChip } from "./SelectChip";
 export { CollapsibleCard } from "./CollapsibleCard";
 export { Switch } from "./Switch";
 export { PetReminderCard } from "./PetReminderCard";
-export { BentoThemeProvider, useBentoTheme, useThemeColors, resolveThemeColor, type BentoTheme, type BentoThemeColors } from "./ThemeProvider";
+export { BentoThemeProvider, useBentoTheme, useThemeColors, useFontScale, resolveThemeColor, type BentoTheme, type BentoThemeColors } from "./ThemeProvider";
 
 export {
   colors,

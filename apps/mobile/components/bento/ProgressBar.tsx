@@ -18,7 +18,7 @@ export type ProgressBarProps = ViewProps & {
 export function ProgressBar({
   percent,
   color = "accent",
-  trackColor = "rgba(255,255,255,0.08)",
+  trackColor,
   height = 6,
   animated = true,
   style,
@@ -30,6 +30,7 @@ export function ProgressBar({
   const over = percent > 1;
   const clamped = Math.min(1, Math.max(0, percent));
   const fillColor = over ? colors.warn : colors[color];
+  const resolvedTrackColor = trackColor ?? (theme.isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)");
 
   useEffect(() => {
     if (!animated) {
@@ -48,7 +49,7 @@ export function ProgressBar({
     width: "100%",
     height,
     borderRadius: radius.pill,
-    backgroundColor: resolveThemeColor(trackColor, theme) ?? colors.glass,
+    backgroundColor: resolveThemeColor(resolvedTrackColor, theme) ?? colors.glass,
     overflow: "hidden",
   };
 

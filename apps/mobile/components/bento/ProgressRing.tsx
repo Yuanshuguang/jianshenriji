@@ -25,7 +25,7 @@ export function ProgressRing({
   stroke = 10,
   percent,
   color,
-  trackColor = "rgba(255,255,255,0.08)",
+  trackColor,
   showLabel = true,
   label,
   value,
@@ -35,6 +35,7 @@ export function ProgressRing({
   const theme = useBentoTheme();
   const colors = theme.colors;
   const clamped = Math.min(1, Math.max(0, percent));
+  const resolvedTrackColor = trackColor ?? (theme.isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)");
 
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -52,7 +53,7 @@ export function ProgressRing({
   return (
     <View style={[{ width: size, height: size, alignItems: "center", justifyContent: "center" }, style]} {...rest}>
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <Circle cx={center} cy={center} r={radius} stroke={resolveThemeColor(trackColor, theme) ?? defaultColors.glass} strokeWidth={stroke} fill="none" />
+        <Circle cx={center} cy={center} r={radius} stroke={resolveThemeColor(resolvedTrackColor, theme) ?? defaultColors.glass} strokeWidth={stroke} fill="none" />
         <Circle
           cx={center}
           cy={center}

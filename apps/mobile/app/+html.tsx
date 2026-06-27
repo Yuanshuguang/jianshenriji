@@ -11,7 +11,7 @@ export default function Root({ children }: { children: ReactNode }) {
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: `
           html, body, #root {
-            background: #102840;
+            background: #121212;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
           }
         ` }} />

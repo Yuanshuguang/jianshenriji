@@ -38,3 +38,13 @@
 - **四大根因**：核心引擎未落地、设计vs实现偏离、安全基础设施缺失、质量保障空白(测试覆盖率≈2%)
 - **修复路线**：Phase1紧急止血(5.5天)→Phase2架构对齐(2-4周)→Phase3质量体系(4-8周)
 - 审计报告5份：docs/full-audit-overview.md（综合）、product-experience-review.md、architecture-review.md、code-quality-review.md、qa-security-review.md
+
+## 字体缩放系统 (2026-06-28)
+- **Store**: `fontScale: FontScaleLevel` ("small"|"normal"|"large"|"xlarge")，version 6，含 migrate
+- **数值映射**: small=0.85, normal=1.0, large=1.15, xlarge=1.3
+- **ThemeProvider**: Context 新增 `fontScale: number` + `fontScaleLevel`，`useFontScale()` hook 导出
+- **核心机制**: Text.tsx 的 `scaleStyle()` 统一处理 variant 基础字号 + style prop 的 fontSize/lineHeight
+  - 覆盖所有 BentoText 组件（含 Button/Badge/TabBar/MetricBlock 的硬编码 fontSize）
+- **TextInput 单独处理**: LabeledInput + index.tsx(5处) + train.tsx(2处) + CalendarHistoryPanel(2处)
+- **UI入口**: 更多页「外观模式」下方的 FontScaleCard，四档按钮+实时预览
+- **日间/夜间兼容**: ThemeProvider useMemo 同时依赖 appearanceMode + fontScale，切换模式不影响字体大小

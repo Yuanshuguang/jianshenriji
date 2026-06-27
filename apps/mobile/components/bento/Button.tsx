@@ -60,7 +60,7 @@ export function Button({
     baseStyle = { ...baseStyle, backgroundColor: "transparent" };
   }
 
-  const textColor = variant === "filled" ? "#10243A" : variant === "glass" ? accentColor : colors.inkMute;
+  const textColor = variant === "filled" ? "#FFFFFF" : variant === "glass" ? accentColor : colors.inkMute;
 
   return (
     <Pressable

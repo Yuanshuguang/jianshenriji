@@ -48,6 +48,25 @@ export type TodayTrainingCustomExercise = {
 export type ActualTrainingStatus = "pending" | "done" | "missed" | "changed";
 export type AppearanceMode = "light" | "dark";
 
+/** 字体缩放档位 */
+export type FontScaleLevel = "small" | "normal" | "large" | "xlarge";
+
+/** 档位 → 数值映射 */
+export const fontScaleValues: Record<FontScaleLevel, number> = {
+  small: 0.85,
+  normal: 1.0,
+  large: 1.15,
+  xlarge: 1.3,
+};
+
+/** 档位 → 中文标签 */
+export const fontScaleLabels: Record<FontScaleLevel, string> = {
+  small: "紧凑",
+  normal: "标准",
+  large: "放大",
+  xlarge: "超大",
+};
+
 export type ActualTrainingFeedback = {
   status: ActualTrainingStatus;
   text: string;
@@ -75,6 +94,8 @@ type FitnessState = {
   dynamicAdjustmentSettings: DynamicAdjustmentSettings;
   /** 外观模式：日间或夜间。 */
   appearanceMode: AppearanceMode;
+  /** 字体缩放档位：紧凑/标准/放大/超大，默认标准。 */
+  fontScale: FontScaleLevel;
   /** 当前选中的饮食方案模板 id，null 表示未选择 */
   selectedDietPlanId: string | null;
   /** 选中的预设宠物 id，null 表示未选预设 */
@@ -99,6 +120,7 @@ type FitnessState = {
   setDynamicAdjustmentEnabled: (enabled: boolean) => void;
   setDynamicAdjustmentSettings: (settings: DynamicAdjustmentSettings) => void;
   setAppearanceMode: (mode: AppearanceMode) => void;
+  setFontScale: (level: FontScaleLevel) => void;
   setSelectedDietPlan: (planId: string | null) => void;
   setSelectedPet: (petId: string | null) => void;
   setCustomPet: (pet: CustomPet | null) => void;
@@ -302,6 +324,7 @@ export const useFitnessStore = create<FitnessState>()(
       dynamicAdjustmentEnabled: true,
       dynamicAdjustmentSettings: defaultDynamicAdjustmentSettings,
       appearanceMode: "dark",
+      fontScale: "normal",
       selectedDietPlanId: null,
       selectedPetId: null,
       customPet: null,
@@ -340,6 +363,7 @@ export const useFitnessStore = create<FitnessState>()(
       setDynamicAdjustmentEnabled: (enabled) => set({ dynamicAdjustmentEnabled: enabled }),
       setDynamicAdjustmentSettings: (dynamicAdjustmentSettings) => set({ dynamicAdjustmentSettings }),
       setAppearanceMode: (mode) => set({ appearanceMode: mode }),
+      setFontScale: (fontScale) => set({ fontScale }),
       setSelectedDietPlan: (planId) => set({ selectedDietPlanId: planId }),
       setSelectedPet: (petId) => set({ selectedPetId: petId }),
       setCustomPet: (pet) => set({ customPet: pet }),
@@ -358,7 +382,7 @@ export const useFitnessStore = create<FitnessState>()(
     }),
     {
       name: "fitness-calendar-state",
-      version: 5,
+      version: 6,
       storage: createJSONStorage(() => appStorage),
       migrate: (persistedState) => {
         const state = persistedState as Partial<FitnessState>;
@@ -379,7 +403,8 @@ export const useFitnessStore = create<FitnessState>()(
             ...state.todayTrainingPlan,
             customExercises: state.todayTrainingPlan?.customExercises ?? []
           },
-          dynamicAdjustmentSettings: mergeDynamicAdjustmentSettings(state.dynamicAdjustmentSettings)
+          dynamicAdjustmentSettings: mergeDynamicAdjustmentSettings(state.dynamicAdjustmentSettings),
+          fontScale: state.fontScale ?? "normal"
         };
         if (migratedState.actualTraining?.status === "done" && migratedState.actualTraining.minutes === 0 && migratedState.actualTraining.text.trim().length === 0) {
           return {
@@ -410,6 +435,7 @@ export const useFitnessStore = create<FitnessState>()(
         dynamicAdjustmentEnabled: state.dynamicAdjustmentEnabled,
         dynamicAdjustmentSettings: state.dynamicAdjustmentSettings,
         appearanceMode: state.appearanceMode,
+        fontScale: state.fontScale,
         selectedDietPlanId: state.selectedDietPlanId,
         selectedPetId: state.selectedPetId,
         customPet: state.customPet,

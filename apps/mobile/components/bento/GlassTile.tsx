@@ -25,14 +25,18 @@ export function GlassTile({
   ...rest
 }: GlassTileProps) {
   const theme = useBentoTheme();
+  // 日间模式阴影更深（黑色低透明度），夜间模式阴影偏黑
+  const shadowBase = theme.isDark ? "rgba(0,0,0,0.40)" : "rgba(0,0,0,0.10)";
+  const shadowOpacity = theme.isDark ? (raised ? 0.40 : 0.30) : (raised ? 0.14 : 0.08);
+
   const shadowStyle: ViewStyle = Platform.OS === "web"
     ? {
-        boxShadow: `0px ${raised ? 14 : 10}px ${raised ? 28 : 20}px ${glow ? `${theme.colors[glow]}24` : "rgba(0,0,0,0.22)"}`,
+        boxShadow: `0px ${raised ? 14 : 10}px ${raised ? 28 : 20}px ${glow ? `${theme.colors[glow]}24` : shadowBase}`,
       }
     : {
         shadowColor: glow ? theme.colors[glow] : "#000",
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: raised ? 0.32 : 0.22,
+        shadowOpacity,
         shadowRadius: raised ? 28 : 20,
         elevation: raised ? 7 : 3,
       };

@@ -26,6 +26,8 @@ import {
   colors,
   radius,
   type SemanticColor,
+  useBentoTheme,
+  type BentoThemeColors,
 } from "../../components/bento";
 import {
   buildActualFoodPortionsFromText,
@@ -73,6 +75,7 @@ const mealSlots: Array<{ id: MealAdjustmentKey; name: string }> = [
 
 export default function TodayScreen() {
   const energyPlan = useCurrentEnergyPlan();
+  const c = useBentoTheme().colors;
   const selectedFoodIds = useFitnessStore((state) => state.selectedFoodIds);
   const preparedFoodText = useFitnessStore((state) => state.preparedFoodText);
   const actualFoodText = useFitnessStore((state) => state.actualFoodText);
@@ -300,15 +303,15 @@ export default function TodayScreen() {
             />
             <View style={{ flexDirection: "row", alignItems: "stretch" }}>
               <MetricMini metric={intakeMetric} />
-              <View style={{ width: 1, marginVertical: 8, backgroundColor: colors.glassBorder }} />
+              <View style={{ width: 1, marginVertical: 8, backgroundColor: c.glassBorder }} />
               <MetricMini metric={burnMetric} />
             </View>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <BentoText variant="caption" color={colors.inkMute}>{intakeDiffLabel}</BentoText>
+              <BentoText variant="caption" color={c.inkMute}>{intakeDiffLabel}</BentoText>
               <PillButton label={detailsOpen ? "收起" : "查看更多"} onPress={() => setDetailsOpen((value) => !value)} color="accent" />
             </View>
             {detailsOpen ? (
-              <View style={{ gap: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.glassBorder }}>
+              <View style={{ gap: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: c.glassBorder }}>
                 {macroMetrics.map((metric) => <MacroRow key={metric.key} metric={metric} />)}
               </View>
             ) : null}
@@ -325,7 +328,7 @@ export default function TodayScreen() {
           title="RECORD / 饮食记录"
           collapsed={recordCollapsed}
           onToggle={() => setRecordCollapsed((value) => !value)}
-          trailing={<BentoText mono color={colors.inkMute} style={{ fontSize: 12 }}>{actualIntake} kcal</BentoText>}
+          trailing={<BentoText mono color={c.inkMute} style={{ fontSize: 12 }}>{actualIntake} kcal</BentoText>}
         />
         {!recordCollapsed ? (
           <View style={{ gap: 12 }}>
@@ -357,11 +360,11 @@ export default function TodayScreen() {
                   value={preparedFoodText}
                   onChangeText={updatePreparedFoods}
                   placeholder="鸡蛋 西红柿 黄瓜 黄焖鸡"
-                  placeholderTextColor={colors.inkFaint}
-                  style={inputStyle}
+                  placeholderTextColor={c.inkFaint}
+                  style={getInputStyle(c)}
                 />
                 {preparedResult.unmatched.length > 0 ? (
-                  <BentoText variant="caption" color={colors.warn}>未识别：{preparedResult.unmatched.join("、")}</BentoText>
+                  <BentoText variant="caption" color={c.warn}>未识别：{preparedResult.unmatched.join("、")}</BentoText>
                 ) : null}
               </View>
             )}
@@ -402,11 +405,11 @@ export default function TodayScreen() {
           title="MY MENU / 我的菜单"
           collapsed={menuCollapsed}
           onToggle={() => setMenuCollapsed((value) => !value)}
-          trailing={<BentoText mono color={colors.inkMute} style={{ fontSize: 12 }}>本模块上传 {menuFoods.length} 个</BentoText>}
+          trailing={<BentoText mono color={c.inkMute} style={{ fontSize: 12 }}>本模块上传 {menuFoods.length} 个</BentoText>}
         />
         {!menuCollapsed ? (
           <View style={{ gap: 8 }}>
-            <TextInput value={menuName} onChangeText={setMenuName} placeholder="食物名称" placeholderTextColor={colors.inkFaint} style={inputStyle} />
+            <TextInput value={menuName} onChangeText={setMenuName} placeholder="食物名称" placeholderTextColor={c.inkFaint} style={getInputStyle(c)} />
             <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
               <SmallInput label="kcal/100g" value={menuCalories} onChangeText={setMenuCalories} />
               <SmallInput label="蛋白g" value={menuProtein} onChangeText={setMenuProtein} />
@@ -416,13 +419,13 @@ export default function TodayScreen() {
             </View>
             <Button variant="filled" color="accent" block onPress={saveCustomFood}>保存到我的菜单</Button>
             {menuFoods.map((food) => (
-              <View key={food.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.glassBorder }}>
+              <View key={food.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderTopWidth: 1, borderTopColor: c.glassBorder }}>
                 <View style={{ flex: 1 }}>
-                  <BentoText weight="semibold" variant="caption" color={colors.ink}>{food.name}</BentoText>
-                  <BentoText variant="micro" color={colors.inkMute}>{Math.round(food.caloriesPer100g)} kcal/100g</BentoText>
+                  <BentoText weight="semibold" variant="caption" color={c.ink}>{food.name}</BentoText>
+                  <BentoText variant="micro" color={c.inkMute}>{Math.round(food.caloriesPer100g)} kcal/100g</BentoText>
                 </View>
                 <Pressable onPress={() => { removeMenuFood(food.id); removeCustomFood(food.id); }}>
-                  <BentoText variant="micro" color={colors.warn}>删除</BentoText>
+                  <BentoText variant="micro" color={c.warn}>删除</BentoText>
                 </Pressable>
               </View>
             ))}
@@ -461,28 +464,32 @@ export default function TodayScreen() {
   );
 }
 
-const inputStyle = {
-  minHeight: 56,
-  backgroundColor: colors.glass,
-  borderWidth: 1,
-  borderColor: colors.glassBorder,
-  borderRadius: radius.md,
-  paddingHorizontal: 12,
-  paddingVertical: 12,
-  color: colors.ink,
-  fontSize: 14,
-} as const;
+function getInputStyle(c: BentoThemeColors) {
+  return {
+    minHeight: 56,
+    backgroundColor: c.glass,
+    borderWidth: 1,
+    borderColor: c.glassBorder,
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    color: c.ink,
+    fontSize: 14,
+  } as const;
+}
 
-const recordInputStyle = {
-  minHeight: 28,
-  backgroundColor: "transparent",
-  borderWidth: 0,
-  borderRadius: 0,
-  paddingHorizontal: 0,
-  paddingVertical: 0,
-  color: colors.ink,
-  fontSize: 15,
-} as const;
+function getRecordInputStyle(c: BentoThemeColors) {
+  return {
+    minHeight: 28,
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    borderRadius: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    color: c.ink,
+    fontSize: 15,
+  } as const;
+}
 
 function CardHeader({
   title,
@@ -495,9 +502,10 @@ function CardHeader({
   onToggle: () => void;
   trailing?: ReactNode;
 }) {
+  const c = useBentoTheme().colors;
   return (
     <View style={{ width: "100%", flexDirection: "row", alignItems: "center", gap: 8 }}>
-      <Label color={colors.inkMute} variant="label">{title}</Label>
+      <Label color={c.inkMute} variant="label">{title}</Label>
       <View style={{ flex: 1 }} />
       {trailing}
       <PillButton label={collapsed ? "展开" : "收起"} onPress={onToggle} color="accent" />
@@ -506,21 +514,23 @@ function CardHeader({
 }
 
 function DashboardLegend() {
+  const c = useBentoTheme().colors;
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginLeft: "auto" }}>
       <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <BentoText variant="micro" color={colors.positive}>绿色</BentoText>
-        <BentoText variant="micro" color={colors.inkMute}>为目标数据</BentoText>
+        <BentoText variant="micro" color={c.positive}>绿色</BentoText>
+        <BentoText variant="micro" color={c.inkMute}>为目标数据</BentoText>
       </View>
       <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <BentoText variant="micro" color={colors.accent}>蓝色</BentoText>
-        <BentoText variant="micro" color={colors.inkMute}>为实际数据</BentoText>
+        <BentoText variant="micro" color={c.accent}>蓝色</BentoText>
+        <BentoText variant="micro" color={c.inkMute}>为实际数据</BentoText>
       </View>
     </View>
   );
 }
 
 function PillButton({ label, color, onPress }: { label: string; color: SemanticColor; onPress: () => void }) {
+  const c = useBentoTheme().colors;
   return (
     <Pressable
       onPress={onPress}
@@ -530,13 +540,13 @@ function PillButton({ label, color, onPress }: { label: string; color: SemanticC
         borderRadius: 999,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: colors.glass,
+        backgroundColor: c.glass,
         borderWidth: 1,
-        borderColor: colors.glassBorderBright,
+        borderColor: c.glassBorderBright,
         opacity: pressed ? 0.82 : 1,
       })}
     >
-      <BentoText weight="semibold" color={colors[color]} style={{ fontSize: 11 }}>{label}</BentoText>
+      <BentoText weight="semibold" color={c[color]} style={{ fontSize: 11 }}>{label}</BentoText>
     </Pressable>
   );
 }
@@ -550,6 +560,7 @@ function DietPlanLogicModal({
   summary: DietPlanSummary;
   onClose: () => void;
 }) {
+  const c = useBentoTheme().colors;
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable
@@ -564,9 +575,9 @@ function DietPlanLogicModal({
             maxWidth: 420,
             maxHeight: "85%",
             borderRadius: 18,
-            backgroundColor: colors.bg,
+            backgroundColor: c.bg,
             borderWidth: 1,
-            borderColor: colors.glassBorderBright,
+            borderColor: c.glassBorderBright,
             overflow: "hidden"
           }}
         >
@@ -575,12 +586,12 @@ function DietPlanLogicModal({
               <BentoText
                 weight="bold"
                 variant="caption"
-                color={colors.ink}
+                color={c.ink}
                 style={{ flexShrink: 1, lineHeight: 18 }}
               >
                 {summary.name} / {summary.status}
               </BentoText>
-              <BentoText variant="micro" color={colors.inkMute} style={{ flexShrink: 1, lineHeight: 16 }}>
+              <BentoText variant="micro" color={c.inkMute} style={{ flexShrink: 1, lineHeight: 16 }}>
                 {summary.sourceLabel}
               </BentoText>
             </View>
@@ -589,13 +600,13 @@ function DietPlanLogicModal({
                 <Badge key={part.trim()} color="accent" size="sm">{part.trim()}</Badge>
               ))}
             </View>
-            <BentoText variant="caption" color={colors.inkMute} style={{ lineHeight: 18 }}>
+            <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18 }}>
               {summary.logic}
             </BentoText>
             <View style={{ gap: 6 }}>
-              <Label color={colors.inkFaint} variant="micro">营养数据分配逻辑</Label>
+              <Label color={c.inkFaint} variant="micro">营养数据分配逻辑</Label>
               {summary.allocation.map((item) => (
-                <BentoText key={item} variant="caption" color={colors.ink} style={{ lineHeight: 18 }}>
+                <BentoText key={item} variant="caption" color={c.ink} style={{ lineHeight: 18 }}>
                   {item}
                 </BentoText>
               ))}
@@ -718,21 +729,22 @@ function DeficitHero({
   deficit: number;
   target: number;
 }) {
+  const c = useBentoTheme().colors;
   const remaining = Math.max(0, target - deficit);
   const hint = remaining > 0 ? `还需 ${Math.round(remaining)} kcal` : "已达成";
   const progress = target > 0 ? Math.min(1, deficit / target) : 0;
   const delta = deficit - target;
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 2, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.glassBorder }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 2, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
       <View style={{ width: 56, justifyContent: "center", gap: 3 }}>
-        <BentoText variant="caption" color={colors.inkMute} style={{ fontSize: 13, lineHeight: 16 }}>
+        <BentoText variant="caption" color={c.inkMute} style={{ fontSize: 13, lineHeight: 16 }}>
           热量赤字
         </BentoText>
-        <BentoText variant="micro" color={colors.accent}>{hint}</BentoText>
+        <BentoText variant="micro" color={c.accent}>{hint}</BentoText>
       </View>
       <View style={{ flex: 1, gap: 6 }}>
-        <MetricDataRow label="目标" value={target} unit="kcal" textColor={colors.positive} barColor="positive" percent={1} large />
-        <MetricDataRow label="实际" value={deficit} unit="kcal" textColor={colors.accent} barColor="accent" percent={progress} large />
+        <MetricDataRow label="目标" value={target} unit="kcal" textColor={c.positive} barColor="positive" percent={1} large />
+        <MetricDataRow label="实际" value={deficit} unit="kcal" textColor={c.accent} barColor="accent" percent={progress} large />
       </View>
       <MetricDelta value={delta} />
     </View>
@@ -740,17 +752,18 @@ function DeficitHero({
 }
 
 function MetricMini({ metric }: { metric: DashboardMetric }) {
+  const c = useBentoTheme().colors;
   const delta = metric.actual - metric.target;
   return (
     <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 10, paddingVertical: 8 }}>
       <View style={{ width: 40, justifyContent: "center" }}>
-        <BentoText variant="caption" color={colors.inkMute} style={{ fontSize: 12, lineHeight: 14 }}>
+        <BentoText variant="caption" color={c.inkMute} style={{ fontSize: 12, lineHeight: 14 }}>
           {metric.label}
         </BentoText>
       </View>
       <View style={{ flex: 1, gap: 6 }}>
-        <MetricDataRow label="目标" value={metric.target} unit={metric.unit} textColor={colors.positive} barColor="positive" percent={1} />
-        <MetricDataRow label="实际" value={metric.actual} unit={metric.unit} textColor={colors.accent} barColor="accent" percent={metric.progress} />
+        <MetricDataRow label="目标" value={metric.target} unit={metric.unit} textColor={c.positive} barColor="positive" percent={1} />
+        <MetricDataRow label="实际" value={metric.actual} unit={metric.unit} textColor={c.accent} barColor="accent" percent={metric.progress} />
       </View>
       <MetricDelta value={delta} compact />
     </View>
@@ -758,11 +771,12 @@ function MetricMini({ metric }: { metric: DashboardMetric }) {
 }
 
 function MetricDelta({ value, compact = false }: { value: number; compact?: boolean }) {
+  const c = useBentoTheme().colors;
   return (
     <BentoText
       mono
       weight="semibold"
-      color={value >= 0 ? colors.positive : colors.warn}
+      color={value >= 0 ? c.positive : c.warn}
       style={{ fontSize: compact ? 10 : 11, width: compact ? 34 : 52, textAlign: "right" }}
     >
       {value >= 0 ? "+" : ""}{Math.round(value)}
@@ -823,15 +837,16 @@ function MetricValueRow({
 }
 
 function MacroRow({ metric }: { metric: DashboardMetric }) {
+  const c = useBentoTheme().colors;
   const delta = metric.actual - metric.target;
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-      <BentoText variant="caption" color={colors.ink} style={{ width: 42 }}>
+      <BentoText variant="caption" color={c.ink} style={{ width: 42 }}>
         {metric.label}
       </BentoText>
       <View style={{ flex: 1, gap: 4 }}>
-        <MetricDataRow label="目标" value={metric.target} unit={metric.unit} textColor={colors.positive} barColor="positive" percent={1} />
-        <MetricDataRow label="实际" value={metric.actual} unit={metric.unit} textColor={colors.accent} barColor="accent" percent={metric.progress} />
+        <MetricDataRow label="目标" value={metric.target} unit={metric.unit} textColor={c.positive} barColor="positive" percent={1} />
+        <MetricDataRow label="实际" value={metric.actual} unit={metric.unit} textColor={c.accent} barColor="accent" percent={metric.progress} />
       </View>
       <MetricDelta value={delta} />
     </View>
@@ -861,6 +876,7 @@ function ActualFoodInputSection({
   foodTagEdits: Record<string, { hidden?: boolean; label?: string; calories?: number }>;
   onEditTag: (key: string, label: string, calories: string) => void;
 }) {
+  const c = useBentoTheme().colors;
   return (
     <View style={{ gap: 8 }}>
       <TextInput
@@ -868,12 +884,12 @@ function ActualFoodInputSection({
         value={text}
         onChangeText={onTextChange}
         placeholder="一碗面 两棵拳头大的西红柿"
-        placeholderTextColor={colors.inkFaint}
-        style={recordInputStyle}
+        placeholderTextColor={c.inkFaint}
+        style={getRecordInputStyle(c)}
       />
       {matched.length > 0 ? (
-        <View style={{ gap: 6, paddingTop: 4, borderTopWidth: 1, borderTopColor: colors.glassBorder }}>
-          <Label color={colors.inkMute} variant="label">
+        <View style={{ gap: 6, paddingTop: 4, borderTopWidth: 1, borderTopColor: c.glassBorder }}>
+          <Label color={c.inkMute} variant="label">
             {`识别结果 ${matched.length} 项${unmatched.length > 0 ? " · " + unmatched.length + " 项待补充" : ""}`}
           </Label>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
@@ -894,7 +910,7 @@ function ActualFoodInputSection({
           </View>
         </View>
       ) : unmatched.length > 0 ? (
-        <BentoText variant="caption" color={colors.warn}>未识别：{unmatched.join("、")}</BentoText>
+        <BentoText variant="caption" color={c.warn}>未识别：{unmatched.join("、")}</BentoText>
       ) : null}
     </View>
   );
@@ -911,6 +927,7 @@ function FoodTagEditorModal({
   onSave: (next: FoodTagEdit) => void;
   onDelete: (key: string) => void;
 }) {
+  const c = useBentoTheme().colors;
   const [label, setLabel] = useState(edit?.label ?? "");
   const [calories, setCalories] = useState(edit?.calories ?? "");
 
@@ -925,10 +942,10 @@ function FoodTagEditorModal({
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: "rgba(15,23,42,0.28)", justifyContent: "center", padding: 20 }}>
-        <Pressable onPress={(e) => e.stopPropagation()} style={{ borderRadius: 18, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.glassBorderBright, padding: 16, gap: 10 }}>
-          <BentoText weight="bold" variant="caption" color={colors.ink}>编辑识别标签</BentoText>
-      <TextInput value={label} onChangeText={setLabel} placeholder="标签文本" placeholderTextColor={colors.inkFaint} style={inputStyle} />
-      <TextInput value={calories} onChangeText={setCalories} keyboardType="numeric" placeholder="热量 kcal" placeholderTextColor={colors.inkFaint} style={inputStyle} />
+        <Pressable onPress={(e) => e.stopPropagation()} style={{ borderRadius: 18, backgroundColor: c.bg, borderWidth: 1, borderColor: c.glassBorderBright, padding: 16, gap: 10 }}>
+          <BentoText weight="bold" variant="caption" color={c.ink}>编辑识别标签</BentoText>
+      <TextInput value={label} onChangeText={setLabel} placeholder="标签文本" placeholderTextColor={c.inkFaint} style={getInputStyle(c)} />
+      <TextInput value={calories} onChangeText={setCalories} keyboardType="numeric" placeholder="热量 kcal" placeholderTextColor={c.inkFaint} style={getInputStyle(c)} />
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Button variant="glass" color="warn" block onPress={() => onDelete(edit.key)}>删除标签</Button>
             <Button variant="filled" color="accent" block onPress={() => onSave({ key: edit.key, label, calories })}>保存更正</Button>
@@ -952,11 +969,12 @@ function MealCompareRow({
   actualText: string;
   onActualTextChange: (text: string) => void;
 }) {
+  const c = useBentoTheme().colors;
   return (
     <GlassTile radius={bento.tileRadiusSmall} padding={10}>
       <View style={{ flexDirection: "row", alignItems: "stretch", gap: 10 }}>
         <View style={{ width: 44, justifyContent: "center", paddingRight: 2 }}>
-          <BentoText weight="bold" variant="caption" color={colors.ink}>{name}</BentoText>
+          <BentoText weight="bold" variant="caption" color={c.ink}>{name}</BentoText>
         </View>
         <View style={{ flex: 1, paddingRight: 10 }}>
           <MealColumn meal={planned} />
@@ -967,11 +985,11 @@ function MealCompareRow({
             alignSelf: "stretch",
             marginVertical: 2,
             borderRadius: 999,
-            backgroundColor: colors.accent,
+            backgroundColor: c.accent,
             ...(Platform.OS === "web"
-              ? { boxShadow: `0px 0px 4px ${colors.accent}73` }
+              ? { boxShadow: `0px 0px 4px ${c.accent}73` }
               : {
-                  shadowColor: colors.accent,
+                  shadowColor: c.accent,
                   shadowOpacity: 0.45,
                   shadowRadius: 4,
                   shadowOffset: { width: 0, height: 0 },
@@ -987,33 +1005,35 @@ function MealCompareRow({
 }
 
 function MealColumn({ meal }: { meal?: MealPlan }) {
+  const c = useBentoTheme().colors;
   return (
     <View style={{ flex: 1, gap: 6 }}>
-      <BentoText variant="caption" color={colors.inkMute}>{formatMealFoods(meal)}</BentoText>
+      <BentoText variant="caption" color={c.inkMute}>{formatMealFoods(meal)}</BentoText>
     </View>
   );
 }
 
 function MealActualColumn({ meal, text, onChangeText }: { meal?: MealPlan; text: string; onChangeText: (text: string) => void }) {
+  const c = useBentoTheme().colors;
   return (
     <View style={{ flex: 1, gap: 5 }}>
-      <BentoText variant="caption" color={meal?.foods.length ? colors.inkMute : colors.inkFaint}>
+      <BentoText variant="caption" color={meal?.foods.length ? c.inkMute : c.inkFaint}>
         {formatMealFoods(meal)}
       </BentoText>
       <TextInput
         value={text}
         onChangeText={onChangeText}
         placeholder="本餐实际"
-        placeholderTextColor={colors.inkFaint}
+        placeholderTextColor={c.inkFaint}
         style={{
           minHeight: 32,
           borderRadius: 10,
-          backgroundColor: colors.glass,
+          backgroundColor: c.glass,
           borderWidth: 1,
-          borderColor: colors.glassBorder,
+          borderColor: c.glassBorder,
           paddingHorizontal: 8,
           paddingVertical: 5,
-          color: colors.ink,
+          color: c.ink,
           fontSize: 12
         }}
       />
@@ -1027,10 +1047,11 @@ function formatMealFoods(meal?: MealPlan): string {
 }
 
 function SmallInput({ label, value, onChangeText }: { label: string; value: string; onChangeText: (text: string) => void }) {
+  const c = useBentoTheme().colors;
   return (
     <View style={{ flex: 1, minWidth: 86, gap: 4 }}>
-      <BentoText variant="micro" color={colors.inkMute}>{label}</BentoText>
-      <TextInput keyboardType="numeric" value={value} onChangeText={onChangeText} placeholder="0" placeholderTextColor={colors.inkFaint} style={[inputStyle, { minHeight: 42, paddingVertical: 8 }]} />
+      <BentoText variant="micro" color={c.inkMute}>{label}</BentoText>
+      <TextInput keyboardType="numeric" value={value} onChangeText={onChangeText} placeholder="0" placeholderTextColor={c.inkFaint} style={[getInputStyle(c), { minHeight: 42, paddingVertical: 8 }]} />
     </View>
   );
 }
@@ -1047,13 +1068,14 @@ function createCustomFoodId(): string {
 }
 
 function AdjustmentSummaryCard({ summary }: { summary: ReturnType<typeof buildDailyAdjustmentSummary> }) {
+  const c = useBentoTheme().colors;
   const color: SemanticColor = summary.netDelta > 0 ? "warn" : "positive";
   return (
     <GlassTile glow={color} style={{ gap: 10 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
         <View style={{ flex: 1, gap: 4 }}>
-          <Label color={colors.inkMute} variant="label">ADJUST / 动态调整</Label>
-          <BentoText weight="semibold" variant="caption" color={colors[color]}>
+          <Label color={c.inkMute} variant="label">ADJUST / 动态调整</Label>
+          <BentoText weight="semibold" variant="caption" color={c[color]}>
             {summary.title}
           </BentoText>
         </View>
@@ -1061,7 +1083,7 @@ function AdjustmentSummaryCard({ summary }: { summary: ReturnType<typeof buildDa
           {summary.netDelta >= 0 ? "+" : ""}{summary.netDelta} kcal
         </Badge>
       </View>
-      <BentoText variant="caption" color={colors.inkMute} style={{ lineHeight: 20 }}>
+      <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 20 }}>
         {summary.reason}
       </BentoText>
       <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
@@ -1070,7 +1092,7 @@ function AdjustmentSummaryCard({ summary }: { summary: ReturnType<typeof buildDa
         <Badge color="accent2" size="sm">蛋白 {Math.round(summary.adjustedMacros.proteinG)}g</Badge>
       </View>
       {summary.warning ? (
-        <BentoText variant="caption" color={colors.warn}>{summary.warning}</BentoText>
+        <BentoText variant="caption" color={c.warn}>{summary.warning}</BentoText>
       ) : null}
     </GlassTile>
   );

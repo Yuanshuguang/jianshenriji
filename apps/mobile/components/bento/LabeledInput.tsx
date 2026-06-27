@@ -20,7 +20,7 @@ export function LabeledInput({
   suffix,
   ...rest
 }: LabeledInputProps) {
-  const { colors } = useBentoTheme();
+  const { colors, fontScale } = useBentoTheme();
   return (
     <View style={[{ gap: 6 }, containerStyle]}>
       <Label color={colors.inkMute} variant="label">
@@ -43,7 +43,7 @@ export function LabeledInput({
           style={{
             flex: 1,
             color: colors.ink,
-            fontSize: 14,
+            fontSize: Math.round(14 * fontScale),
             padding: 0,
           }}
           {...rest}

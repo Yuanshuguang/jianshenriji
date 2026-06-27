@@ -6,6 +6,7 @@ import {
   colors,
   GlassTile,
   Label,
+  useBentoTheme,
 } from "./bento";
 import { CalendarGrid, DaySummaryCard, MonthNavigator } from "./Calendar";
 import { buildActualFoodPortionsFromText } from "../features/today-plan";
@@ -19,6 +20,7 @@ function todayStr(): string {
 }
 
 export function CalendarHistoryPanel() {
+  const { fontScale } = useBentoTheme();
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
@@ -144,7 +146,7 @@ export function CalendarHistoryPanel() {
               borderRadius: 10,
               padding: 10,
               color: colors.ink,
-              fontSize: 14,
+              fontSize: Math.round(14 * fontScale),
             }}
           />
           <View style={{ flexDirection: "row", gap: 8 }}>
@@ -174,7 +176,7 @@ export function CalendarHistoryPanel() {
               borderRadius: 10,
               padding: 10,
               color: colors.ink,
-              fontSize: 14,
+              fontSize: Math.round(14 * fontScale),
             }}
           />
           <View style={{ flexDirection: "row", gap: 8 }}>
