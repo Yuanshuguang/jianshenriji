@@ -98,6 +98,7 @@ type FitnessState = {
   fontScale: FontScaleLevel;
   /** 当前选中的饮食方案模板 id，null 表示未选择 */
   selectedDietPlanId: string | null;
+  selectedDietPlanVariantId: string | null;
   /** 选中的预设宠物 id，null 表示未选预设 */
   selectedPetId: string | null;
   /** 自定义宠物（若用户用照片创建），优先级高于 selectedPetId */
@@ -122,6 +123,7 @@ type FitnessState = {
   setAppearanceMode: (mode: AppearanceMode) => void;
   setFontScale: (level: FontScaleLevel) => void;
   setSelectedDietPlan: (planId: string | null) => void;
+  setSelectedDietPlanVariant: (variantId: string | null) => void;
   setSelectedPet: (petId: string | null) => void;
   setCustomPet: (pet: CustomPet | null) => void;
   setPetEnabled: (enabled: boolean) => void;
@@ -131,6 +133,8 @@ type FitnessState = {
   saveDailyLog: (date: string, entry: DailyLogEntry) => void;
   /** 获取某日的日志 */
   getLogForDate: (date: string) => DailyLogEntry | undefined;
+  /** 重置健康数据 */
+  resetHealthData: () => void;
   isOnboardingComplete: () => boolean;
 };
 
@@ -326,6 +330,7 @@ export const useFitnessStore = create<FitnessState>()(
       appearanceMode: "dark",
       fontScale: "normal",
       selectedDietPlanId: null,
+      selectedDietPlanVariantId: null,
       selectedPetId: null,
       customPet: null,
       petEnabled: true,
@@ -365,6 +370,7 @@ export const useFitnessStore = create<FitnessState>()(
       setAppearanceMode: (mode) => set({ appearanceMode: mode }),
       setFontScale: (fontScale) => set({ fontScale }),
       setSelectedDietPlan: (planId) => set({ selectedDietPlanId: planId }),
+      setSelectedDietPlanVariant: (variantId) => set({ selectedDietPlanVariantId: variantId }),
       setSelectedPet: (petId) => set({ selectedPetId: petId }),
       setCustomPet: (pet) => set({ customPet: pet }),
       setPetEnabled: (petEnabled) => set({ petEnabled }),
@@ -375,6 +381,42 @@ export const useFitnessStore = create<FitnessState>()(
       getLogForDate: (date) => {
         return get().historyLogs[date];
       },
+      resetHealthData: () =>
+        set((state) => ({
+          profile: defaultProfile,
+          goal: defaultGoal,
+          trainingPreference: defaultTrainingPreference,
+          selectedFoodIds: [],
+          preparedFoodText: "",
+          actualFoodText: "",
+          actualMealTexts: {
+            breakfast: "",
+            lunch: "",
+            dinner: "",
+            snack: ""
+          },
+          actualFoodIds: [],
+          customFoods: [],
+          menuFoods: [],
+          actualTraining: {
+            status: "pending",
+            text: "",
+            minutes: 0,
+            calories: 0,
+            fatigue: 3
+          },
+          todayTrainingPlan: defaultTodayTrainingPlan,
+          historyLogs: {},
+          selectedDietPlanId: null,
+          selectedDietPlanVariantId: null,
+          customPet: state.customPet,
+          selectedPetId: state.selectedPetId,
+          petEnabled: state.petEnabled,
+          appearanceMode: state.appearanceMode,
+          fontScale: state.fontScale,
+          dynamicAdjustmentEnabled: state.dynamicAdjustmentEnabled,
+          dynamicAdjustmentSettings: state.dynamicAdjustmentSettings
+        })),
       isOnboardingComplete: () => {
         const { profile, goal, trainingPreference } = get();
         return profile.age > 0 && profile.heightCm > 0 && profile.weightKg > 0 && goal.targetDays > 0 && trainingPreference.daysPerWeek > 0;
@@ -404,7 +446,8 @@ export const useFitnessStore = create<FitnessState>()(
             customExercises: state.todayTrainingPlan?.customExercises ?? []
           },
           dynamicAdjustmentSettings: mergeDynamicAdjustmentSettings(state.dynamicAdjustmentSettings),
-          fontScale: state.fontScale ?? "normal"
+          fontScale: state.fontScale ?? "normal",
+          selectedDietPlanVariantId: state.selectedDietPlanVariantId ?? null
         };
         if (migratedState.actualTraining?.status === "done" && migratedState.actualTraining.minutes === 0 && migratedState.actualTraining.text.trim().length === 0) {
           return {
@@ -437,6 +480,7 @@ export const useFitnessStore = create<FitnessState>()(
         appearanceMode: state.appearanceMode,
         fontScale: state.fontScale,
         selectedDietPlanId: state.selectedDietPlanId,
+        selectedDietPlanVariantId: state.selectedDietPlanVariantId,
         selectedPetId: state.selectedPetId,
         customPet: state.customPet,
         petEnabled: state.petEnabled

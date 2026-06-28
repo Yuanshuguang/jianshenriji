@@ -1,17 +1,25 @@
 import {
   calculateNutritionGap,
+  calculateFoodTotals,
+  calculateDietPlanMacroTargets,
+  calculateDefaultMealBudgets,
+  exercises,
   getFoodByIdFromCatalog,
   getFoodCatalog,
   recommendMacroAwarePortions,
+  resolveDietPlanDay,
   sumNutrition,
   type DailyLogEntry,
+  type DietPlanCycleSelection,
   type EnergyPlan,
   type Food,
+  type FoodPortion,
   type MealAdjustmentKey,
   type NutritionTotals,
 } from "@fitness-calendar/shared";
+import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
- import { Modal, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
+ import { Modal, Pressable, ScrollView, TextInput, View } from "react-native";
 import { CalendarHistoryPanel } from "../../components/CalendarHistoryPanel";
 import {
   Badge,
@@ -32,14 +40,16 @@ import {
 import {
   buildActualFoodPortionsFromText,
   buildMealPlan,
+  estimateTodayWorkoutCalories,
   parseFoodText,
   type MealPlan,
 } from "../../features/today-plan";
 import { buildDailyAdjustmentSummary } from "../../features/adjustments";
 import { getDietPlanById, type DietPlan } from "../../features/diet-plans";
-import { useCurrentEnergyPlan, useFitnessStore } from "../../store/fitness-store";
+import { buildTrainingQueue, useCurrentEnergyPlan, useFitnessStore } from "../../store/fitness-store";
 
 type FoodRecordMode = "actual" | "prepared";
+type MealDisplayMode = "planned" | "actual";
 
 type DashboardMetric = {
   key: string;
@@ -55,6 +65,37 @@ type FoodTagEdit = {
   key: string;
   label: string;
   calories: string;
+  grams: string;
+  foodName: string;
+  foodId: string;
+  defaultFilling: string;
+  unitCalories: number;
+  caloriesPer100g: number;
+  proteinPer100g: number;
+  fatPer100g: number;
+  carbsPer100g: number;
+  displayAmount?: string;
+  quantity?: number;
+  unit?: string;
+};
+
+type FoodTagOverride = {
+  hidden?: boolean;
+  label?: string;
+  calories?: number;
+  grams?: number;
+  filling?: string;
+};
+
+type FoodTagMatch = {
+  food: Food;
+  grams: number;
+  quantity?: number;
+  unit?: string;
+  displayAmount?: string;
+  confidence?: number;
+  needsDetails?: boolean;
+  detailHint?: string;
 };
 
 type DietPlanSummary = {
@@ -74,6 +115,7 @@ const mealSlots: Array<{ id: MealAdjustmentKey; name: string }> = [
 ];
 
 export default function TodayScreen() {
+  const router = useRouter();
   const energyPlan = useCurrentEnergyPlan();
   const c = useBentoTheme().colors;
   const selectedFoodIds = useFitnessStore((state) => state.selectedFoodIds);
@@ -85,9 +127,12 @@ export default function TodayScreen() {
   const actualTraining = useFitnessStore((state) => state.actualTraining);
   const profile = useFitnessStore((state) => state.profile);
   const goal = useFitnessStore((state) => state.goal);
+  const trainingPreference = useFitnessStore((state) => state.trainingPreference);
+  const todayTrainingPlan = useFitnessStore((state) => state.todayTrainingPlan);
   const dynamicAdjustmentEnabled = useFitnessStore((state) => state.dynamicAdjustmentEnabled);
   const dynamicAdjustmentSettings = useFitnessStore((state) => state.dynamicAdjustmentSettings);
   const selectedDietPlanId = useFitnessStore((state) => state.selectedDietPlanId);
+  const selectedDietPlanVariantId = useFitnessStore((state) => state.selectedDietPlanVariantId);
   const setPreparedFoods = useFitnessStore((state) => state.setPreparedFoods);
   const setActualFoods = useFitnessStore((state) => state.setActualFoods);
   const setActualMealText = useFitnessStore((state) => state.setActualMealText);
@@ -104,35 +149,64 @@ export default function TodayScreen() {
   const [mealCalendarOpen, setMealCalendarOpen] = useState(false);
   const [menuCollapsed, setMenuCollapsed] = useState(true);
   const [foodRecordMode, setFoodRecordMode] = useState<FoodRecordMode>("actual");
+  const [mealDisplayMode, setMealDisplayMode] = useState<MealDisplayMode>("planned");
   const [menuName, setMenuName] = useState("");
   const [menuCalories, setMenuCalories] = useState("");
   const [menuProtein, setMenuProtein] = useState("");
   const [menuFat, setMenuFat] = useState("");
   const [menuCarbs, setMenuCarbs] = useState("");
   const [menuGram, setMenuGram] = useState("100");
-  const [foodTagEdits, setFoodTagEdits] = useState<Record<string, { hidden?: boolean; label?: string; calories?: number }>>({});
+  const [foodTagEdits, setFoodTagEdits] = useState<Record<string, FoodTagOverride>>({});
   const [editingFoodTag, setEditingFoodTag] = useState<FoodTagEdit | null>(null);
   const [dietPlanLogicOpen, setDietPlanLogicOpen] = useState(false);
+
+  const today = new Date();
+  const todayKey = formatDateKey(today);
+  const selectedDietPlan = getDietPlanById(selectedDietPlanId);
+  const dietPlanCycleSelection: DietPlanCycleSelection = selectedDietPlanVariantId
+    ? { variantId: selectedDietPlanVariantId }
+    : {};
+  const resolvedDietDay = resolveDietPlanDay(selectedDietPlanId, today, dietPlanCycleSelection);
+  const dietMacros = calculateDietPlanMacroTargets(selectedDietPlanId, energyPlan, {
+    date: today,
+    dayType: resolvedDietDay.dayType,
+    selection: dietPlanCycleSelection,
+  });
+  const dietTarget: EnergyPlan = {
+    ...dietMacros,
+    bmr: energyPlan.bmr,
+    tdee: energyPlan.tdee,
+    dailyDeficit: energyPlan.dailyDeficit,
+  };
+  const recommendedTrainingQueue = buildTrainingQueue(exercises, trainingPreference);
+  const recommendedWorkout = recommendedTrainingQueue[0];
+  const plannedTrainingFocus = todayTrainingPlan.focus ?? recommendedWorkout?.focus;
+  const plannedTrainingBaseCalories = estimateTodayWorkoutCalories(recommendedWorkout, profile.weightKg);
+  const plannedTrainingCalories =
+    todayTrainingPlan.minutes && recommendedWorkout?.estimatedMinutes
+      ? Math.round(plannedTrainingBaseCalories * (todayTrainingPlan.minutes / Math.max(1, recommendedWorkout.estimatedMinutes)))
+      : plannedTrainingBaseCalories;
 
   const selectedFoods = selectedFoodIds.flatMap((foodId) => {
     const food = getFoodByIdFromCatalog(foodId, customFoods);
     return food ? [food] : [];
   });
-  const plannedPortions = recommendMacroAwarePortions(selectedFoods, energyPlan);
+  const plannedPortions = recommendMacroAwarePortions(selectedFoods, dietTarget);
   const plannedTotals = sumNutrition(plannedPortions.map((portion) => portion.totals));
   const preparedResult = parseFoodText(preparedFoodText, customFoods);
   const actualFood = buildActualFoodPortionsFromText(actualFoodText, customFoods, {
-    dailyCalorieTarget: energyPlan.calories,
+    dailyCalorieTarget: dietTarget.calories,
   });
-  const actualTotals = sumNutrition(actualFood.portions.map((portion) => portion.totals));
+  const adjustedActualPortions = applyFoodTagOverrides(actualFood.portions, actualFood.parsed.matched, foodTagEdits);
+  const actualTotals = sumNutrition(adjustedActualPortions.map((portion) => portion.totals));
   const actualIntake = Math.round(actualTotals.calories);
   const burnCalories = Math.round(energyPlan.tdee + actualTraining.calories);
   const deficit = Math.round(burnCalories - actualIntake);
-  const intakeDiff = Math.round(actualIntake - energyPlan.calories);
+  const intakeDiff = Math.round(actualIntake - dietTarget.calories);
   const intakeDiffLabel = intakeDiff > 0
     ? `超出 ${Math.abs(intakeDiff)} kcal`
     : `还差 ${Math.abs(intakeDiff)} kcal`;
-  const actualGap = calculateNutritionGap(energyPlan, actualTotals);
+  const actualGap = calculateNutritionGap(dietTarget, actualTotals);
   const balanceColor: SemanticColor = deficit >= energyPlan.dailyDeficit ? "positive" : "accent";
   const intakeColor: SemanticColor = intakeDiff > 0 ? "warn" : "accent";
 
@@ -140,10 +214,10 @@ export default function TodayScreen() {
     key: "intake",
     label: "摄入热量",
     unit: "kcal",
-    target: energyPlan.calories,
+    target: dietTarget.calories,
     actual: actualIntake,
     color: intakeColor,
-    progress: actualIntake / Math.max(1, energyPlan.calories),
+    progress: actualIntake / Math.max(1, dietTarget.calories),
   };
   const burnMetric: DashboardMetric = {
     key: "burn",
@@ -159,32 +233,32 @@ export default function TodayScreen() {
       key: "protein",
       label: "蛋白质",
       unit: "g",
-      target: energyPlan.proteinG,
+      target: dietTarget.proteinG,
       actual: Math.round(actualTotals.proteinG),
       color: "accent",
-      progress: actualTotals.proteinG / Math.max(1, energyPlan.proteinG),
+      progress: actualTotals.proteinG / Math.max(1, dietTarget.proteinG),
     },
     {
       key: "fat",
       label: "脂肪",
       unit: "g",
-      target: energyPlan.fatG,
+      target: dietTarget.fatG,
       actual: Math.round(actualTotals.fatG),
       color: "accent2",
-      progress: actualTotals.fatG / Math.max(1, energyPlan.fatG),
+      progress: actualTotals.fatG / Math.max(1, dietTarget.fatG),
     },
     {
       key: "carbs",
       label: "碳水",
       unit: "g",
-      target: energyPlan.carbsG,
+      target: dietTarget.carbsG,
       actual: Math.round(actualTotals.carbsG),
       color: "positive",
-      progress: actualTotals.carbsG / Math.max(1, energyPlan.carbsG),
+      progress: actualTotals.carbsG / Math.max(1, dietTarget.carbsG),
     },
   ];
   const mealPlan = buildMealPlan(plannedPortions, customFoods);
-  const actualMealPlan = buildMealPlan(actualFood.portions, customFoods);
+  const actualMealPlan = buildMealPlan(adjustedActualPortions, customFoods);
   const mealRows = mealSlots.map(({ id, name }) => ({
     id,
     name,
@@ -192,24 +266,28 @@ export default function TodayScreen() {
     actual: actualMealPlan.find((meal) => meal.id === id),
     actualText: actualMealTexts[id],
   }));
-  const today = new Date();
-  const todayKey = formatDateKey(today);
-  const selectedDietPlan = getDietPlanById(selectedDietPlanId);
-  const dietPlanSummary = buildDietPlanSummary(selectedDietPlan, energyPlan, today);
+  const dietPlanSummary = buildDietPlanSummary(selectedDietPlan, energyPlan, today, dietPlanCycleSelection);
+  const mealBudgets = calculateDefaultMealBudgets(dietTarget.calories);
+  const mealDeltas = actualMealPlan.map((meal) => ({
+    id: meal.id,
+    calories: Math.round(meal.totals.calories - mealBudgets[meal.id]),
+  }));
   const adjustmentSummary = useMemo(
     () => buildDailyAdjustmentSummary({
-      target: energyPlan,
+      target: dietTarget,
       actualTotals,
       actualFoodIsDelta: false,
-      plannedTrainingCalories: 0,
+      mealDeltas,
+      plannedTrainingCalories,
       actualTrainingCalories: actualTraining.calories,
+      plannedTrainingFocus,
       gender: profile.gender,
       userProfile: profile,
       goalPlan: goal,
       fatigue: actualTraining.fatigue,
       settings: dynamicAdjustmentSettings
     }),
-    [actualTotals, actualTraining.calories, actualTraining.fatigue, dynamicAdjustmentSettings, energyPlan, goal, profile]
+    [actualTotals, actualTraining.calories, actualTraining.fatigue, dietTarget, dynamicAdjustmentSettings, goal, mealDeltas, plannedTrainingCalories, plannedTrainingFocus, profile]
   );
 
   useEffect(() => {
@@ -219,7 +297,7 @@ export default function TodayScreen() {
 
     const entry: DailyLogEntry = {
       date: todayKey,
-      targetCalories: energyPlan.calories,
+      targetCalories: dietTarget.calories,
       actualIntake: actualTotals,
       actualFoodText,
       actualMealTexts,
@@ -227,12 +305,13 @@ export default function TodayScreen() {
       isComplete: hasFoodRecord && hasTrainingRecord
     };
     saveDailyLog(todayKey, entry);
-  }, [actualFoodText, actualIntake, actualMealTexts, actualTotals, actualTraining, energyPlan.calories, saveDailyLog, todayKey]);
+  }, [actualFoodText, actualIntake, actualMealTexts, actualTotals, actualTraining, dietTarget.calories, saveDailyLog, todayKey]);
 
   function updateActualFoods(text: string) {
     const result = buildActualFoodPortionsFromText(text, customFoods, {
-      dailyCalorieTarget: energyPlan.calories,
+      dailyCalorieTarget: dietTarget.calories,
     });
+    setFoodTagEdits({});
     setActualFoods(text, result.parsed.matched.map((item) => item.food.id));
   }
 
@@ -248,6 +327,11 @@ export default function TodayScreen() {
       .filter(Boolean)
       .join(" ");
     updateActualFoods(joined);
+  }
+
+  function startCustomFoodFromUnmatched(name: string) {
+    setMenuName(name.trim());
+    setMenuCollapsed(false);
   }
 
   function saveCustomFood() {
@@ -351,7 +435,8 @@ export default function TodayScreen() {
                 intakeDiffLabel={intakeDiffLabel}
                 actualGap={actualGap}
                 foodTagEdits={foodTagEdits}
-                onEditTag={(key, label, calories) => setEditingFoodTag({ key, label, calories })}
+                onEditTag={(key, item, label, calories) => setEditingFoodTag(buildFoodTagEdit(key, item, label, calories))}
+                onAddUnmatchedFood={startCustomFoodFromUnmatched}
               />
             ) : (
               <View style={{ gap: 8 }}>
@@ -364,7 +449,14 @@ export default function TodayScreen() {
                   style={getInputStyle(c)}
                 />
                 {preparedResult.unmatched.length > 0 ? (
-                  <BentoText variant="caption" color={c.warn}>未识别：{preparedResult.unmatched.join("、")}</BentoText>
+                  <View style={{ gap: 6 }}>
+                    <BentoText variant="caption" color={c.warn}>未识别：{preparedResult.unmatched.join("、")}</BentoText>
+                    <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+                      {preparedResult.unmatched.map((name) => (
+                        <PillButton key={name} label={`补充 ${name}`} color="warn" onPress={() => startCustomFoodFromUnmatched(name)} />
+                      ))}
+                    </View>
+                  </View>
                 ) : null}
               </View>
             )}
@@ -374,10 +466,10 @@ export default function TodayScreen() {
 
       <GlassTile style={{ gap: 12 }}>
         <CardHeader
-          title={`饮食计划：${dietPlanSummary.name} / ${dietPlanSummary.status}`}
+          title={<PillButton label={`${dietPlanSummary.name} / ${dietPlanSummary.status}`} onPress={() => setDietPlanLogicOpen(true)} color="accent" />}
           collapsed={mealsCollapsed}
           onToggle={() => setMealsCollapsed((value) => !value)}
-          trailing={<PillButton label="查看逻辑" onPress={() => setDietPlanLogicOpen(true)} color="accent" />}
+          trailing={<MealDisplaySwitch value={mealDisplayMode} onChange={setMealDisplayMode} />}
         />
         {!mealsCollapsed ? (
           <View style={{ gap: 8 }}>
@@ -385,17 +477,28 @@ export default function TodayScreen() {
               <MealCompareRow
                 key={row.id}
                 name={row.name}
+                mode={mealDisplayMode}
                 planned={row.planned}
                 actual={row.actual}
                 actualText={row.actualText}
                 onActualTextChange={(text) => updateActualMealFoods(row.id, text)}
               />
             ))}
-            <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", paddingTop: 2 }}>
-              <Badge color={intakeDiff > 0 ? "warn" : "positive"} size="sm">{`实际摄入 ${Math.round(actualIntake)} kcal`}</Badge>
-              <Badge color={intakeDiff > 0 ? "warn" : "accent"} size="sm">{intakeDiffLabel}</Badge>
-              <Badge color="accent" size="sm">蛋白差 {Math.round(actualGap.proteinG)}g</Badge>
-            </View>
+            {mealDisplayMode === "actual" ? (
+              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", paddingTop: 2 }}>
+                <Badge color={intakeDiff > 0 ? "warn" : "positive"} size="sm">{`实际摄入 ${Math.round(actualIntake)} kcal`}</Badge>
+                <Badge color={intakeDiff > 0 ? "warn" : "accent"} size="sm">{intakeDiffLabel}</Badge>
+                <Badge color="accent" size="sm">蛋白差 {Math.round(actualGap.proteinG)}g</Badge>
+              </View>
+            ) : (
+              <View style={{ gap: 8, paddingTop: 2 }}>
+                <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                  <Badge color="positive" size="sm">{`计划摄入 ${Math.round(plannedTotals.calories)} kcal`}</Badge>
+                  <Badge color="accent" size="sm">{`目标 ${dietTarget.calories} kcal`}</Badge>
+                  <Badge color="accent2" size="sm">{dietPlanSummary.status}</Badge>
+                </View>
+              </View>
+            )}
           </View>
         ) : null}
       </GlassTile>
@@ -443,6 +546,8 @@ export default function TodayScreen() {
               hidden: false,
               label: next.label.trim(),
               calories: numberOr(next.calories, 0),
+              grams: numberOr(next.grams, 1),
+              filling: next.defaultFilling.trim(),
             },
           }));
           setEditingFoodTag(null);
@@ -497,7 +602,7 @@ function CardHeader({
   onToggle,
   trailing,
 }: {
-  title: string;
+  title: ReactNode;
   collapsed: boolean;
   onToggle: () => void;
   trailing?: ReactNode;
@@ -505,10 +610,53 @@ function CardHeader({
   const c = useBentoTheme().colors;
   return (
     <View style={{ width: "100%", flexDirection: "row", alignItems: "center", gap: 8 }}>
-      <Label color={c.inkMute} variant="label">{title}</Label>
+      {typeof title === "string" ? <Label color={c.inkMute} variant="label">{title}</Label> : title}
       <View style={{ flex: 1 }} />
       {trailing}
       <PillButton label={collapsed ? "展开" : "收起"} onPress={onToggle} color="accent" />
+    </View>
+  );
+}
+
+function MealDisplaySwitch({ value, onChange }: { value: MealDisplayMode; onChange: (value: MealDisplayMode) => void }) {
+  const c = useBentoTheme().colors;
+  const options: Array<{ value: MealDisplayMode; label: string }> = [
+    { value: "planned", label: "计划饮食" },
+    { value: "actual", label: "实际饮食" },
+  ];
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        padding: 2,
+        borderRadius: 999,
+        backgroundColor: c.glass,
+        borderWidth: 1,
+        borderColor: c.glassBorder,
+      }}
+    >
+      {options.map((option) => {
+        const active = option.value === value;
+        return (
+          <Pressable
+            key={option.value}
+            onPress={() => onChange(option.value)}
+            style={({ pressed }) => ({
+              height: 24,
+              paddingHorizontal: 9,
+              borderRadius: 999,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: active ? c.accent : "transparent",
+              opacity: pressed ? 0.82 : 1,
+            })}
+          >
+            <BentoText weight="semibold" color={active ? c.bg : c.inkMute} style={{ fontSize: 10 }}>
+              {option.label}
+            </BentoText>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -560,6 +708,7 @@ function DietPlanLogicModal({
   summary: DietPlanSummary;
   onClose: () => void;
 }) {
+  const router = useRouter();
   const c = useBentoTheme().colors;
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -578,17 +727,12 @@ function DietPlanLogicModal({
             backgroundColor: c.bg,
             borderWidth: 1,
             borderColor: c.glassBorderBright,
-            overflow: "hidden"
+            overflow: "hidden",
           }}
         >
           <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }} style={{ width: "100%" }}>
             <View style={{ gap: 4 }}>
-              <BentoText
-                weight="bold"
-                variant="caption"
-                color={c.ink}
-                style={{ flexShrink: 1, lineHeight: 18 }}
-              >
+              <BentoText weight="bold" variant="caption" color={c.ink} style={{ flexShrink: 1, lineHeight: 18 }}>
                 {summary.name} / {summary.status}
               </BentoText>
               <BentoText variant="micro" color={c.inkMute} style={{ flexShrink: 1, lineHeight: 16 }}>
@@ -596,129 +740,77 @@ function DietPlanLogicModal({
               </BentoText>
             </View>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {summary.macroLabel.split("·").map((part) => (
-                <Badge key={part.trim()} color="accent" size="sm">{part.trim()}</Badge>
+              {summary.macroLabel.split("路").map((part) => (
+                <Badge key={part.trim()} color="accent" size="sm">
+                  {part.trim()}
+                </Badge>
               ))}
             </View>
             <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18 }}>
               {summary.logic}
             </BentoText>
             <View style={{ gap: 6 }}>
-              <Label color={c.inkFaint} variant="micro">营养数据分配逻辑</Label>
+              <Label color={c.inkFaint} variant="micro">
+                营养数据分配逻辑
+              </Label>
               {summary.allocation.map((item) => (
                 <BentoText key={item} variant="caption" color={c.ink} style={{ lineHeight: 18 }}>
                   {item}
                 </BentoText>
               ))}
             </View>
-            <Button variant="filled" color="accent" block onPress={onClose}>知道了</Button>
+            <View style={{ gap: 8, paddingTop: 4 }}>
+              <Button
+                variant="glass"
+                color="accent"
+                block
+                onPress={() => {
+                  onClose();
+                  router.push("/diet-plan");
+                }}
+              >
+                改变饮食计划
+              </Button>
+              <Button variant="filled" color="accent" block onPress={onClose}>
+                知道了
+              </Button>
+            </View>
           </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>
   );
 }
-
-function buildDietPlanSummary(plan: DietPlan | undefined, energyPlan: EnergyPlan, date: Date): DietPlanSummary {
-  const status = getDietPlanStatus(plan, date);
-  const targets = getDietPlanMacroTargets(plan, status, energyPlan);
+function buildDietPlanSummary(
+  plan: DietPlan | undefined,
+  energyPlan: EnergyPlan,
+  date: Date,
+  selection: DietPlanCycleSelection = {},
+): DietPlanSummary {
+  const resolvedDay = resolveDietPlanDay(plan?.id ?? null, date, selection);
+  const targets = calculateDietPlanMacroTargets(plan?.id ?? null, energyPlan, {
+    date,
+    dayType: resolvedDay.dayType,
+    selection,
+  });
   const name = plan?.name ?? "日常饮食计划";
   const logic = plan
-    ? `${plan.logic} 当前页面会把该方案套到今天的热量、蛋白质、脂肪和碳水目标上。`
+    ? `${plan.logic} 当前使用${resolvedDay.variantName ? `「${resolvedDay.variantName}」` : "该方案默认规则"}，公式：${resolvedDay.formula}`
     : "未选择长期饮食方案时，系统使用日常均衡分配：先按目标体重周期计算每日热量，再保证蛋白质，随后分配脂肪和碳水。";
 
   return {
     name,
-    status,
+    status: resolvedDay.status,
     sourceLabel: plan ? "来自计划页已选择的饮食计划" : "未选择计划时的默认方案",
     macroLabel: `${targets.calories} kcal · 蛋白 ${targets.proteinG}g · 脂肪 ${targets.fatG}g · 碳水 ${targets.carbsG}g`,
     logic,
     allocation: [
       `热量：沿用今日目标 ${targets.calories} kcal，不因为切换饮食法自动突破总预算。`,
       `蛋白质：${targets.proteinG}g，优先保证饱腹感和训练恢复。`,
-      `脂肪：${targets.fatG}g，按饮食法状态调整高低。`,
-      `碳水：${targets.carbsG}g，${status} 会影响碳水倾斜程度。`,
+      `脂肪：${targets.fatG}g，由热量扣除蛋白和碳水后回填。`,
+      `碳水：${targets.carbsG}g，${resolvedDay.status} 会影响碳水倾斜程度。`,
+      ...resolvedDay.notes,
     ],
-  };
-}
-
-function getDietPlanStatus(plan: DietPlan | undefined, date: Date): string {
-  if (!plan) return "日常执行";
-
-  const day = date.getDay();
-  const dateBucket = Math.floor(date.getTime() / 86400000);
-
-  if (plan.id === "carb-cycling") {
-    return ["高碳日", "低碳日", "中碳日", "高碳日", "低碳日", "中碳日", "低碳日"][day] ?? "中碳日";
-  }
-
-  if (plan.id === "if-5-2") {
-    return day === 1 || day === 4 ? "低热量日" : "正常饮食日";
-  }
-
-  if (plan.id === "if-alt-day") {
-    return dateBucket % 2 === 0 ? "轻断食日" : "正常饮食日";
-  }
-
-  if (plan.id === "military-3day") {
-    return `第 ${(dateBucket % 3) + 1} 天`;
-  }
-
-  if (plan.id === "keto") return "生酮执行日";
-  if (plan.id === "low-carb") return "低碳执行日";
-  return "执行日";
-}
-
-function getDietPlanMacroTargets(plan: DietPlan | undefined, status: string, energyPlan: EnergyPlan): NutritionTotals {
-  const base = {
-    calories: Math.round(energyPlan.calories),
-    proteinG: Math.round(energyPlan.proteinG),
-    fatG: Math.round(energyPlan.fatG),
-    carbsG: Math.round(energyPlan.carbsG),
-  };
-
-  if (!plan) return base;
-
-  if (plan.id === "carb-cycling") {
-    if (status === "高碳日") return rebalanceMacros(base.calories, base.proteinG, Math.round(base.carbsG * 1.28));
-    if (status === "低碳日") return rebalanceMacros(base.calories, base.proteinG, Math.round(base.carbsG * 0.58));
-    return base;
-  }
-
-  if (plan.id === "keto") {
-    return rebalanceMacros(base.calories, Math.round(base.proteinG * 1.05), Math.min(50, Math.max(20, Math.round(base.carbsG * 0.22))));
-  }
-
-  if (plan.id === "low-carb") {
-    return rebalanceMacros(base.calories, Math.round(base.proteinG * 1.05), Math.max(80, Math.round(base.carbsG * 0.62)));
-  }
-
-  if (plan.id === "balanced-high-carb" || plan.id === "slow-carb") {
-    return rebalanceMacros(base.calories, base.proteinG, Math.round(base.carbsG * 1.12));
-  }
-
-  if (plan.id === "high-protein-balanced") {
-    return rebalanceMacros(base.calories, Math.round(base.proteinG * 1.12), base.carbsG);
-  }
-
-  if (plan.category === "fasting" && (status === "低热量日" || status === "轻断食日")) {
-    const calories = Math.max(500, Math.round(base.calories * 0.35));
-    return rebalanceMacros(calories, Math.round(base.proteinG * 0.72), Math.round(base.carbsG * 0.35));
-  }
-
-  return base;
-}
-
-function rebalanceMacros(calories: number, proteinG: number, carbsG: number): NutritionTotals {
-  const proteinCalories = proteinG * 4;
-  const carbsCalories = carbsG * 4;
-  const fatG = Math.max(25, Math.round((calories - proteinCalories - carbsCalories) / 9));
-
-  return {
-    calories,
-    proteinG,
-    fatG,
-    carbsG,
   };
 }
 
@@ -864,17 +956,19 @@ function ActualFoodInputSection({
   actualGap,
   foodTagEdits,
   onEditTag,
+  onAddUnmatchedFood,
 }: {
   text: string;
   onTextChange: (text: string) => void;
-  matched: Array<{ food: Food; grams: number; quantity?: number; unit?: string; displayAmount?: string; confidence?: number }>;
+  matched: FoodTagMatch[];
   unmatched: string[];
   actualIntakeCalories: number;
   intakeDiff: number;
   intakeDiffLabel: string;
   actualGap: NutritionTotals;
-  foodTagEdits: Record<string, { hidden?: boolean; label?: string; calories?: number }>;
-  onEditTag: (key: string, label: string, calories: string) => void;
+  foodTagEdits: Record<string, FoodTagOverride>;
+  onEditTag: (key: string, item: FoodTagMatch, label: string, calories: string) => void;
+  onAddUnmatchedFood: (name: string) => void;
 }) {
   const c = useBentoTheme().colors;
   return (
@@ -897,12 +991,19 @@ function ActualFoodInputSection({
               const key = `${item.food.id}-${index}`;
               const edit = foodTagEdits[key];
               if (edit?.hidden) return null;
-              const label = edit?.label ?? `${item.displayAmount ?? (item.quantity ? `${item.quantity}${item.unit ?? ""}` : `${Math.round(item.grams)}g`)} ${item.food.name}`;
+              const amountLabel = edit?.grams ? `${Math.round(edit.grams)}g` : item.displayAmount ?? (item.quantity ? `${item.quantity}${item.unit ?? ""}` : `${Math.round(item.grams)}g`);
+              const label = edit?.label ?? `${amountLabel} ${edit?.filling ? edit.filling + " " : ""}${item.food.name}`;
               const calories = edit?.calories ?? Math.round((item.grams * item.food.caloriesPer100g) / 100);
+              const needsDetails = item.needsDetails && !edit;
               return (
-                <Pressable key={key} onPress={() => onEditTag(key, label, String(calories))}>
+                <Pressable key={key} onPress={() => onEditTag(key, item, label, String(calories))}>
                   <Badge color="accent" size="sm">
                     {`${label} ${calories} kcal`}
+                    {needsDetails ? (
+                      <BentoText weight="bold" color={c.warn} style={{ fontSize: 10 }}>
+                        {" ?"}
+                      </BentoText>
+                    ) : null}
                   </Badge>
                 </Pressable>
               );
@@ -910,10 +1011,106 @@ function ActualFoodInputSection({
           </View>
         </View>
       ) : unmatched.length > 0 ? (
-        <BentoText variant="caption" color={c.warn}>未识别：{unmatched.join("、")}</BentoText>
+        <View style={{ gap: 6 }}>
+          <BentoText variant="caption" color={c.warn}>未识别：{unmatched.join("、")}</BentoText>
+          <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+            {unmatched.map((name) => (
+              <PillButton key={name} label={`补充 ${name}`} color="warn" onPress={() => onAddUnmatchedFood(name)} />
+            ))}
+          </View>
+        </View>
       ) : null}
     </View>
   );
+}
+
+function buildFoodTagEdit(key: string, item: FoodTagMatch, label: string, calories: string): FoodTagEdit {
+  const defaultFilling = inferDefaultFilling(item.food);
+  const caloriesNumber = numberOr(calories, Math.round((item.grams * item.food.caloriesPer100g) / 100));
+  const quantity = item.quantity && item.quantity > 0 ? item.quantity : undefined;
+  return {
+    key,
+    label,
+    calories: String(caloriesNumber),
+    grams: String(Math.round(item.grams)),
+    foodName: item.food.name,
+    foodId: item.food.id,
+    defaultFilling,
+    unitCalories: quantity ? Math.round(caloriesNumber / quantity) : Math.round(calculateFoodTotals(resolveFoodByFilling(item.food, defaultFilling), item.food.defaultUnitGram).calories),
+    caloriesPer100g: item.food.caloriesPer100g,
+    proteinPer100g: item.food.proteinPer100g,
+    fatPer100g: item.food.fatPer100g,
+    carbsPer100g: item.food.carbsPer100g,
+    displayAmount: item.displayAmount,
+    quantity,
+    unit: item.unit
+  };
+}
+
+function applyFoodTagOverrides(portions: FoodPortion[], matched: FoodTagMatch[], edits: Record<string, FoodTagOverride>): FoodPortion[] {
+  return portions.flatMap((portion, index) => {
+    const key = `${portion.foodId}-${index}`;
+    const edit = edits[key];
+    if (edit?.hidden) return [];
+    if (!edit || (!edit.calories && !edit.grams && !edit.label && !edit.filling)) return [portion];
+
+    const match = matched[index];
+    const food = match ? resolveFoodByFilling(match.food, edit.filling) : undefined;
+    const grams = edit.grams ?? Math.abs(portion.grams);
+    const calculatedTotals = food ? calculateFoodTotals(food, grams) : portion.totals;
+    const calories = edit.calories ?? calculatedTotals.calories;
+    const scale = calculatedTotals.calories > 0 ? calories / calculatedTotals.calories : 1;
+
+    return [{
+      ...portion,
+      name: edit.label?.trim() || portion.name,
+      grams: portion.grams < 0 ? -grams : grams,
+      displayAmount: edit.grams ? `${Math.round(grams)}g` : (portion as FoodPortion & { displayAmount?: string }).displayAmount,
+      totals: {
+        calories: Math.round(calories),
+        proteinG: round1(calculatedTotals.proteinG * scale),
+        fatG: round1(calculatedTotals.fatG * scale),
+        carbsG: round1(calculatedTotals.carbsG * scale)
+      }
+    } as FoodPortion & { displayAmount?: string }];
+  });
+}
+
+function inferDefaultFilling(food: Food): string {
+  const text = `${food.id} ${food.name} ${food.aliases.join(" ")}`;
+  if (/包子|baozi|肉包/i.test(text)) return "猪肉大葱馅";
+  if (/饺|水饺|dumpling/i.test(text)) return "猪肉大葱馅";
+  if (/馄饨|云吞/i.test(text)) return "猪肉馅";
+  return food.category === "dish" || food.category === "fastfood" ? "APP默认做法" : "标准食物数据";
+}
+
+function resolveFoodByFilling(food: Food, filling?: string): Food {
+  if (!filling || filling === inferDefaultFilling(food)) return food;
+  const profile = getFillingNutritionProfile(food, filling);
+  if (!profile) return food;
+  return {
+    ...food,
+    caloriesPer100g: profile.caloriesPer100g,
+    proteinPer100g: profile.proteinPer100g,
+    fatPer100g: profile.fatPer100g,
+    carbsPer100g: profile.carbsPer100g
+  };
+}
+
+function getFillingNutritionProfile(food: Food, filling?: string): Pick<Food, "caloriesPer100g" | "proteinPer100g" | "fatPer100g" | "carbsPer100g"> | undefined {
+  const text = `${food.id} ${food.name} ${food.aliases.join(" ")}`;
+  if (!/包子|baozi|肉包/i.test(text)) return undefined;
+  const normalized = filling ?? "";
+  if (/素|蔬菜|青菜/i.test(normalized)) {
+    return { caloriesPer100g: 180, proteinPer100g: 6, fatPer100g: 4, carbsPer100g: 30 };
+  }
+  if (/地三鲜|土豆|茄子|青椒/i.test(normalized)) {
+    return { caloriesPer100g: 205, proteinPer100g: 6, fatPer100g: 6, carbsPer100g: 34 };
+  }
+  if (/牛肉/i.test(normalized)) {
+    return { caloriesPer100g: 245, proteinPer100g: 11, fatPer100g: 9, carbsPer100g: 31 };
+  }
+  return { caloriesPer100g: 244, proteinPer100g: 9, fatPer100g: 8, carbsPer100g: 34 };
 }
 
 function FoodTagEditorModal({
@@ -930,25 +1127,87 @@ function FoodTagEditorModal({
   const c = useBentoTheme().colors;
   const [label, setLabel] = useState(edit?.label ?? "");
   const [calories, setCalories] = useState(edit?.calories ?? "");
+  const [grams, setGrams] = useState(edit?.grams ?? "");
+  const [filling, setFilling] = useState(edit?.defaultFilling ?? "");
+  const [caloriesTouched, setCaloriesTouched] = useState(false);
 
   useEffect(() => {
     if (!edit) return;
     setLabel(edit.label);
     setCalories(edit.calories);
+    setGrams(edit.grams);
+    setFilling(edit.defaultFilling);
+    setCaloriesTouched(false);
   }, [edit]);
 
+  useEffect(() => {
+    if (!edit || caloriesTouched) return;
+    const previewFood = resolveFoodByFilling({
+      id: edit.foodId,
+      name: edit.foodName,
+      aliases: [],
+      category: "dish",
+      caloriesPer100g: edit.caloriesPer100g,
+      proteinPer100g: edit.proteinPer100g,
+      fatPer100g: edit.fatPer100g,
+      carbsPer100g: edit.carbsPer100g,
+      defaultUnitGram: numberOr(edit.grams, 100)
+    }, filling);
+    setCalories(String(calculateFoodTotals(previewFood, numberOr(grams, numberOr(edit.grams, 1))).calories));
+  }, [caloriesTouched, edit, filling, grams]);
+
   if (!edit) return null;
+
+  const currentGrams = numberOr(grams, numberOr(edit.grams, 1));
+  const previewFood = resolveFoodByFilling({
+    id: edit.foodId,
+    name: edit.foodName,
+    aliases: [],
+    category: "dish",
+    caloriesPer100g: edit.caloriesPer100g,
+    proteinPer100g: edit.proteinPer100g,
+    fatPer100g: edit.fatPer100g,
+    carbsPer100g: edit.carbsPer100g,
+    defaultUnitGram: currentGrams
+  }, filling);
+  const calculatedCalories = calculateFoodTotals(previewFood, currentGrams).calories;
+  const finalCalories = numberOr(calories, calculatedCalories);
+  const quantityLabel = edit.quantity ? `${edit.quantity}${edit.unit ?? ""}` : edit.displayAmount ?? `${Math.round(currentGrams)}g`;
+  const unitCalories = edit.quantity && edit.quantity > 0
+    ? Math.round(finalCalories / edit.quantity)
+    : Math.round(calculateFoodTotals(previewFood, previewFood.defaultUnitGram).calories);
+  const fillingOptions = ["猪肉大葱馅", "素馅", "地三鲜馅", "牛肉馅"];
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: "rgba(15,23,42,0.28)", justifyContent: "center", padding: 20 }}>
         <Pressable onPress={(e) => e.stopPropagation()} style={{ borderRadius: 18, backgroundColor: c.bg, borderWidth: 1, borderColor: c.glassBorderBright, padding: 16, gap: 10 }}>
+          <BentoText weight="bold" variant="caption" color={c.ink}>食物标签详情</BentoText>
+          <View style={{ gap: 5, padding: 10, borderRadius: 12, backgroundColor: c.glass, borderWidth: 1, borderColor: c.glassBorder }}>
+            <BentoText variant="caption" color={c.ink}>APP 识别：{quantityLabel} {edit.foodName}</BentoText>
+            <BentoText variant="micro" color={c.inkMute}>默认类型：{filling || edit.defaultFilling}</BentoText>
+            <BentoText variant="micro" color={c.inkMute}>单个估算：{unitCalories} kcal{edit.quantity ? `，共 ${edit.quantity}${edit.unit ?? ""}` : ""}</BentoText>
+            <BentoText variant="micro" color={c.inkMute}>计算：{Math.round(previewFood.caloriesPer100g)} kcal/100g × {Math.round(currentGrams)}g ÷ 100 = {calculatedCalories} kcal</BentoText>
+          </View>
           <BentoText weight="bold" variant="caption" color={c.ink}>编辑识别标签</BentoText>
       <TextInput value={label} onChangeText={setLabel} placeholder="标签文本" placeholderTextColor={c.inkFaint} style={getInputStyle(c)} />
       <TextInput value={calories} onChangeText={setCalories} keyboardType="numeric" placeholder="热量 kcal" placeholderTextColor={c.inkFaint} style={getInputStyle(c)} />
+          <View style={{ gap: 6 }}>
+            <BentoText variant="micro" color={c.inkMute}>馅料 / 类型</BentoText>
+            <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+              {fillingOptions.map((option) => (
+                <PillButton key={option} label={option} color={option === filling ? "accent" : "accent2"} onPress={() => { setFilling(option); setCaloriesTouched(false); }} />
+              ))}
+            </View>
+            <TextInput value={filling} onChangeText={(text) => { setFilling(text); setCaloriesTouched(false); }} placeholder="自定义馅料/做法" placeholderTextColor={c.inkFaint} style={getInputStyle(c)} />
+          </View>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <SmallInput label="重量 g" value={grams} onChangeText={(text) => { setGrams(text); setCaloriesTouched(false); }} />
+            <SmallInput label="最终 kcal" value={calories} onChangeText={(text) => { setCalories(text); setCaloriesTouched(true); }} />
+          </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Button variant="glass" color="warn" block onPress={() => onDelete(edit.key)}>删除标签</Button>
-            <Button variant="filled" color="accent" block onPress={() => onSave({ key: edit.key, label, calories })}>保存更正</Button>
+            <Button variant="filled" color="accent" block onPress={() => onSave({ ...edit, label, calories, grams, defaultFilling: filling })}>保存并同步</Button>
           </View>
         </Pressable>
       </Pressable>
@@ -958,12 +1217,14 @@ function FoodTagEditorModal({
 
 function MealCompareRow({
   name,
+  mode,
   planned,
   actual,
   actualText,
   onActualTextChange,
 }: {
   name: string;
+  mode: MealDisplayMode;
   planned?: MealPlan;
   actual?: MealPlan;
   actualText: string;
@@ -976,28 +1237,12 @@ function MealCompareRow({
         <View style={{ width: 44, justifyContent: "center", paddingRight: 2 }}>
           <BentoText weight="bold" variant="caption" color={c.ink}>{name}</BentoText>
         </View>
-        <View style={{ flex: 1, paddingRight: 10 }}>
-          <MealColumn meal={planned} />
-        </View>
-        <View
-          style={{
-            width: 3,
-            alignSelf: "stretch",
-            marginVertical: 2,
-            borderRadius: 999,
-            backgroundColor: c.accent,
-            ...(Platform.OS === "web"
-              ? { boxShadow: `0px 0px 4px ${c.accent}73` }
-              : {
-                  shadowColor: c.accent,
-                  shadowOpacity: 0.45,
-                  shadowRadius: 4,
-                  shadowOffset: { width: 0, height: 0 },
-                }),
-          }}
-        />
-        <View style={{ flex: 1, paddingLeft: 10 }}>
-          <MealActualColumn meal={actual} text={actualText} onChangeText={onActualTextChange} />
+        <View style={{ flex: 1 }}>
+          {mode === "planned" ? (
+            <MealColumn meal={planned} />
+          ) : (
+            <MealActualColumn meal={actual} text={actualText} onChangeText={onActualTextChange} />
+          )}
         </View>
       </View>
     </GlassTile>
@@ -1059,6 +1304,10 @@ function SmallInput({ label, value, onChangeText }: { label: string; value: stri
 function numberOr(value: string, fallback: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function round1(value: number): number {
+  return Math.round(value * 10) / 10;
 }
 
 function createCustomFoodId(): string {
