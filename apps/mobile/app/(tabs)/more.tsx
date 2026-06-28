@@ -1,5 +1,5 @@
-import { Children, createElement, useRef, useState, type ReactNode } from "react";
-import { Platform, Pressable, View } from "react-native";
+import { createElement, useRef, useState, type ReactNode } from "react";
+import { Alert, Platform, Pressable, Share, View } from "react-native";
 import { muscleGroupLabels, type DynamicAdjustmentSettings, type MealAdjustmentKey, type MuscleGroup, type NutritionAdjustmentKey, type TrainingAdjustmentKey } from "@fitness-calendar/shared";
 import {
   cutePets,
@@ -14,7 +14,6 @@ import {
 } from "../../features/pet";
 import {
   Button,
-  colors,
   LabeledInput,
   Screen,
   Switch,
@@ -22,7 +21,9 @@ import {
   radius,
   useBentoTheme,
 } from "../../components/bento";
+import { SettingsGroup, ExpandableRow as SharedExpandableRow } from "../../components/shared";
 import { useFitnessStore, type FontScaleLevel, fontScaleValues, fontScaleLabels } from "../../store/fitness-store";
+import { buildHealthDataSnapshot } from "../../features/health-data";
 
 const nutritionAdjustmentOptions: Array<{ key: NutritionAdjustmentKey; label: string }> = [
   { key: "calories", label: "热量" },
@@ -75,6 +76,42 @@ export default function MoreScreen() {
   });
   const [petMessage, setPetMessage] = useState("");
   const petImageInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleExportHealthData = async () => {
+    const payload = buildHealthDataSnapshot(useFitnessStore.getState());
+    const json = JSON.stringify(payload, null, 2);
+
+    if (Platform.OS === "web") {
+      const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `fitness-calendar-health-${payload.exportedAt.slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+
+    await Share.share({
+      title: "健康数据导出",
+      message: json,
+    });
+  };
+
+  const handleClearHealthData = () => {
+    Alert.alert(
+      "清除健康数据",
+      "这会重置个人档案、目标、饮食记录、训练记录和饮食计划选择。界面设置会保留。",
+      [
+        { text: "取消", style: "cancel" },
+        {
+          text: "清除",
+          style: "destructive",
+          onPress: () => useFitnessStore.getState().resetHealthData(),
+        },
+      ]
+    );
+  };
 
   const activePet: ActivePet = customPet
     ? { kind: "custom", pet: customPet }
@@ -192,7 +229,7 @@ export default function MoreScreen() {
             </SettingsRow>
 
             {/* 字体大小 */}
-            <ExpandableRow
+            <SharedExpandableRow
               icon="🔤"
               label="字体大小"
               value={fontScaleLabels[fontScale]}
@@ -224,7 +261,7 @@ export default function MoreScreen() {
                   </Pressable>
                 ))}
               </View>
-            </ExpandableRow>
+            </SharedExpandableRow>
           </SettingsGroup>
         </View>
 
@@ -244,7 +281,7 @@ export default function MoreScreen() {
 
             {/* 高级规则 */}
             {dynamicAdjustmentEnabled ? (
-              <ExpandableRow
+              <SharedExpandableRow
                 icon="⚙️"
                 label="高级规则"
                 expanded={rulesExpanded}
@@ -292,7 +329,7 @@ export default function MoreScreen() {
                     ))}
                   </AdjustmentRuleGroup>
                 </View>
-              </ExpandableRow>
+              </SharedExpandableRow>
             ) : null}
           </SettingsGroup>
         </View>
@@ -312,7 +349,7 @@ export default function MoreScreen() {
             </SettingsRow>
 
             {/* 选择宠物 */}
-            <ExpandableRow
+            <SharedExpandableRow
               icon={petIcon}
               label="选择宠物"
               value={activePet?.pet.name ?? "未选择"}
@@ -516,7 +553,27 @@ export default function MoreScreen() {
                   </View>
                 )}
               </View>
-            </ExpandableRow>
+            </SharedExpandableRow>
+          </SettingsGroup>
+        </View>
+
+        {/* ===== 健康数据 ===== */}
+        <View style={{ gap: 6 }}>
+          <SectionHeader>健康数据</SectionHeader>
+          <SettingsGroup>
+            <SettingsRow
+              icon="⇩"
+              label="导出健康数据"
+              subtitle="导出个人档案、饮食、训练、日志与当前计划"
+              onPress={handleExportHealthData}
+            />
+            <SettingsRow
+              icon="✕"
+              label="清除健康数据"
+              subtitle="重置饮食/训练记录与饮食计划选择"
+              dangerous
+              onPress={handleClearHealthData}
+            />
           </SettingsGroup>
         </View>
       </View>
@@ -536,34 +593,24 @@ function SectionHeader({ children }: { children: ReactNode }) {
   );
 }
 
-function SettingsGroup({ children }: { children: ReactNode }) {
+function SettingsRow({
+  icon,
+  label,
+  subtitle,
+  children,
+  onPress,
+  dangerous = false,
+}: {
+  icon: string;
+  label: string;
+  subtitle?: string;
+  children?: ReactNode;
+  onPress?: () => void;
+  dangerous?: boolean;
+}) {
   const theme = useBentoTheme();
   const c = theme.colors;
-  const items = Children.toArray(children).filter(Boolean);
-  return (
-    <View
-      style={{
-        backgroundColor: c.glass,
-        borderRadius: radius.lg,
-        borderWidth: 1,
-        borderColor: c.glassBorder,
-        overflow: "hidden",
-      }}
-    >
-      {items.map((item, index) => (
-        <View key={index}>
-          {index > 0 ? (
-            <View style={{ height: 0.5, backgroundColor: c.glassBorder, marginHorizontal: 16 }} />
-          ) : null}
-          {item}
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function SettingsRow({ icon, label, children }: { icon: string; label: string; children?: ReactNode }) {
-  return (
+  const content = (
     <View
       style={{
         flexDirection: "row",
@@ -571,66 +618,33 @@ function SettingsRow({ icon, label, children }: { icon: string; label: string; c
         justifyContent: "space-between",
         minHeight: 50,
         paddingHorizontal: 16,
+        paddingVertical: 12,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
         <BentoText style={{ fontSize: 18, lineHeight: 22 }}>{icon}</BentoText>
-        <BentoText variant="body">{label}</BentoText>
+        <View style={{ flex: 1, gap: 2 }}>
+          <BentoText variant="body" color={dangerous ? c.warn : c.ink}>{label}</BentoText>
+          {subtitle ? (
+            <BentoText variant="micro" color={dangerous ? c.warn : c.inkMute} numberOfLines={2}>
+              {subtitle}
+            </BentoText>
+          ) : null}
+        </View>
       </View>
       {children}
+      {onPress ? <BentoText style={{ fontSize: 16, color: c.inkFaint, marginLeft: 8 }}>{">"}</BentoText> : null}
     </View>
   );
-}
 
-function ExpandableRow({
-  icon,
-  label,
-  value,
-  expanded,
-  onToggle,
-  children,
-}: {
-  icon: string;
-  label: string;
-  value?: string;
-  expanded: boolean;
-  onToggle: () => void;
-  children?: ReactNode;
-}) {
-  const theme = useBentoTheme();
-  const c = theme.colors;
+  if (!onPress) {
+    return <View style={{ backgroundColor: c.glass, borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>{content}</View>;
+  }
+
   return (
-    <View>
-      <Pressable
-        onPress={onToggle}
-        style={({ pressed }) => ({
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          minHeight: 50,
-          paddingHorizontal: 16,
-          opacity: pressed ? 0.7 : 1,
-        })}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <BentoText style={{ fontSize: 18, lineHeight: 22 }}>{icon}</BentoText>
-          <BentoText variant="body">{label}</BentoText>
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          {value ? (
-            <BentoText variant="caption" color={c.inkMute}>{value}</BentoText>
-          ) : null}
-          <BentoText variant="caption" color={c.inkFaint} style={{ fontSize: 16 }}>
-            {expanded ? "⌄" : "›"}
-          </BentoText>
-        </View>
-      </Pressable>
-      {expanded && children ? (
-        <View style={{ paddingHorizontal: 16, paddingBottom: 14, paddingTop: 6 }}>
-          {children}
-        </View>
-      ) : null}
-    </View>
+    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.72 : 1, backgroundColor: c.glass })}>
+      <View style={{ borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>{content}</View>
+    </Pressable>
   );
 }
 

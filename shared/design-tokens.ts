@@ -32,6 +32,9 @@ export const colors = {
   positive: "#22B870", // 薄荷绿 · 动作 / 达标 / 完成
   warn: "#FF5266", // 红 · 超额 / 警告
   amber: "#FF9F0A", // 琥珀 · 接近上限 / 注意
+
+  // 遮罩层：用于 Modal 背景
+  scrim: "rgba(0,0,0,0.4)",
 } as const;
 
 export const darkColors = {
@@ -59,6 +62,9 @@ export const darkColors = {
   positive: "#3FE088", // 薄荷绿 · 更亮
   warn: "#FF6B7D", // 红 · 更亮
   amber: "#FFB930", // 琥珀 · 更亮
+
+  // 遮罩层：夜间更深的遮罩
+  scrim: "rgba(0,0,0,0.6)",
 } as const;
 
 /** 辉光色（用于阴影 / 光晕，rgba 字符串） */

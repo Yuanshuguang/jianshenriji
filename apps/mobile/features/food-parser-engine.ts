@@ -16,6 +16,8 @@ export type FoodIntelligenceItem = {
   meal: FoodMealSlot;
   confidence: number;
   needsConfirmation: boolean;
+  needsDetails: boolean;
+  detailHint?: string;
   source: "custom" | "builtin" | "online";
   reason: string;
   isDelta: boolean;
@@ -380,6 +382,7 @@ function buildItem(
   const serving = estimateServing(context, food, meal, servingContext, fullText);
   const source = food.source === "custom" ? "custom" : food.source === "online" ? "online" : "builtin";
   const confidence = scoreConfidence(food, serving, range.candidate.normalizedTerm, context, meal);
+  const detailStatus = assessDetailNeed(food, serving, context);
 
   return {
     rawText: context,
@@ -390,6 +393,8 @@ function buildItem(
     meal,
     confidence,
     needsConfirmation: confidence < 0.72,
+    needsDetails: detailStatus.needsDetails,
+    detailHint: detailStatus.hint,
     source,
     reason: serving.reason,
     isDelta: /多吃|额外|加餐|少吃|少了|没吃|不吃/.test(context)
@@ -429,10 +434,11 @@ function getFoodPhraseContext(
     nextRange ? (findQuantityPrefixStart(text, nextRange.start, range.end) ?? nextRange.start) : text.length,
     nextSeparatorIndex(text, range.end) ?? text.length
   );
+  const trailingMeasureEnd = findTrailingMeasureEnd(text, hardRight, nextRange?.start ?? text.length, Boolean(nextRange));
   const ownMeasureStart = findMeasurePrefixStart(text, range.start, segmentLeft);
   const ownQuantityStart = findQuantityPrefixStart(text, range.start, segmentLeft);
   const left = ownMeasureStart ?? ownQuantityStart ?? trimLeadingActionWords(text, hardLeft, range.start);
-  return text.slice(left, hardRight).trim();
+  return text.slice(left, trailingMeasureEnd ?? hardRight).trim();
 }
 
 function trimLeadingActionWords(text: string, left: number, foodStart: number): number {
@@ -485,6 +491,20 @@ function findMeasurePrefixStart(text: string, foodStart: number, minStart: numbe
   return match?.index === undefined ? null : minStart + match.index;
 }
 
+function findTrailingMeasureEnd(text: string, start: number, maxEnd: number, hasNextFood: boolean): number | null {
+  const suffix = text.slice(start, maxEnd);
+  const match = suffix.match(new RegExp(`^\\s*(?:大概|约|大约|差不多)?\\s*(?:有|重|是|约)?\\s*${explicitWeightPattern}`, "i"));
+  if (!match) return null;
+
+  const restBeforeNextFood = suffix.slice(match[0].length).trimStart();
+  if (!restBeforeNextFood && hasNextFood) return null;
+  if (restBeforeNextFood && !actionWords.some((word) => restBeforeNextFood.startsWith(word))) {
+    return null;
+  }
+
+  return start + match[0].length;
+}
+
 function estimateServing(context: string, food: Food, meal: FoodMealSlot, servingContext: FoodServingContext, fullText: string): { grams: number; quantity?: number; unit?: string; reason: string } {
   /* 手机型号锚定重量 */
   const phoneGrams = detectPhoneGrams(fullText || context);
@@ -534,7 +554,7 @@ function estimateServing(context: string, food: Food, meal: FoodMealSlot, servin
     if (servingUnit) {
       const sizeMod = detectSizeModifier(context);
       return {
-        grams: Math.round(servingUnit.grams * count.quantity * sizeMod),
+        grams: Math.round(adjustServingUnitGrams(food, count.unit, servingUnit.grams) * count.quantity * sizeMod),
         quantity: count.quantity,
         unit: count.unit,
         reason: "food-serving-unit"
@@ -630,6 +650,49 @@ function commonUnitGram(unit: string, fallback: number): number {
     拳头: 160
   };
   return map[unit] ?? fallback;
+}
+
+function adjustServingUnitGrams(food: Food, unit: string, grams: number): number {
+  const name = normalizeFoodText(food.name);
+  const aliases = food.aliases.map(normalizeFoodText);
+  const terms = [name, ...aliases].join(" ");
+
+  if (/奶茶|伯牙绝弦|茶姬|奶盖|芝士茶/.test(terms) && unit === "杯") return Math.max(grams, 500);
+  if (/爆米花/.test(terms) && unit === "桶") return Math.max(grams, 250);
+  if (/西瓜/.test(terms) && unit === "个") return Math.max(grams, 1500);
+  if (/提拉米苏|蛋糕|慕斯|芝士蛋糕|黑森林|红丝绒/.test(terms)) {
+    if (unit === "份") return Math.max(grams, 120);
+    if (unit === "块" || unit === "片") return Math.max(grams, 100);
+  }
+
+  return grams;
+}
+
+function assessDetailNeed(food: Food, serving: { reason: string }, context: string): { needsDetails: boolean; hint?: string } {
+  const name = normalizeFoodText(food.name);
+  const aliases = food.aliases.map(normalizeFoodText).join(" ");
+  const terms = `${name} ${aliases}`;
+
+  if (/奶茶|伯牙绝弦|茶姬|奶盖|芝士茶/.test(terms)) {
+    return { needsDetails: true, hint: "糖度/小料会显著影响热量" };
+  }
+  if (/花生/.test(terms) && !/水煮|油炸|炒|鲜花生|生花生/.test(terms + context)) {
+    return { needsDetails: true, hint: "需确认水煮、炒制或油炸" };
+  }
+  if (/爆米花/.test(terms)) {
+    return { needsDetails: true, hint: "需确认焦糖、奶油或无油" };
+  }
+  if (/提拉米苏|蛋糕|慕斯|芝士蛋糕|黑森林|红丝绒/.test(terms) && serving.reason === "food-serving-unit") {
+    return { needsDetails: true, hint: "甜品份量和配方会影响热量" };
+  }
+  if (food.id.startsWith("fallback-")) {
+    return { needsDetails: true, hint: "通用品类估算，建议补充具体类型" };
+  }
+  if (serving.reason === "default-food-serving" || serving.reason === "common-unit" || serving.reason === "semantic-meal-serving") {
+    return { needsDetails: true, hint: "份量来自默认估算" };
+  }
+
+  return { needsDetails: false };
 }
 
 function isSemanticMealUnit(unit: string): boolean {

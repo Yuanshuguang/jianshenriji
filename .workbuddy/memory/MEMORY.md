@@ -48,3 +48,15 @@
 - **TextInput 单独处理**: LabeledInput + index.tsx(5处) + train.tsx(2处) + CalendarHistoryPanel(2处)
 - **UI入口**: 更多页「外观模式」下方的 FontScaleCard，四档按钮+实时预览
 - **日间/夜间兼容**: ThemeProvider useMemo 同时依赖 appearanceMode + fontScale，切换模式不影响字体大小
+
+## UI 审计修复进度 (2026-06-28)
+- **P1-1 train.tsx 拆分 ✅**: 8个组件文件 + training-utils.ts + types/training.ts 已提取，tsc 0错误
+  - 关键：`data/` `utils/` 目录不存在，training-utils.ts 导入需用 `@fitness-calendar/shared` + `features/` + `store/`
+  - `normalizeMuscleGroupFromBodyPart` / `estimateMetFromBodyPart` 在 training-utils.ts 本地定义
+- **P1-2 index.tsx 拆分 ✅**: 1109→466行，提取8个文件到 `components/diet/`
+- **P1-3 动作库独立页面 ✅**: `app/exercise-library/index.tsx`，train.tsx 795→403行
+- **P1-4 触摸目标 44px ✅**: CompactTrainingMetric minHeight→44, train.tsx 两处 hitSlop, 加载更多按钮 42→44
+- **P2-2 加载/空状态 ✅**: `components/shared/EmptyState.tsx` (EmptyState/LoadingState/SkeletonCard)
+- **P2-5 Modal遮罩主题感知 ✅**: 新增 `scrim` token 到 design-tokens.ts
+- **P2-6 基础动画 ✅**: PillButton spring缩放, CardHeader 展开/收起动画
+- **UI审计全部完成** — tsc 全程 0 errors

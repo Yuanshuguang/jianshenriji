@@ -1,5 +1,7 @@
 export * from "./design-tokens";
 export * from "./dynamic-plan-engine";
+export * from "./data/diet-plan-database";
+export * from "./data/training-diet-rules";
 import { categoryFallbackFoods } from "./data/category-fallback-foods";
 import { csvGeneratedFoods } from "./data/curated-foods";
 
@@ -52,6 +54,7 @@ export type FoodPortion = {
   name: string;
   grams: number;
   totals: NutritionTotals;
+  meal?: "breakfast" | "lunch" | "dinner" | "snack";
 };
 
 export type EnergyPlan = NutritionTotals & {
@@ -156,7 +159,7 @@ export const foods: Food[] = [
   food("hamburger", "汉堡", ["牛肉堡", "鸡腿汉堡"], "fastfood", 260, 13, 12, 25, 180, [["个", 180]]),
   food("pizza", "披萨", ["比萨"], "fastfood", 266, 11, 10, 33, 120, [["块", 120], ["片", 120]]),
   food("cola", "可乐", ["汽水", "碳酸饮料"], "drink", 43, 0, 0, 10.6, 330, [["瓶", 500], ["罐", 330]]),
-  food("milk-tea", "奶茶", ["珍珠奶茶", "果茶"], "drink", 70, 1.2, 2.4, 11, 500, [["杯", 500]]),
+  food("milk-tea", "奶茶", ["珍珠奶茶", "果茶", "伯牙绝弦", "霸王茶姬", "霸王茶姬伯牙绝弦", "原叶鲜奶茶"], "drink", 70, 1.2, 2.4, 11, 500, [["杯", 500]]),
   food("americano", "美式咖啡", ["美式", "黑咖啡"], "drink", 3, 0.2, 0, 0, 300, [["杯", 300], ["瓶", 300]]),
   food("latte", "拿铁", ["拿铁咖啡"], "drink", 50, 2.8, 2, 4.8, 300, [["杯", 300], ["瓶", 300]]),
   food("coffee", "咖啡", ["咖啡饮品"], "drink", 35, 1.8, 1.4, 4, 300, [["杯", 300]]),
@@ -194,6 +197,9 @@ export const foods: Food[] = [
   food("hunan-chili-fried-pork", "辣椒炒肉", ["湖南辣椒炒肉", "农家辣椒炒肉", "小炒肉", "湘味小炒肉"], "dish", 185, 12, 13, 5, 300, [["份", 300], ["盘", 300]]),
   food("chicken-oat-onigiri", "鸡肉燕麦饭团", ["鸡肉饭团", "燕麦饭团", "健身饭团", "鸡胸肉燕麦饭团"], "staple", 185, 9, 4, 28, 110, [["个", 110], ["只", 110]]),
   food("spicy-peanuts", "麻辣花生米", ["麻辣花生", "香辣花生米", "香辣花生", "酒鬼花生"], "snack", 590, 24, 46, 22, 30, [["把", 25], ["包", 80], ["袋", 80]]),
+  food("peanuts", "花生", ["花生米", "落花生"], "snack", 567, 25.8, 49.2, 16.1, 30, [["把", 30], ["份", 30]]),
+  food("boiled-peanuts", "水煮花生", ["煮花生", "盐水花生"], "snack", 313, 12, 25.4, 13, 30, [["把", 30], ["份", 30]]),
+  food("fried-peanuts", "油炸花生", ["炸花生", "油炸花生米"], "snack", 583, 22.2, 47.1, 26.2, 30, [["把", 30], ["份", 30]]),
   food("garlic-bread-crisps", "蒜香面包干", ["蒜香面包片", "蒜香法棍片", "面包干", "烤面包干"], "snack", 400, 9, 12, 66, 30, [["包", 30], ["袋", 30], ["小包", 30], ["片", 10]]),
   food("generic-riceball", "饭团", ["便利店饭团", "日式饭团", "海苔饭团"], "staple", 180, 5, 4, 30, 110, [["个", 110], ["只", 110]]),
   food("qiaoguo", "巧克力曲奇", ["巧克力饼干", "趣多多", "趣多多的曲奇"], "snack", 510, 6, 25, 65, 100, [["包", 100], ["袋", 100], ["块", 12]]),
@@ -305,6 +311,7 @@ export const exercises: Exercise[] = [
   exercise("bench-press", "卧推", ["杠铃卧推", "哑铃卧推"], "chest", ["杠铃", "哑铃", "健身房器械"], 6),
   exercise("pull-up", "引体向上", ["引体", "单杠"], "back", ["徒手", "健身房器械"], 8),
   exercise("row", "划船", ["哑铃划船", "坐姿划船"], "back", ["哑铃", "健身房器械"], 6),
+  exercise("deadlift", "硬拉", ["杠铃硬拉", "罗马尼亚硬拉"], "legs", ["杠铃", "哑铃", "健身房器械"], 6.8),
   exercise("squat", "深蹲", ["杠铃深蹲", "徒手深蹲"], "legs", ["徒手", "杠铃", "哑铃"], 6.5),
   exercise("lunge", "弓步蹲", ["箭步蹲"], "legs", ["徒手", "哑铃"], 5.5),
   exercise("shoulder-press", "推举", ["肩推", "哑铃推举"], "shoulders", ["哑铃", "杠铃"], 5.5),
@@ -386,18 +393,51 @@ export function recommendMacroAwarePortions(selectedFoods: Food[], energyPlan: N
   if (selectedFoods.length === 0) return [];
 
   const targetCalories = Math.max(300, energyPlan.calories);
-  const totalWeight = selectedFoods.reduce((sum, item) => sum + foodPriorityWeight(item), 0);
+  const portions: FoodPortion[] = [];
+  const flexibleFoods = selectedFoods.filter(canSplitForMealPlanning);
+  const wholeServingFoods = selectedFoods.filter((item) => !canSplitForMealPlanning(item));
+  const mealBudgets = [
+    { meal: "breakfast" as const, calories: targetCalories * 0.25 },
+    { meal: "lunch" as const, calories: targetCalories * 0.35 },
+    { meal: "dinner" as const, calories: targetCalories * 0.30 },
+    { meal: "snack" as const, calories: targetCalories * 0.10 }
+  ];
+  const pools = {
+    protein: flexibleFoods.filter((item) => item.category === "protein" || item.category === "supplement" || item.proteinPer100g >= 12),
+    staple: flexibleFoods.filter((item) => item.category === "staple" || (item.carbsPer100g >= 16 && item.category !== "dish" && item.category !== "fastfood")),
+    vegetable: flexibleFoods.filter((item) => item.category === "vegetable"),
+    fruit: flexibleFoods.filter((item) => item.category === "fruit"),
+    fat: flexibleFoods.filter((item) => item.fatPer100g >= 12 && item.category !== "fastfood" && item.category !== "dish"),
+    drinkSnack: flexibleFoods.filter((item) => item.category === "drink" || item.category === "snack")
+  };
 
-  return selectedFoods.map((item) => {
-    const calorieShare = targetCalories * (foodPriorityWeight(item) / Math.max(1, totalWeight));
-    const grams = clamp(Math.round((calorieShare / Math.max(20, item.caloriesPer100g)) * 100 / 5) * 5, 30, item.category === "vegetable" ? 500 : 420);
-    return {
-      foodId: item.id,
-      name: item.name,
-      grams,
-      totals: calculateFoodTotals(item, grams)
-    };
+  wholeServingFoods.forEach((foodItem, index) => {
+    portions.push(buildPortion(foodItem, wholeServingGrams(foodItem), preferredWholeServingMeal(foodItem, index)));
   });
+
+  mealBudgets.forEach(({ meal, calories }) => {
+    if (meal === "snack") {
+      const snackFood = pickNext([...pools.fruit, ...pools.drinkSnack, ...pools.fat, ...pools.protein], portions);
+      if (snackFood) portions.push(buildPortion(snackFood, gramsForCalories(snackFood, calories * 0.75, meal), meal));
+      return;
+    }
+
+    const protein = pickNext(pools.protein, portions);
+    const staple = pickNext(pools.staple, portions);
+    const vegetable = pickNext(pools.vegetable, portions);
+    const fat = pickNext(pools.fat, portions);
+
+    if (protein) portions.push(buildPortion(protein, gramsForCalories(protein, calories * 0.38, meal), meal));
+    if (staple) portions.push(buildPortion(staple, gramsForCalories(staple, calories * 0.35, meal), meal));
+    if (vegetable) portions.push(buildPortion(vegetable, gramsForCalories(vegetable, calories * 0.18, meal), meal));
+    if (fat && fat.id !== protein?.id) portions.push(buildPortion(fat, gramsForCalories(fat, calories * 0.10, meal), meal));
+  });
+
+  if (portions.length > 0) return mergePortions(portions);
+
+  return selectedFoods.map((item, index) =>
+    buildPortion(item, canSplitForMealPlanning(item) ? clampToServing(item, item.defaultUnitGram) : wholeServingGrams(item), index % 2 === 0 ? "lunch" : "dinner")
+  );
 }
 
 export function generateTrainingQueue(allExercises: Exercise[], preference: {
@@ -422,16 +462,16 @@ export function generateTrainingQueue(allExercises: Exercise[], preference: {
     const cardio = available.find((item) => item.primaryMuscleGroup === "cardio");
     const items = picked.map((item) => ({
       exerciseId: item.id,
-      sets: 4,
-      reps: item.primaryMuscleGroup === "core" ? "45秒" : "8-12",
+      sets: 0,
+      reps: "参考动作",
       minutes: Math.max(6, Math.round((minutes * (1 - preference.cardioRatio)) / Math.max(1, picked.length)))
     }));
 
     if (cardio && preference.cardioRatio > 0.1) {
       items.push({
         exerciseId: cardio.id,
-        sets: 1,
-        reps: "中等强度",
+        sets: 0,
+        reps: "参考有氧",
         minutes: Math.max(8, Math.round(minutes * preference.cardioRatio))
       });
     }
@@ -505,6 +545,165 @@ function foodPriorityWeight(foodItem: Food): number {
     default:
       return 1;
   }
+}
+
+function buildPortion(foodItem: Food, grams: number, meal: NonNullable<FoodPortion["meal"]>): FoodPortion {
+  const roundedGrams = Math.max(5, Math.round(grams / 5) * 5);
+  return {
+    foodId: foodItem.id,
+    name: foodItem.name,
+    grams: roundedGrams,
+    meal,
+    totals: calculateFoodTotals(foodItem, roundedGrams)
+  };
+}
+
+function canSplitForMealPlanning(foodItem: Food): boolean {
+  const text = foodDescriptorText(foodItem);
+
+  // 生活常识规则：能稳定保存、能按克取用的食物才拆分；单个成品、现做碗餐和易坏整果按一份处理。
+  if (foodItem.category === "vegetable") return true;
+  if (foodItem.category === "supplement") return true;
+  if (foodItem.category === "dish" || foodItem.category === "fastfood") return isClearlyShareablePreparedFood(text);
+  if (foodItem.category === "fruit") return isShareableFruit(text, foodItem);
+  if (foodItem.category === "snack") return isStorableSnack(text);
+  if (foodItem.category === "drink") return isResealableDrink(text, foodItem);
+  if (foodItem.category === "protein") return !isSmallWholeUnit(foodItem, text);
+  if (foodItem.category === "staple") return !isSmallWholeUnit(foodItem, text) && !isCookedBowlFood(text);
+  return true;
+}
+
+function wholeServingGrams(foodItem: Food): number {
+  return clampToServing(foodItem, bestServingGram(foodItem));
+}
+
+function bestServingGram(foodItem: Food): number {
+  const usefulUnit = foodItem.servingUnits?.find((unit) => isWholeServingUnit(unit.name));
+  return usefulUnit?.grams ?? foodItem.defaultUnitGram;
+}
+
+function preferredWholeServingMeal(foodItem: Food, index: number): NonNullable<FoodPortion["meal"]> {
+  if (foodItem.category === "fruit" || foodItem.category === "snack" || foodItem.category === "drink") return "snack";
+  if (foodItem.category === "protein" || /蛋|egg/i.test(foodDescriptorText(foodItem))) return "breakfast";
+  if (foodItem.category === "staple" && /包子|馒头|烧饼|贝果|饭团|面包|bread|bagel/i.test(foodDescriptorText(foodItem))) {
+    return index % 2 === 0 ? "breakfast" : "lunch";
+  }
+  return index % 2 === 0 ? "lunch" : "dinner";
+}
+
+function foodDescriptorText(foodItem: Food): string {
+  return [foodItem.name, ...foodItem.aliases, foodItem.id, ...(foodItem.servingUnits?.map((unit) => unit.name) ?? [])].join(" ");
+}
+
+function isClearlyShareablePreparedFood(text: string): boolean {
+  if (/披萨|比萨|pizza|烤鸡|炸鸡|火锅|冒菜/i.test(text)) return true;
+  return false;
+}
+
+function isShareableFruit(text: string, foodItem: Food): boolean {
+  if (/西瓜|哈密瓜|蜜瓜|榴莲|菠萝|葡萄|蓝莓|草莓|樱桃|莓|瓜|melon|berry|grape/i.test(text)) return true;
+  if (/香蕉|苹果|橙|橘|梨|桃|芒果|猕猴桃|奇异果|火龙果|山竹|banana|apple|orange|kiwi|mango/i.test(text)) return false;
+  return foodItem.defaultUnitGram >= 250 && !isSmallWholeUnit(foodItem, text);
+}
+
+function isStorableSnack(text: string): boolean {
+  if (/冰淇淋|雪糕|蛋糕|奶油|布丁|果冻|龟苓膏|烧仙草|月饼|蛋黄酥|包子|热食/i.test(text)) return false;
+  if (/饼干|曲奇|威化|薯片|锅巴|仙贝|雪饼|米饼|坚果|花生|腰果|杏仁|核桃|开心果|肉干|肉脯|牛肉干|猪肉脯|海苔|果干|芒果干|辣条|魔芋爽|面包干|膨化|干|biscuit|cookie|chips|nuts/i.test(text)) return true;
+  return false;
+}
+
+function isResealableDrink(text: string, foodItem: Food): boolean {
+  if (/奶茶|豆浆|咖啡|拿铁|酸奶|杯|罐|milk.?tea|latte|coffee|yogurt/i.test(text)) return false;
+  return Boolean(foodItem.servingUnits?.some((unit) => /瓶|盒|carton|bottle/i.test(unit.name)));
+}
+
+function isSmallWholeUnit(foodItem: Food, text: string): boolean {
+  if (/米饭|面条|燕麦|土豆|红薯|玉米|rice|noodle|oat/i.test(text)) return false;
+  if (/包子|馒头|烧饼|汉堡|贝果|饭团|鸡蛋|鸭蛋|蛋白棒|香肠|热干面|豌杂面|牛肉面|拉面|米线|粉丝|方便面|泡面|桶面|杯面|instant/i.test(text)) return true;
+  if (foodItem.servingUnits?.some((unit) => isWholeServingUnit(unit.name) && unit.grams <= 180)) return true;
+  return false;
+}
+
+function isCookedBowlFood(text: string): boolean {
+  return /热干面|豌杂面|牛肉面|拉面|米线|粉丝|粥|汤面|拌面|炒饭|盖饭|饭团|方便面|泡面|桶面|杯面|instant/i.test(text);
+}
+
+function isWholeServingUnit(unitName: string): boolean {
+  return /个|根|颗|只|枚|块|片|包|袋|桶|碗|份|杯|罐|瓶|盒/.test(unitName);
+}
+
+function gramsForCalories(foodItem: Food, calories: number, meal: NonNullable<FoodPortion["meal"]>): number {
+  const grams = (calories / Math.max(20, foodItem.caloriesPer100g)) * 100;
+  const max = portionMaxGrams(foodItem, meal);
+  const min = portionMinGrams(foodItem);
+  return clamp(grams, min, max);
+}
+
+function clampToServing(foodItem: Food, grams: number): number {
+  return clamp(grams, portionMinGrams(foodItem), portionMaxGrams(foodItem, "lunch"));
+}
+
+function portionMinGrams(foodItem: Food): number {
+  if (foodItem.category === "vegetable") return 80;
+  if (foodItem.category === "drink") return 150;
+  if (foodItem.category === "snack") return 20;
+  if (foodItem.category === "supplement") return 20;
+  return 40;
+}
+
+function portionMaxGrams(foodItem: Food, meal: NonNullable<FoodPortion["meal"]>): number {
+  if (foodItem.category === "vegetable") return meal === "breakfast" ? 120 : 220;
+  if (foodItem.category === "fruit") return 200;
+  if (foodItem.category === "staple") return meal === "breakfast" ? 160 : 260;
+  if (foodItem.category === "protein") return meal === "breakfast" ? 120 : 180;
+  if (foodItem.category === "supplement") return 40;
+  if (foodItem.category === "drink") return 500;
+  if (foodItem.category === "snack") return 60;
+  return 420;
+}
+
+function pickNext(candidates: Food[], portions: FoodPortion[]): Food | undefined {
+  if (candidates.length === 0) return undefined;
+  const counts = new Map<string, number>();
+  portions.forEach((portion) => counts.set(portion.foodId, (counts.get(portion.foodId) ?? 0) + 1));
+  return candidates
+    .slice()
+    .sort((left, right) => (counts.get(left.id) ?? 0) - (counts.get(right.id) ?? 0))[0];
+}
+
+function mergePortions(portions: FoodPortion[]): FoodPortion[] {
+  const merged = new Map<string, FoodPortion>();
+  portions.forEach((portion) => {
+    const key = `${portion.meal ?? ""}:${portion.foodId}`;
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, portion);
+      return;
+    }
+    const grams = existing.grams + portion.grams;
+    const foodItem = foods.find((item) => item.id === portion.foodId) ?? portionToFoodFallback(portion);
+    merged.set(key, {
+      ...existing,
+      grams,
+      totals: calculateFoodTotals(foodItem, grams)
+    });
+  });
+  return Array.from(merged.values());
+}
+
+function portionToFoodFallback(portion: FoodPortion): Food {
+  const factor = Math.max(1, portion.grams) / 100;
+  return {
+    id: portion.foodId,
+    name: portion.name,
+    aliases: [],
+    category: "dish",
+    caloriesPer100g: portion.totals.calories / factor,
+    proteinPer100g: portion.totals.proteinG / factor,
+    fatPer100g: portion.totals.fatG / factor,
+    carbsPer100g: portion.totals.carbsG / factor,
+    defaultUnitGram: portion.grams
+  };
 }
 function round1(value: number): number {
   return Math.round(value * 10) / 10;

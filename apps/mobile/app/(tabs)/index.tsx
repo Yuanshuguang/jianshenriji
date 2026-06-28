@@ -7,6 +7,7 @@ import {
   getFoodByIdFromCatalog,
   getFoodCatalog,
   recommendMacroAwarePortions,
+  resolveTrainingDietRecommendation,
   resolveDietPlanDay,
   sumNutrition,
   type DailyLogEntry,
@@ -46,6 +47,7 @@ import {
 } from "../../features/today-plan";
 import { buildDailyAdjustmentSummary } from "../../features/adjustments";
 import { getDietPlanById, type DietPlan } from "../../features/diet-plans";
+import { searchOnlineFood } from "../../features/food-online-search";
 import { buildTrainingQueue, useCurrentEnergyPlan, useFitnessStore } from "../../store/fitness-store";
 
 type FoodRecordMode = "actual" | "prepared";
@@ -159,6 +161,7 @@ export default function TodayScreen() {
   const [foodTagEdits, setFoodTagEdits] = useState<Record<string, FoodTagOverride>>({});
   const [editingFoodTag, setEditingFoodTag] = useState<FoodTagEdit | null>(null);
   const [dietPlanLogicOpen, setDietPlanLogicOpen] = useState(false);
+  const [onlineFoodLookup, setOnlineFoodLookup] = useState<Record<string, { loading?: boolean; message?: string }>>({});
 
   const today = new Date();
   const todayKey = formatDateKey(today);
@@ -180,11 +183,26 @@ export default function TodayScreen() {
   };
   const recommendedTrainingQueue = buildTrainingQueue(exercises, trainingPreference);
   const recommendedWorkout = recommendedTrainingQueue[0];
-  const plannedTrainingFocus = todayTrainingPlan.focus ?? recommendedWorkout?.focus;
-  const plannedTrainingBaseCalories = estimateTodayWorkoutCalories(recommendedWorkout, profile.weightKg);
+  const dietTrainingRecommendation = resolveTrainingDietRecommendation({
+    planId: selectedDietPlanId,
+    dayType: resolvedDietDay.dayType,
+    exercises,
+    preferredMuscleGroups: trainingPreference.preferredMuscleGroups,
+    baseMinutes: trainingPreference.minutesPerSession,
+    manualFocus: todayTrainingPlan.focus,
+    manualMinutes: todayTrainingPlan.minutes
+  });
+  const plannedTrainingFocus = dietTrainingRecommendation.focus;
+  const plannedTrainingWorkout = buildTrainingQueue(exercises, {
+    ...trainingPreference,
+    daysPerWeek: 1,
+    minutesPerSession: dietTrainingRecommendation.durationMinutes,
+    preferredMuscleGroups: [dietTrainingRecommendation.focus]
+  })[0] ?? recommendedWorkout;
+  const plannedTrainingBaseCalories = estimateTodayWorkoutCalories(plannedTrainingWorkout, profile.weightKg);
   const plannedTrainingCalories =
-    todayTrainingPlan.minutes && recommendedWorkout?.estimatedMinutes
-      ? Math.round(plannedTrainingBaseCalories * (todayTrainingPlan.minutes / Math.max(1, recommendedWorkout.estimatedMinutes)))
+    todayTrainingPlan.minutes && plannedTrainingWorkout?.estimatedMinutes
+      ? Math.round(plannedTrainingBaseCalories * (todayTrainingPlan.minutes / Math.max(1, plannedTrainingWorkout.estimatedMinutes)))
       : plannedTrainingBaseCalories;
 
   const selectedFoods = selectedFoodIds.flatMap((foodId) => {
@@ -334,6 +352,20 @@ export default function TodayScreen() {
     setMenuCollapsed(false);
   }
 
+  async function searchFoodFromUnmatched(name: string) {
+    const key = name.trim();
+    if (!key) return;
+    setOnlineFoodLookup((current) => ({ ...current, [key]: { loading: true, message: "联网搜索中..." } }));
+    const result = await searchOnlineFood(key);
+    if (!result.food) {
+      setOnlineFoodLookup((current) => ({ ...current, [key]: { loading: false, message: result.error ?? "未找到可用数据" } }));
+      return;
+    }
+    addCustomFood(result.food);
+    addMenuFood(result.food);
+    setOnlineFoodLookup((current) => ({ ...current, [key]: { loading: false, message: "已补全到我的菜单" } }));
+  }
+
   function saveCustomFood() {
     const name = menuName.trim();
     if (!name) return;
@@ -437,6 +469,8 @@ export default function TodayScreen() {
                 foodTagEdits={foodTagEdits}
                 onEditTag={(key, item, label, calories) => setEditingFoodTag(buildFoodTagEdit(key, item, label, calories))}
                 onAddUnmatchedFood={startCustomFoodFromUnmatched}
+                onlineFoodLookup={onlineFoodLookup}
+                onSearchUnmatchedFood={searchFoodFromUnmatched}
               />
             ) : (
               <View style={{ gap: 8 }}>
@@ -449,14 +483,12 @@ export default function TodayScreen() {
                   style={getInputStyle(c)}
                 />
                 {preparedResult.unmatched.length > 0 ? (
-                  <View style={{ gap: 6 }}>
-                    <BentoText variant="caption" color={c.warn}>未识别：{preparedResult.unmatched.join("、")}</BentoText>
-                    <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
-                      {preparedResult.unmatched.map((name) => (
-                        <PillButton key={name} label={`补充 ${name}`} color="warn" onPress={() => startCustomFoodFromUnmatched(name)} />
-                      ))}
-                    </View>
-                  </View>
+                  <UnmatchedFoodActions
+                    unmatched={preparedResult.unmatched}
+                    lookup={onlineFoodLookup}
+                    onManual={startCustomFoodFromUnmatched}
+                    onSearch={searchFoodFromUnmatched}
+                  />
                 ) : null}
               </View>
             )}
@@ -957,6 +989,8 @@ function ActualFoodInputSection({
   foodTagEdits,
   onEditTag,
   onAddUnmatchedFood,
+  onlineFoodLookup,
+  onSearchUnmatchedFood,
 }: {
   text: string;
   onTextChange: (text: string) => void;
@@ -969,6 +1003,8 @@ function ActualFoodInputSection({
   foodTagEdits: Record<string, FoodTagOverride>;
   onEditTag: (key: string, item: FoodTagMatch, label: string, calories: string) => void;
   onAddUnmatchedFood: (name: string) => void;
+  onlineFoodLookup: Record<string, { loading?: boolean; message?: string }>;
+  onSearchUnmatchedFood: (name: string) => void;
 }) {
   const c = useBentoTheme().colors;
   return (
@@ -1011,15 +1047,44 @@ function ActualFoodInputSection({
           </View>
         </View>
       ) : unmatched.length > 0 ? (
-        <View style={{ gap: 6 }}>
-          <BentoText variant="caption" color={c.warn}>未识别：{unmatched.join("、")}</BentoText>
-          <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
-            {unmatched.map((name) => (
-              <PillButton key={name} label={`补充 ${name}`} color="warn" onPress={() => onAddUnmatchedFood(name)} />
-            ))}
-          </View>
-        </View>
+        <UnmatchedFoodActions
+          unmatched={unmatched}
+          lookup={onlineFoodLookup}
+          onManual={onAddUnmatchedFood}
+          onSearch={onSearchUnmatchedFood}
+        />
       ) : null}
+    </View>
+  );
+}
+
+function UnmatchedFoodActions({
+  unmatched,
+  lookup,
+  onManual,
+  onSearch,
+}: {
+  unmatched: string[];
+  lookup: Record<string, { loading?: boolean; message?: string }>;
+  onManual: (name: string) => void;
+  onSearch: (name: string) => void;
+}) {
+  const c = useBentoTheme().colors;
+  return (
+    <View style={{ gap: 6 }}>
+      <BentoText variant="caption" color={c.warn}>未识别：{unmatched.join("、")}</BentoText>
+      <View style={{ gap: 6 }}>
+        {unmatched.map((name) => {
+          const state = lookup[name];
+          return (
+            <View key={name} style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+              <PillButton label={`手动补充 ${name}`} color="warn" onPress={() => onManual(name)} />
+              <PillButton label={state?.loading ? "搜索中" : "联网补全"} color="accent2" onPress={() => onSearch(name)} />
+              {state?.message ? <BentoText variant="micro" color={c.inkMute}>{state.message}</BentoText> : null}
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 }

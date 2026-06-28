@@ -2,7 +2,7 @@
 // 核心目标：口语长句先拆餐次和食物片段，再绑定数量单位，最后匹配整菜优先词库。
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { Food } from "@fitness-calendar/shared";
+import { calculateFoodTotals, foods, recommendMacroAwarePortions, type Food } from "@fitness-calendar/shared";
 import { parseFoodIntelligence, type FoodIntelligenceItem } from "../food-intelligence-engine";
 import { buildActualFoodPortionsFromText, buildMealPlan } from "../today-plan";
 
@@ -70,6 +70,90 @@ test("meal plan keeps macro totals", () => {
   assert.equal(totals.proteinG, 20);
   assert.equal(totals.fatG, 5);
   assert.equal(totals.carbsG, 25);
+});
+
+test("APP推荐食材分配：不把蔬菜主食集中到早餐，整份食品不拆餐", () => {
+  const picked = ["cabbage", "potato", "egg", "chicken-breast"]
+    .map((id) => foods.find((item) => item.id === id))
+    .filter((item): item is Food => Boolean(item));
+  const portions = recommendMacroAwarePortions(picked, {
+    calories: 1600,
+    proteinG: 110,
+    fatG: 45,
+    carbsG: 180
+  });
+  const mealPlan = buildMealPlan(portions);
+  const breakfast = mealPlan.find((meal) => meal.id === "breakfast");
+  const breakfastNames = breakfast?.foods.map((item) => item.name) ?? [];
+
+  assert.ok(breakfastNames.some((name) => /鸡蛋|鸡胸肉/.test(name)), "breakfast should include protein");
+  assert.ok(!breakfast?.foods.some((item) => item.name === "白菜" && item.grams > 180), "breakfast cabbage should not be oversized");
+  assert.ok(mealPlan.filter((meal) => meal.foods.length > 0).length >= 3, "prepared foods should be spread across meals");
+
+  const instantNoodles = foods.find((item) => item.id === "instant-noodles");
+  assert.ok(instantNoodles);
+  const noodlePlan = buildMealPlan(recommendMacroAwarePortions([instantNoodles], {
+    calories: 1600,
+    proteinG: 110,
+    fatG: 45,
+    carbsG: 180
+  }));
+  const noodleMeals = noodlePlan.filter((meal) => meal.foods.some((item) => item.name === "方便面"));
+  assert.equal(noodleMeals.length, 1);
+});
+
+test("APP推荐食材分配：按生活常识判断是否适合拆分", () => {
+  const banana = foods.find((item) => item.id === "banana");
+  assert.ok(banana);
+  const bananaPlan = buildMealPlan(recommendMacroAwarePortions([banana], {
+    calories: 1600,
+    proteinG: 110,
+    fatG: 45,
+    carbsG: 180
+  }));
+  const bananaMeals = bananaPlan.filter((meal) => meal.foods.some((item) => item.name === "香蕉"));
+  assert.equal(bananaMeals.length, 1);
+  assert.equal(bananaMeals[0]?.foods.find((item) => item.name === "香蕉")?.grams, 120);
+
+  const baozi: Food = {
+    id: "test-baozi",
+    name: "包子",
+    aliases: ["肉包"],
+    category: "staple",
+    caloriesPer100g: 230,
+    proteinPer100g: 8,
+    fatPer100g: 6,
+    carbsPer100g: 36,
+    defaultUnitGram: 90,
+    servingUnits: [{ name: "个", grams: 90 }],
+    source: "custom"
+  };
+  const cookie: Food = {
+    id: "test-cookie",
+    name: "饼干",
+    aliases: ["苏打饼干"],
+    category: "snack",
+    caloriesPer100g: 480,
+    proteinPer100g: 6,
+    fatPer100g: 20,
+    carbsPer100g: 68,
+    defaultUnitGram: 100,
+    servingUnits: [{ name: "包", grams: 100 }],
+    source: "custom"
+  };
+  const portions = recommendMacroAwarePortions([baozi, cookie], {
+    calories: 1600,
+    proteinG: 110,
+    fatG: 45,
+    carbsG: 180
+  });
+  const baoziPortions = portions.filter((item) => item.foodId === "test-baozi");
+  const cookiePortions = portions.filter((item) => item.foodId === "test-cookie");
+
+  assert.equal(baoziPortions.length, 1, "small whole foods should not be split across meals");
+  assert.equal(baoziPortions[0]?.grams, 90);
+  assert.ok(cookiePortions.length >= 1, "dry storable snacks can be allocated by grams");
+  assert.ok(cookiePortions.every((item) => item.grams < 100), "cookie does not have to be forced to a full pack");
 });
 
 test("基础识别：白菜 豆腐 米饭 至少匹配 3 项", () => {
@@ -514,6 +598,55 @@ test("细分份量：经典小吃、烘焙零食和月饼按更精确默认份�
   assert.equal(byId.get("huangzhuang-mooncake")?.grams, 23);
   assert.equal(byId.get("egg-yolk-pastry-light")?.grams, 45);
   assert.equal(byId.get("garlic-bread-crisps")?.grams, 60);
+});
+
+test("真实口语：后置重量优先于半个、半杯、一桶等容器估算", () => {
+  const watermelon = parseFoodIntelligence("早上吃了半个西瓜，大概有半斤");
+  const watermelonItem = watermelon.items.find((item) => item.food.id === "watermelon");
+  assert.ok(watermelonItem, "expected watermelon");
+  assert.equal(watermelonItem?.grams, 250);
+  assert.equal(watermelonItem?.reason, "explicit-weight");
+  assert.equal(watermelonItem?.needsDetails, false);
+  assert.equal(calculateFoodTotals(watermelonItem!.food, watermelonItem!.grams).calories, 78);
+
+  const popcorn = parseFoodIntelligence("一桶爆米花，大概半斤");
+  const popcornItem = popcorn.items.find((item) => item.food.id === "fallback-popcorn");
+  assert.ok(popcornItem, "expected fallback-popcorn");
+  assert.equal(popcornItem?.grams, 250);
+  assert.equal(popcornItem?.reason, "explicit-weight");
+  assert.equal(popcornItem?.needsDetails, true);
+  assert.equal(calculateFoodTotals(popcornItem!.food, popcornItem!.grams).calories, 1075);
+});
+
+test("模糊食品：品牌奶茶、甜品份量和花生做法需要用户补全细节", () => {
+  const milkTea = parseFoodIntelligence("喝了半杯伯牙绝弦");
+  const milkTeaItem = milkTea.items.find((item) => item.food.id === "milk-tea");
+  assert.ok(milkTeaItem, "expected milk-tea");
+  assert.equal(milkTeaItem?.grams, 250);
+  assert.equal(milkTeaItem?.needsDetails, true);
+  assert.match(milkTeaItem?.detailHint ?? "", /糖度/);
+
+  const tiramisu = parseFoodIntelligence("半份提拉米苏");
+  const tiramisuItem = tiramisu.items.find((item) => item.food.id === "csv-ext2076");
+  assert.ok(tiramisuItem, "expected tiramisu");
+  assert.equal(tiramisuItem?.grams, 60);
+  assert.equal(tiramisuItem?.needsDetails, true);
+  assert.ok(calculateFoodTotals(tiramisuItem!.food, tiramisuItem!.grams).calories > 120);
+
+  const genericPeanut = parseFoodIntelligence("半斤花生");
+  assert.equal(genericPeanut.items[0]?.food.id, "peanuts");
+  assert.equal(genericPeanut.items[0]?.grams, 250);
+  assert.equal(genericPeanut.items[0]?.needsDetails, true);
+
+  const boiledPeanut = parseFoodIntelligence("半斤水煮花生");
+  assert.equal(boiledPeanut.items[0]?.food.id, "boiled-peanuts");
+  assert.equal(boiledPeanut.items[0]?.grams, 250);
+  assert.equal(boiledPeanut.items[0]?.needsDetails, false);
+
+  const friedPeanut = parseFoodIntelligence("半斤油炸花生");
+  assert.equal(friedPeanut.items[0]?.food.id, "fried-peanuts");
+  assert.equal(friedPeanut.items[0]?.grams, 250);
+  assert.equal(friedPeanut.items[0]?.needsDetails, false);
 });
 
 test("电商健身减脂食品：高频入口识别为独立食品而不是拆成通用词", () => {

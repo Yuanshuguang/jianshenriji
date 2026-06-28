@@ -5,6 +5,7 @@ dist/
 .env.*
 !.env.example
 *.log
+/nul
 apps/mobile/web-preview/
 output/
 .playwright-cli/

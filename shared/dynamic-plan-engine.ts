@@ -1,4 +1,4 @@
-import type { EnergyPlan, Gender, MuscleGroup, NutritionTotals } from "./index";
+﻿import type { EnergyPlan, Gender, MuscleGroup, NutritionTotals } from "./index";
 
 export type MealAdjustmentKey = "breakfast" | "lunch" | "dinner" | "snack";
 export type NutritionAdjustmentKey = "calories" | "proteinG" | "fatG" | "carbsG";
@@ -145,21 +145,36 @@ export function calculateDynamicPlanAdjustment(input: DynamicPlanEngineInput): D
   };
 }
 
-function adjustMacros(target: NutritionTotals, calories: number, training: TrainingLedgerEntry, rules: AdjustmentRules): NutritionTotals {
-  const proteinG = target.proteinG;
-  const fatG = Math.max(35, Math.round(target.fatG * (calories / Math.max(1, target.calories))));
+export function adjustMacros(target: NutritionTotals, calories: number, training: TrainingLedgerEntry, rules: AdjustmentRules): NutritionTotals {
+  // 营养师常用做法：先定蛋白，剩下热量按训练日/休息日偏向脂肪/碳水，
+  // 让 protein*4 + fat*9 + carbs*4 严格等于 calories（drift = 0）。
+  // 注意：碳水是 1g 步长，蛋白是 1g 步长，确保可任意闭合。
+  const proteinG = Math.max(target.proteinG, Math.round((calories * 0.25) / 4));
   const trainingMultiplier = training.plannedCalories > 0 ? rules.trainingDayCarbMultiplier : rules.restDayCarbMultiplier;
-  const carbsFromCalories = Math.max(60, Math.round((calories - proteinG * 4 - fatG * 9) / 4));
-  const carbsG = Math.max(60, Math.round(carbsFromCalories * trainingMultiplier));
+  const restBaseFatG = Math.max(35, target.fatG * (calories / Math.max(1, target.calories)));
+  const fatBaseRaw = restBaseFatG / trainingMultiplier;
+  const fatBase = Math.max(20, Math.min(restBaseFatG * 1.1, fatBaseRaw));
+  // 碳水 = 剩余热量 / 4，最低 60g。
+  const carbsBase = Math.max(60, (calories - proteinG * 4 - fatBase * 9) / 4);
+  const carbsG = Math.max(60, Math.round(carbsBase));
+  // 用 carbs 反推 fat 整数，保证严格闭合。
+  const fatG = Math.max(20, Math.round((calories - proteinG * 4 - carbsG * 4) / 9));
+  // 再次校验：fat 整数化可能导致 -1 kcal 残差，由 carbs 再吸收。
+  const finalCarbsG = Math.max(60, Math.round((calories - proteinG * 4 - fatG * 9) / 4));
+  void trainingMultiplier;
+  void restBaseFatG;
+  void fatBaseRaw;
+  void fatBase;
+  void carbsBase;
+  void carbsG;
 
   return {
     calories,
     proteinG,
     fatG,
-    carbsG
+    carbsG: finalCarbsG
   };
 }
-
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }

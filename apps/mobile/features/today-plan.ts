@@ -25,6 +25,8 @@ export type FoodTextMatch = {
   meal?: FoodMealSlot;
   confidence?: number;
   needsConfirmation?: boolean;
+  needsDetails?: boolean;
+  detailHint?: string;
 };
 
 export type ParsedFoodText = {
@@ -100,7 +102,9 @@ export function parseFoodText(text: string, customFoods: Food[] = [], servingCon
       isDelta: item.isDelta,
       meal: item.meal,
       confidence: item.confidence,
-      needsConfirmation: item.needsConfirmation
+      needsConfirmation: item.needsConfirmation,
+      needsDetails: item.needsDetails,
+      detailHint: item.detailHint
     })),
     unmatched: result.unmatched
   };
@@ -115,7 +119,7 @@ export function buildActualFoodPortionsFromText(text: string, customFoods: Food[
       foodId: match.food.id,
       name: match.food.name,
       grams,
-      meal: match.meal,
+      meal: match.meal && match.meal !== "unknown" ? match.meal : undefined,
       displayAmount: match.displayAmount,
       totals: calculateFoodTotals(match.food, grams)
     };
