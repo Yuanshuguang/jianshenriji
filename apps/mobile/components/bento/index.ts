@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Bento Glass · 组件库统一出口
  */
 export { Text } from "./Text";
@@ -6,6 +6,8 @@ export { Label } from "./Label";
 export { GlassTile } from "./GlassTile";
 export { ProgressRing } from "./ProgressRing";
 export { ProgressBar } from "./ProgressBar";
+export { MetricBarWithCursor, computeMetricDisplay, type MetricBarSize, type MetricDisplay, type MetricState, type MetricBarWithCursorProps } from "./MetricBarWithCursor";
+export { BulletChart, type BulletChartProps } from "./BulletChart";
 export { Button } from "./Button";
 export { Badge } from "./Badge";
 export { Screen, ScreenHeader } from "./Screen";

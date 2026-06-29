@@ -1,4 +1,4 @@
-import { calculateGoalEnergyPlan, generateTrainingQueue, type DailyLogEntry, type DynamicAdjustmentSettings, type Food, type Gender, type MealAdjustmentKey, type MuscleGroup, type NutritionAdjustmentKey, type TrainingAdjustmentKey } from "@fitness-calendar/shared";
+﻿import { calculateGoalEnergyPlan, generateTrainingQueue, type DailyLogEntry, type DynamicAdjustmentSettings, type Food, type Gender, type MealAdjustmentKey, type MuscleGroup, type NutritionAdjustmentKey, type TrainingAdjustmentKey } from "@fitness-calendar/shared";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import { create } from "zustand";
@@ -48,6 +48,23 @@ export type TodayTrainingCustomExercise = {
 export type ActualTrainingStatus = "pending" | "done" | "missed" | "changed";
 export type AppearanceMode = "light" | "dark";
 
+/** 仪表盘可视化方案 */
+export type DashboardStyle = "bullet" | "barCursor" | "kpiCards" | "rings";
+
+export const dashboardStyleLabels: Record<DashboardStyle, string> = {
+  bullet: "子弹图",
+  barCursor: "单条 + 游标",
+  kpiCards: "卡片网格",
+  rings: "环形进度"
+};
+
+export const dashboardStyleDescriptions: Record<DashboardStyle, string> = {
+  bullet: "6 项并列一行，目标线 + 实际填充，密度最高",
+  barCursor: "每项独占一行 + 三角游标，最熟悉",
+  kpiCards: "2~3 列大卡片，每张含数字与条",
+  rings: "6 个同心圆环，对标 Apple Health"
+};
+
 /** 字体缩放档位 */
 export type FontScaleLevel = "small" | "normal" | "large" | "xlarge";
 
@@ -96,6 +113,8 @@ type FitnessState = {
   appearanceMode: AppearanceMode;
   /** 字体缩放档位：紧凑/标准/放大/超大，默认标准。 */
   fontScale: FontScaleLevel;
+  /** 仪表盘可视化方案：默认子弹图。 */
+  dashboardStyle: DashboardStyle;
   /** 当前选中的饮食方案模板 id，null 表示未选择 */
   selectedDietPlanId: string | null;
   selectedDietPlanVariantId: string | null;
@@ -122,6 +141,7 @@ type FitnessState = {
   setDynamicAdjustmentSettings: (settings: DynamicAdjustmentSettings) => void;
   setAppearanceMode: (mode: AppearanceMode) => void;
   setFontScale: (level: FontScaleLevel) => void;
+  setDashboardStyle: (style: DashboardStyle) => void;
   setSelectedDietPlan: (planId: string | null) => void;
   setSelectedDietPlanVariant: (variantId: string | null) => void;
   setSelectedPet: (petId: string | null) => void;
@@ -329,6 +349,7 @@ export const useFitnessStore = create<FitnessState>()(
       dynamicAdjustmentSettings: defaultDynamicAdjustmentSettings,
       appearanceMode: "dark",
       fontScale: "normal",
+      dashboardStyle: "bullet",
       selectedDietPlanId: null,
       selectedDietPlanVariantId: null,
       selectedPetId: null,
@@ -369,6 +390,7 @@ export const useFitnessStore = create<FitnessState>()(
       setDynamicAdjustmentSettings: (dynamicAdjustmentSettings) => set({ dynamicAdjustmentSettings }),
       setAppearanceMode: (mode) => set({ appearanceMode: mode }),
       setFontScale: (fontScale) => set({ fontScale }),
+      setDashboardStyle: (dashboardStyle) => set({ dashboardStyle }),
       setSelectedDietPlan: (planId) => set({ selectedDietPlanId: planId }),
       setSelectedDietPlanVariant: (variantId) => set({ selectedDietPlanVariantId: variantId }),
       setSelectedPet: (petId) => set({ selectedPetId: petId }),
@@ -479,6 +501,7 @@ export const useFitnessStore = create<FitnessState>()(
         dynamicAdjustmentSettings: state.dynamicAdjustmentSettings,
         appearanceMode: state.appearanceMode,
         fontScale: state.fontScale,
+        dashboardStyle: state.dashboardStyle,
         selectedDietPlanId: state.selectedDietPlanId,
         selectedDietPlanVariantId: state.selectedDietPlanVariantId,
         selectedPetId: state.selectedPetId,

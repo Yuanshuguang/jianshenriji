@@ -1,4 +1,4 @@
-import {
+﻿import {
   calculateNutritionGap,
   calculateFoodTotals,
   calculateDietPlanMacroTargets,
@@ -49,6 +49,7 @@ import { buildDailyAdjustmentSummary } from "../../features/adjustments";
 import { getDietPlanById, type DietPlan } from "../../features/diet-plans";
 import { searchOnlineFood } from "../../features/food-online-search";
 import { buildTrainingQueue, useCurrentEnergyPlan, useFitnessStore } from "../../store/fitness-store";
+import { DashboardGrid, type DashboardCell } from "../../components/diet/DashboardGrid";
 
 type FoodRecordMode = "actual" | "prepared";
 type MealDisplayMode = "planned" | "actual";
@@ -143,6 +144,7 @@ export default function TodayScreen() {
   const addMenuFood = useFitnessStore((state) => state.addMenuFood);
   const removeMenuFood = useFitnessStore((state) => state.removeMenuFood);
   const saveDailyLog = useFitnessStore((state) => state.saveDailyLog);
+  const dashboardStyle = useFitnessStore((state) => state.dashboardStyle);
 
   const [dashboardCollapsed, setDashboardCollapsed] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -228,54 +230,56 @@ export default function TodayScreen() {
   const balanceColor: SemanticColor = deficit >= energyPlan.dailyDeficit ? "positive" : "accent";
   const intakeColor: SemanticColor = intakeDiff > 0 ? "warn" : "accent";
 
-  const intakeMetric: DashboardMetric = {
-    key: "intake",
-    label: "摄入热量",
-    unit: "kcal",
-    target: dietTarget.calories,
-    actual: actualIntake,
-    color: intakeColor,
-    progress: actualIntake / Math.max(1, dietTarget.calories),
-  };
-  const burnMetric: DashboardMetric = {
-    key: "burn",
-    label: "消耗热量",
-    unit: "kcal",
-    target: energyPlan.tdee,
-    actual: burnCalories,
-    color: "positive",
-    progress: burnCalories / Math.max(1, energyPlan.tdee),
-  };
-  const macroMetrics: DashboardMetric[] = [
+  const dashboardCells: DashboardCell[] = [
+    {
+      key: "deficit",
+      label: "热量赤字",
+      actual: Math.max(0, deficit),
+      target: Math.max(0, energyPlan.dailyDeficit),
+      unit: "kcal",
+      baseColor: "positive"
+    },
+    {
+      key: "intake",
+      label: "摄入热量",
+      actual: actualIntake,
+      target: dietTarget.calories,
+      unit: "kcal",
+      baseColor: intakeColor
+    },
+    {
+      key: "burn",
+      label: "消耗热量",
+      actual: burnCalories,
+      target: energyPlan.tdee,
+      unit: "kcal",
+      baseColor: "positive"
+    },
     {
       key: "protein",
       label: "蛋白质",
-      unit: "g",
-      target: dietTarget.proteinG,
       actual: Math.round(actualTotals.proteinG),
-      color: "accent",
-      progress: actualTotals.proteinG / Math.max(1, dietTarget.proteinG),
+      target: dietTarget.proteinG,
+      unit: "g",
+      baseColor: "accent"
     },
     {
       key: "fat",
       label: "脂肪",
-      unit: "g",
-      target: dietTarget.fatG,
       actual: Math.round(actualTotals.fatG),
-      color: "accent2",
-      progress: actualTotals.fatG / Math.max(1, dietTarget.fatG),
+      target: dietTarget.fatG,
+      unit: "g",
+      baseColor: "accent2"
     },
     {
       key: "carbs",
       label: "碳水",
-      unit: "g",
-      target: dietTarget.carbsG,
       actual: Math.round(actualTotals.carbsG),
-      color: "positive",
-      progress: actualTotals.carbsG / Math.max(1, dietTarget.carbsG),
-    },
-  ];
-  const mealPlan = buildMealPlan(plannedPortions, customFoods);
+      target: dietTarget.carbsG,
+      unit: "g",
+      baseColor: "positive"
+    }
+  ];const mealPlan = buildMealPlan(plannedPortions, customFoods);
   const actualMealPlan = buildMealPlan(adjustedActualPortions, customFoods);
   const mealRows = mealSlots.map(({ id, name }) => ({
     id,
@@ -413,24 +417,10 @@ export default function TodayScreen() {
         />
         {!dashboardCollapsed ? (
           <View style={{ gap: 8 }}>
-            <DeficitHero
-              deficit={Math.max(0, deficit)}
-              target={Math.max(0, energyPlan.dailyDeficit)}
-            />
-            <View style={{ flexDirection: "row", alignItems: "stretch" }}>
-              <MetricMini metric={intakeMetric} />
-              <View style={{ width: 1, marginVertical: 8, backgroundColor: c.glassBorder }} />
-              <MetricMini metric={burnMetric} />
+            <DashboardGrid style={dashboardStyle} metrics={dashboardCells} />
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", alignItems: "center" }}>
+              <PillButton label="更换样式" onPress={() => router.push("/more")} color="accent" />
             </View>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <BentoText variant="caption" color={c.inkMute}>{intakeDiffLabel}</BentoText>
-              <PillButton label={detailsOpen ? "收起" : "查看更多"} onPress={() => setDetailsOpen((value) => !value)} color="accent" />
-            </View>
-            {detailsOpen ? (
-              <View style={{ gap: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: c.glassBorder }}>
-                {macroMetrics.map((metric) => <MacroRow key={metric.key} metric={metric} />)}
-              </View>
-            ) : null}
           </View>
         ) : null}
       </GlassTile>

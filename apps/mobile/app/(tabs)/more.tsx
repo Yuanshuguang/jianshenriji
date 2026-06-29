@@ -1,4 +1,4 @@
-import { createElement, useRef, useState, type ReactNode } from "react";
+﻿import { createElement, useRef, useState, type ReactNode } from "react";
 import { Alert, Platform, Pressable, Share, View } from "react-native";
 import { muscleGroupLabels, type DynamicAdjustmentSettings, type MealAdjustmentKey, type MuscleGroup, type NutritionAdjustmentKey, type TrainingAdjustmentKey } from "@fitness-calendar/shared";
 import {
@@ -23,6 +23,7 @@ import {
 } from "../../components/bento";
 import { SettingsGroup, ExpandableRow as SharedExpandableRow } from "../../components/shared";
 import { useFitnessStore, type FontScaleLevel, fontScaleValues, fontScaleLabels } from "../../store/fitness-store";
+import { dashboardStyleLabels, dashboardStyleDescriptions, type DashboardStyle } from "../../store/fitness-store";
 import { buildHealthDataSnapshot } from "../../features/health-data";
 
 const nutritionAdjustmentOptions: Array<{ key: NutritionAdjustmentKey; label: string }> = [
@@ -58,6 +59,8 @@ export default function MoreScreen() {
   const setAppearanceMode = useFitnessStore((state) => state.setAppearanceMode);
   const fontScale = useFitnessStore((state) => state.fontScale);
   const setFontScale = useFitnessStore((state) => state.setFontScale);
+  const dashboardStyle = useFitnessStore((state) => state.dashboardStyle);
+  const setDashboardStyle = useFitnessStore((state) => state.setDashboardStyle);
   const selectedPetId = useFitnessStore((state) => state.selectedPetId);
   const customPet = useFitnessStore((state) => state.customPet);
   const petEnabled = useFitnessStore((state) => state.petEnabled);
@@ -208,7 +211,48 @@ export default function MoreScreen() {
 
         {/* ===== 外观与显示 ===== */}
         <View style={{ gap: 6 }}>
-          <SectionHeader>外观与显示</SectionHeader>
+<SectionHeader>外观与显示</SectionHeader>
+          <SettingsGroup>
+            {/* 仪表盘可视化 */}
+            <SharedExpandableRow
+              icon="📊"
+              label="仪表盘可视化"
+              value={dashboardStyleLabels[dashboardStyle]}
+              expanded={false}
+              onToggle={() => undefined}
+            >
+              <View style={{ gap: 8 }}>
+                {(Object.keys(dashboardStyleLabels) as DashboardStyle[]).map((style) => (
+                  <Pressable
+                    key={style}
+                    onPress={() => setDashboardStyle(style)}
+                    style={({ pressed }) => ({
+                      paddingVertical: 10,
+                      paddingHorizontal: 12,
+                      borderRadius: 12,
+                      borderWidth: 1.5,
+                      borderColor: dashboardStyle === style ? c.accent : c.glassBorder,
+                      backgroundColor: dashboardStyle === style ? c.accent + "14" : "transparent",
+                      opacity: pressed ? 0.78 : 1
+                    })}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                      <BentoText weight="semibold" color={dashboardStyle === style ? c.accent : c.ink} style={{ fontSize: 14 }}>
+                        {dashboardStyleLabels[style]}
+                      </BentoText>
+                      {dashboardStyle === style ? (
+                        <BentoText variant="micro" color={c.accent}>当前</BentoText>
+                      ) : null}
+                    </View>
+                    <BentoText variant="micro" color={c.inkMute} style={{ marginTop: 4, lineHeight: 16 }}>
+                      {dashboardStyleDescriptions[style]}
+                    </BentoText>
+                  </Pressable>
+                ))}
+              </View>
+            </SharedExpandableRow>
+          </SettingsGroup>
+          <SettingsGroup>
           <SettingsGroup>
             {/* 外观模式 */}
             <SettingsRow icon="🌓" label="外观模式">

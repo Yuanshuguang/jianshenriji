@@ -1,4 +1,4 @@
-import {
+﻿import {
   calculateDietPlanMacroTargets,
   exercises,
   resolveDietPlanDay,
@@ -9,7 +9,7 @@ import {
 import { useRouter } from "expo-router";
 import { useMemo } from "react";
 import { Pressable, View } from "react-native";
-import { Badge, Button, GlassTile, Label, ProgressBar, Screen, ScreenHeader, Text as BentoText, radius, useBentoTheme } from "../../components/bento";
+import { Badge, Button, GlassTile, Label, MetricBarWithCursor, ProgressBar, Screen, ScreenHeader, Text as BentoText, radius, useBentoTheme } from "../../components/bento";
 import { getDietPlanById } from "../../features/diet-plans";
 import { exerciseNameMap, muscleNameMap } from "../../features/today-plan";
 import { useCurrentEnergyPlan, useFitnessStore } from "../../store/fitness-store";
@@ -169,9 +169,9 @@ function TodayDietCard({
         <Badge color="accent" size="sm">{status}</Badge>
       </View>
       <View style={{ flexDirection: "row", gap: 8 }}>
-        <MacroBar label="蛋白" value={protein} percent={ratio.protein} color="positive" />
-        <MacroBar label="脂肪" value={fat} percent={ratio.fat} color="warn" />
-        <MacroBar label="碳水" value={carbs} percent={ratio.carbs} color="accent2" />
+        <MacroBar label="蛋白" value={protein} target={protein} percent={ratio.protein} color="positive" />
+        <MacroBar label="脂肪" value={fat} target={fat} percent={ratio.fat} color="warn" />
+        <MacroBar label="碳水" value={carbs} target={carbs} percent={ratio.carbs} color="accent2" />
       </View>
       <Button variant="filled" color="accent" size="sm" block onPress={onPress}>去记录饮食</Button>
     </GlassTile>
@@ -266,16 +266,18 @@ function ModernSettingCard({
   );
 }
 
-function MacroBar({ label, value, percent, color }: { label: string; value: number; percent: number; color: "positive" | "warn" | "accent2" }) {
+function MacroBar({ label, value, target, percent: _percent, color }: { label: string; value: number; target: number; percent: number; color: "positive" | "warn" | "accent2" }) {
   const c = useBentoTheme().colors;
   return (
-    <View style={{ flex: 1, gap: 5, padding: 9, borderRadius: radius.md, backgroundColor: c.glassRaised, borderWidth: 1, borderColor: c.glassBorder }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
-        <BentoText variant="micro" color={c.inkMute}>{label}</BentoText>
-        <BentoText mono weight="bold" color={c[color]}>{value}g</BentoText>
-      </View>
-      <ProgressBar percent={percent / 100} color={color} height={6} />
-      <BentoText variant="micro" color={c.inkFaint}>{percent}%</BentoText>
+    <View style={{ flex: 1, padding: 9, borderRadius: radius.md, backgroundColor: c.glassRaised, borderWidth: 1, borderColor: c.glassBorder }}>
+      <MetricBarWithCursor
+        label={label}
+        actual={value}
+        target={target}
+        unit="g"
+        baseColor={color}
+        size="compact"
+      />
     </View>
   );
 }
