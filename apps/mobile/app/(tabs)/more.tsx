@@ -22,8 +22,15 @@ import {
   useBentoTheme,
 } from "../../components/bento";
 import { SettingsGroup, ExpandableRow as SharedExpandableRow } from "../../components/shared";
-import { useFitnessStore, type FontScaleLevel, fontScaleValues, fontScaleLabels } from "../../store/fitness-store";
-import { dashboardStyleLabels, dashboardStyleDescriptions, type DashboardStyle } from "../../store/fitness-store";
+import {
+  dashboardStyleDescriptions,
+  dashboardStyleLabels,
+  useFitnessStore,
+  type DashboardStyle,
+  type FontScaleLevel,
+  fontScaleLabels,
+  fontScaleValues,
+} from "../../store/fitness-store";
 import { buildHealthDataSnapshot } from "../../features/health-data";
 
 const nutritionAdjustmentOptions: Array<{ key: NutritionAdjustmentKey; label: string }> = [
@@ -69,6 +76,7 @@ export default function MoreScreen() {
   const setPetEnabled = useFitnessStore((state) => state.setPetEnabled);
 
   const [fontSizeExpanded, setFontSizeExpanded] = useState(false);
+  const [dashboardStyleExpanded, setDashboardStyleExpanded] = useState(false);
   const [rulesExpanded, setRulesExpanded] = useState(false);
   const [petExpanded, setPetExpanded] = useState(false);
   const [petTab, setPetTab] = useState<"preset" | "custom">("preset");
@@ -211,15 +219,15 @@ export default function MoreScreen() {
 
         {/* ===== 外观与显示 ===== */}
         <View style={{ gap: 6 }}>
-<SectionHeader>外观与显示</SectionHeader>
+          <SectionHeader>外观与显示</SectionHeader>
           <SettingsGroup>
             {/* 仪表盘可视化 */}
             <SharedExpandableRow
               icon="📊"
               label="仪表盘可视化"
               value={dashboardStyleLabels[dashboardStyle]}
-              expanded={false}
-              onToggle={() => undefined}
+              expanded={dashboardStyleExpanded}
+              onToggle={() => setDashboardStyleExpanded((value) => !value)}
             >
               <View style={{ gap: 8 }}>
                 {(Object.keys(dashboardStyleLabels) as DashboardStyle[]).map((style) => (
@@ -251,9 +259,7 @@ export default function MoreScreen() {
                 ))}
               </View>
             </SharedExpandableRow>
-          </SettingsGroup>
-          <SettingsGroup>
-          <SettingsGroup>
+
             {/* 外观模式 */}
             <SettingsRow icon="🌓" label="外观模式">
               <View style={{ flexDirection: "row", gap: 4 }}>

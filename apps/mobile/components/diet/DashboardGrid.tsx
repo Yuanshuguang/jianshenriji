@@ -5,7 +5,7 @@
  *  - bullet: 子弹图，6 项 3×2 网格
  *  - barCursor: 单条 + 三角游标，每项独占一行（保留原行为）
  *  - kpiCards: 大卡片网格，每张含数字与条
- *  - rings: 6 个同心圆环
+ *  - rings: 6 个环形进度卡片
  */
 import { View, useWindowDimensions } from "react-native";
 import {
@@ -19,7 +19,6 @@ import {
   useBentoTheme,
 } from "../bento";
 import { computeMetricDisplay } from "../bento";
-import type { DashboardMetric } from "./types";
 import type { DashboardStyle } from "../../store/fitness-store";
 
 export type DashboardCell = {
@@ -131,7 +130,7 @@ function KpiCardsGrid({ metrics }: { metrics: DashboardCell[] }) {
 
 function KpiCard({ cell, flex }: { cell: DashboardCell; flex: number }) {
   const c = useBentoTheme().colors;
-  const display = require("../bento").computeMetricDisplay({
+  const display = computeMetricDisplay({
     actual: cell.actual,
     target: cell.target,
     unit: cell.unit,
@@ -163,46 +162,55 @@ function KpiCard({ cell, flex }: { cell: DashboardCell; flex: number }) {
   );
 }
 
-// === rings: 6 个同心圆环 ===
+// === rings: 6 个环形进度卡片 ===
 function RingsGrid({ metrics }: { metrics: DashboardCell[] }) {
-  const c = useBentoTheme().colors;
-  const size = 200;
-  const stroke = 14;
-  const radius = (size - stroke) / 2 - 6;
+  const { width } = useWindowDimensions();
+  const columns = width >= 720 ? 3 : 2;
+  const rows: DashboardCell[][] = [];
+  for (let i = 0; i < metrics.length; i += columns) {
+    rows.push(metrics.slice(i, i + columns));
+  }
+
   return (
-    <View style={{ alignItems: "center", justifyContent: "center", paddingVertical: 8 }}>
-      <View style={{ width: size, height: size }}>
-        {metrics.map((cell, index) => {
-          const offset = index * 12;
-          const ringRadius = radius - offset;
-          const circumference = 2 * Math.PI * ringRadius;
-          const ratio = cell.target > 0 ? Math.min(1, cell.actual / cell.target) : 0;
-          const dashOffset = circumference * (1 - ratio);
-          const isOver = cell.actual > cell.target && cell.target > 0;
-          const color = isOver ? c.amber : c[cell.baseColor];
-          return (
-            <View key={cell.key} style={{ position: "absolute", top: 0, left: 0 }} pointerEvents="none">
-              <ProgressRing size={size} stroke={stroke} percent={ratio} color={cell.baseColor} showLabel={false} />
-            </View>
-          );
-        })}
-      </View>
-      <BentoText variant="caption" color={c.inkMute} style={{ marginTop: 8 }}>
-        从内到外：{metrics.map((cell) => cell.label).join(" / ")}
-      </BentoText>
+    <View style={{ gap: 10 }}>
+      {rows.map((row, rowIndex) => (
+        <View key={`row-${rowIndex}`} style={{ flexDirection: "row", gap: 10 }}>
+          {row.map((cell) => (
+            <RingCard key={cell.key} cell={cell} flex={1} />
+          ))}
+        </View>
+      ))}
     </View>
   );
 }
 
-export function buildDashboardCells(metrics: DashboardMetric[]): DashboardCell[] {
-  return metrics.map((metric) => ({
-    key: metric.key,
-    label: metric.label,
-    actual: metric.actual,
-    target: metric.target,
-    unit: metric.unit,
-    baseColor: metric.color
-  }));
+function RingCard({ cell, flex }: { cell: DashboardCell; flex: number }) {
+  const c = useBentoTheme().colors;
+  const ratio = cell.target > 0 ? cell.actual / cell.target : 0;
+  const display = computeMetricDisplay({
+    actual: cell.actual,
+    target: cell.target,
+    unit: cell.unit,
+    baseColor: cell.baseColor
+  });
+
+  return (
+    <GlassTile radius={16} padding={12} style={{ flex, minHeight: 132, alignItems: "center", gap: 8 }}>
+      <ProgressRing
+        size={76}
+        stroke={9}
+        percent={ratio}
+        color={display.state === "over" ? "amber" : cell.baseColor}
+        value={`${Math.round(Math.min(999, ratio * 100))}%`}
+      />
+      <View style={{ alignItems: "center", gap: 2 }}>
+        <Label color={c.inkMute} variant="label">{cell.label}</Label>
+        <BentoText variant="micro" color={c.inkMute}>
+          {Math.round(cell.actual)} / {Math.round(cell.target)} {cell.unit}
+        </BentoText>
+      </View>
+    </GlassTile>
+  );
 }
 
 export default DashboardGrid;

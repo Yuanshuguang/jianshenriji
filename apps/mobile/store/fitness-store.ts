@@ -62,7 +62,7 @@ export const dashboardStyleDescriptions: Record<DashboardStyle, string> = {
   bullet: "6 项并列一行，目标线 + 实际填充，密度最高",
   barCursor: "每项独占一行 + 三角游标，最熟悉",
   kpiCards: "2~3 列大卡片，每张含数字与条",
-  rings: "6 个同心圆环，对标 Apple Health"
+  rings: "6 个环形进度卡片，对标 Apple Health"
 };
 
 /** 字体缩放档位 */
@@ -436,6 +436,7 @@ export const useFitnessStore = create<FitnessState>()(
           petEnabled: state.petEnabled,
           appearanceMode: state.appearanceMode,
           fontScale: state.fontScale,
+          dashboardStyle: state.dashboardStyle,
           dynamicAdjustmentEnabled: state.dynamicAdjustmentEnabled,
           dynamicAdjustmentSettings: state.dynamicAdjustmentSettings
         })),
@@ -469,6 +470,7 @@ export const useFitnessStore = create<FitnessState>()(
           },
           dynamicAdjustmentSettings: mergeDynamicAdjustmentSettings(state.dynamicAdjustmentSettings),
           fontScale: state.fontScale ?? "normal",
+          dashboardStyle: state.dashboardStyle ?? "bullet",
           selectedDietPlanVariantId: state.selectedDietPlanVariantId ?? null
         };
         if (migratedState.actualTraining?.status === "done" && migratedState.actualTraining.minutes === 0 && migratedState.actualTraining.text.trim().length === 0) {

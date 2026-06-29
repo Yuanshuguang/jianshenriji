@@ -47,6 +47,7 @@ import {
 } from "../../features/today-plan";
 import { buildDailyAdjustmentSummary } from "../../features/adjustments";
 import { getDietPlanById, type DietPlan } from "../../features/diet-plans";
+import { getFoodVariantOptions, inferDefaultFoodVariant, resolveFoodByVariant } from "../../features/food-variant-options";
 import { searchOnlineFood } from "../../features/food-online-search";
 import { buildTrainingQueue, useCurrentEnergyPlan, useFitnessStore } from "../../store/fitness-store";
 import { DashboardGrid, type DashboardCell } from "../../components/diet/DashboardGrid";
@@ -71,6 +72,7 @@ type FoodTagEdit = {
   grams: string;
   foodName: string;
   foodId: string;
+  foodCategory: Food["category"];
   defaultFilling: string;
   unitCalories: number;
   caloriesPer100g: number;
@@ -1080,7 +1082,7 @@ function UnmatchedFoodActions({
 }
 
 function buildFoodTagEdit(key: string, item: FoodTagMatch, label: string, calories: string): FoodTagEdit {
-  const defaultFilling = inferDefaultFilling(item.food);
+  const defaultFilling = inferDefaultFoodVariant(item.food);
   const caloriesNumber = numberOr(calories, Math.round((item.grams * item.food.caloriesPer100g) / 100));
   const quantity = item.quantity && item.quantity > 0 ? item.quantity : undefined;
   return {
@@ -1090,8 +1092,9 @@ function buildFoodTagEdit(key: string, item: FoodTagMatch, label: string, calori
     grams: String(Math.round(item.grams)),
     foodName: item.food.name,
     foodId: item.food.id,
+    foodCategory: item.food.category,
     defaultFilling,
-    unitCalories: quantity ? Math.round(caloriesNumber / quantity) : Math.round(calculateFoodTotals(resolveFoodByFilling(item.food, defaultFilling), item.food.defaultUnitGram).calories),
+    unitCalories: quantity ? Math.round(caloriesNumber / quantity) : Math.round(calculateFoodTotals(resolveFoodByVariant(item.food, defaultFilling), item.food.defaultUnitGram).calories),
     caloriesPer100g: item.food.caloriesPer100g,
     proteinPer100g: item.food.proteinPer100g,
     fatPer100g: item.food.fatPer100g,
@@ -1110,7 +1113,7 @@ function applyFoodTagOverrides(portions: FoodPortion[], matched: FoodTagMatch[],
     if (!edit || (!edit.calories && !edit.grams && !edit.label && !edit.filling)) return [portion];
 
     const match = matched[index];
-    const food = match ? resolveFoodByFilling(match.food, edit.filling) : undefined;
+    const food = match ? resolveFoodByVariant(match.food, edit.filling) : undefined;
     const grams = edit.grams ?? Math.abs(portion.grams);
     const calculatedTotals = food ? calculateFoodTotals(food, grams) : portion.totals;
     const calories = edit.calories ?? calculatedTotals.calories;
@@ -1129,43 +1132,6 @@ function applyFoodTagOverrides(portions: FoodPortion[], matched: FoodTagMatch[],
       }
     } as FoodPortion & { displayAmount?: string }];
   });
-}
-
-function inferDefaultFilling(food: Food): string {
-  const text = `${food.id} ${food.name} ${food.aliases.join(" ")}`;
-  if (/包子|baozi|肉包/i.test(text)) return "猪肉大葱馅";
-  if (/饺|水饺|dumpling/i.test(text)) return "猪肉大葱馅";
-  if (/馄饨|云吞/i.test(text)) return "猪肉馅";
-  return food.category === "dish" || food.category === "fastfood" ? "APP默认做法" : "标准食物数据";
-}
-
-function resolveFoodByFilling(food: Food, filling?: string): Food {
-  if (!filling || filling === inferDefaultFilling(food)) return food;
-  const profile = getFillingNutritionProfile(food, filling);
-  if (!profile) return food;
-  return {
-    ...food,
-    caloriesPer100g: profile.caloriesPer100g,
-    proteinPer100g: profile.proteinPer100g,
-    fatPer100g: profile.fatPer100g,
-    carbsPer100g: profile.carbsPer100g
-  };
-}
-
-function getFillingNutritionProfile(food: Food, filling?: string): Pick<Food, "caloriesPer100g" | "proteinPer100g" | "fatPer100g" | "carbsPer100g"> | undefined {
-  const text = `${food.id} ${food.name} ${food.aliases.join(" ")}`;
-  if (!/包子|baozi|肉包/i.test(text)) return undefined;
-  const normalized = filling ?? "";
-  if (/素|蔬菜|青菜/i.test(normalized)) {
-    return { caloriesPer100g: 180, proteinPer100g: 6, fatPer100g: 4, carbsPer100g: 30 };
-  }
-  if (/地三鲜|土豆|茄子|青椒/i.test(normalized)) {
-    return { caloriesPer100g: 205, proteinPer100g: 6, fatPer100g: 6, carbsPer100g: 34 };
-  }
-  if (/牛肉/i.test(normalized)) {
-    return { caloriesPer100g: 245, proteinPer100g: 11, fatPer100g: 9, carbsPer100g: 31 };
-  }
-  return { caloriesPer100g: 244, proteinPer100g: 9, fatPer100g: 8, carbsPer100g: 34 };
 }
 
 function FoodTagEditorModal({
@@ -1197,11 +1163,11 @@ function FoodTagEditorModal({
 
   useEffect(() => {
     if (!edit || caloriesTouched) return;
-    const previewFood = resolveFoodByFilling({
+    const previewFood = resolveFoodByVariant({
       id: edit.foodId,
       name: edit.foodName,
       aliases: [],
-      category: "dish",
+      category: edit.foodCategory,
       caloriesPer100g: edit.caloriesPer100g,
       proteinPer100g: edit.proteinPer100g,
       fatPer100g: edit.fatPer100g,
@@ -1214,24 +1180,25 @@ function FoodTagEditorModal({
   if (!edit) return null;
 
   const currentGrams = numberOr(grams, numberOr(edit.grams, 1));
-  const previewFood = resolveFoodByFilling({
+  const baseFoodForEdit: Food = {
     id: edit.foodId,
     name: edit.foodName,
     aliases: [],
-    category: "dish",
+    category: edit.foodCategory,
     caloriesPer100g: edit.caloriesPer100g,
     proteinPer100g: edit.proteinPer100g,
     fatPer100g: edit.fatPer100g,
     carbsPer100g: edit.carbsPer100g,
     defaultUnitGram: currentGrams
-  }, filling);
+  };
+  const previewFood = resolveFoodByVariant(baseFoodForEdit, filling);
   const calculatedCalories = calculateFoodTotals(previewFood, currentGrams).calories;
   const finalCalories = numberOr(calories, calculatedCalories);
   const quantityLabel = edit.quantity ? `${edit.quantity}${edit.unit ?? ""}` : edit.displayAmount ?? `${Math.round(currentGrams)}g`;
   const unitCalories = edit.quantity && edit.quantity > 0
     ? Math.round(finalCalories / edit.quantity)
     : Math.round(calculateFoodTotals(previewFood, previewFood.defaultUnitGram).calories);
-  const fillingOptions = ["猪肉大葱馅", "素馅", "地三鲜馅", "牛肉馅"];
+  const fillingOptions = getFoodVariantOptions(baseFoodForEdit);
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -1248,13 +1215,17 @@ function FoodTagEditorModal({
       <TextInput value={label} onChangeText={setLabel} placeholder="标签文本" placeholderTextColor={c.inkFaint} style={getInputStyle(c)} />
       <TextInput value={calories} onChangeText={setCalories} keyboardType="numeric" placeholder="热量 kcal" placeholderTextColor={c.inkFaint} style={getInputStyle(c)} />
           <View style={{ gap: 6 }}>
-            <BentoText variant="micro" color={c.inkMute}>馅料 / 类型</BentoText>
-            <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
-              {fillingOptions.map((option) => (
-                <PillButton key={option} label={option} color={option === filling ? "accent" : "accent2"} onPress={() => { setFilling(option); setCaloriesTouched(false); }} />
-              ))}
-            </View>
-            <TextInput value={filling} onChangeText={(text) => { setFilling(text); setCaloriesTouched(false); }} placeholder="自定义馅料/做法" placeholderTextColor={c.inkFaint} style={getInputStyle(c)} />
+            <BentoText variant="micro" color={c.inkMute}>做法 / 类型</BentoText>
+            {fillingOptions.length > 0 ? (
+              <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+                {fillingOptions.map((option) => (
+                  <PillButton key={option.label} label={option.label} color={option.label === filling ? "accent" : "accent2"} onPress={() => { setFilling(option.label); setCaloriesTouched(false); }} />
+                ))}
+              </View>
+            ) : (
+              <BentoText variant="micro" color={c.inkFaint}>当前食物没有预设细分类型，可手动填写做法备注。</BentoText>
+            )}
+            <TextInput value={filling} onChangeText={(text) => { setFilling(text); setCaloriesTouched(false); }} placeholder="自定义做法/类型" placeholderTextColor={c.inkFaint} style={getInputStyle(c)} />
           </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <SmallInput label="重量 g" value={grams} onChangeText={(text) => { setGrams(text); setCaloriesTouched(false); }} />
