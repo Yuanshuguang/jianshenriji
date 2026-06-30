@@ -1,0 +1,1 @@
+﻿from pathlib import Path; p=Path(r'C:\Users\Administrator\Documents\健身日历\apps\mobile\features\__tests__\food-regression-200.test.ts'); t=p.read_text('utf-8'); t=t.replace('{"beef-stew": "dinner"}', '{"beef-stew": "dinner"}'); p.write_text(t,"utf-8"); print("assemble done")

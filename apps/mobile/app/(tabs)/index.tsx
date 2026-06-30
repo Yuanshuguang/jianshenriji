@@ -19,6 +19,7 @@
   type NutritionTotals,
 } from "@fitness-calendar/shared";
 import { useRouter } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 import { createElement, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Modal, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { CalendarHistoryPanel } from "../../components/CalendarHistoryPanel";
@@ -53,6 +54,8 @@ import { buildTrainingQueue, useCurrentEnergyPlan, useFitnessStore } from "../..
 import { DashboardGrid, type DashboardCell } from "../../components/diet/DashboardGrid";
 import { resolveFoodNutrition } from "../../features/food-nutrition-resolver";
 import { recognizeDishImage, resolveDishRecognitionFoods } from "../../features/food-image-recognition";
+import { buildCustomFoodFromNutritionLabel, recognizeNutritionLabelImage } from "../../features/nutrition-label-recognition";
+import { prepareAiImageUploadFromBase64Asset, prepareAiImageUploadFromFile } from "../../features/ai-image-upload";
 
 type FoodRecordMode = "actual" | "prepared";
 type MealDisplayMode = "planned" | "actual";
@@ -194,12 +197,15 @@ export default function TodayScreen() {
   const [dishRecognitionMeal, setDishRecognitionMeal] = useState<MealAdjustmentKey>("lunch");
   const [dishRecognitionBusy, setDishRecognitionBusy] = useState(false);
   const [dishRecognitionMessage, setDishRecognitionMessage] = useState("");
+  const [nutritionOcrBusy, setNutritionOcrBusy] = useState(false);
+  const [nutritionOcrMessage, setNutritionOcrMessage] = useState("");
   const [foodTagEdits, setFoodTagEdits] = useState<Record<string, FoodTagOverride>>({});
   const [editingFoodTag, setEditingFoodTag] = useState<FoodTagEdit | null>(null);
   const [dietPlanLogicOpen, setDietPlanLogicOpen] = useState(false);
   const [dashboardDetailKey, setDashboardDetailKey] = useState<string | null>(null);
   const [onlineFoodLookup, setOnlineFoodLookup] = useState<Record<string, { loading?: boolean; message?: string }>>({});
   const dishImageInputRef = useRef<HTMLInputElement | null>(null);
+  const nutritionLabelInputRef = useRef<HTMLInputElement | null>(null);
 
   const today = new Date();
   const todayKey = formatDateKey(today);
@@ -406,13 +412,19 @@ export default function TodayScreen() {
     setOnlineFoodLookup((current) => ({ ...current, [key]: { loading: false, message: "已补全到我的菜单" } }));
   }
 
-  function openDishImagePicker() {
+  async function openDishImagePicker() {
     if (Platform.OS === "web") {
       dishImageInputRef.current?.click();
       return;
     }
 
-    setDishRecognitionMessage("当前先支持网页上传，移动端后续再接相册/相机入口");
+    try {
+      const asset = await pickNativeImage();
+      if (!asset) return;
+      await recognizeDishImageToMeal(asset.base64, asset.name);
+    } catch (error) {
+      setDishRecognitionMessage(error instanceof Error ? error.message : "菜品识别失败");
+    }
   }
 
   const handleDishImageSelected = async (event: Event) => {
@@ -420,28 +432,26 @@ export default function TodayScreen() {
     const file = input.files?.[0];
     if (!file) return;
 
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setDishRecognitionMessage("只支持 JPG、PNG 或 WebP 图片");
+    try {
+      const image = await prepareAiImageUploadFromFile(file);
+      await recognizeDishImageToMeal(image.base64, image.name);
+    } catch (error) {
+      setDishRecognitionMessage(error instanceof Error ? error.message : "菜品识别失败");
+    } finally {
+      setDishRecognitionBusy(false);
       input.value = "";
-      return;
     }
+  };
 
-    if (file.size > 8 * 1024 * 1024) {
-      setDishRecognitionMessage("图片不能超过 8MB");
-      input.value = "";
-      return;
-    }
-
+  async function recognizeDishImageToMeal(base64: string, imageName: string) {
     setDishRecognitionBusy(true);
     setDishRecognitionMessage("正在识别菜品...");
 
     try {
-      const base64 = await readFileAsDataUrl(file);
-      const result = await recognizeDishImage(base64, file.name);
+      const result = await recognizeDishImage(base64, imageName);
       const mainCandidate = result.candidates[0];
       if (!mainCandidate) {
         setDishRecognitionMessage("未识别到有效菜品");
-        input.value = "";
         return;
       }
 
@@ -459,9 +469,62 @@ export default function TodayScreen() {
       setDishRecognitionMessage(error instanceof Error ? error.message : "菜品识别失败");
     } finally {
       setDishRecognitionBusy(false);
+    }
+  }
+
+  async function openNutritionLabelPicker() {
+    if (Platform.OS === "web") {
+      nutritionLabelInputRef.current?.click();
+      return;
+    }
+
+    try {
+      const asset = await pickNativeImage();
+      if (!asset) return;
+      await recognizeNutritionLabelToMenu(asset.base64, asset.name);
+    } catch (error) {
+      setNutritionOcrMessage(error instanceof Error ? error.message : "营养表识别失败");
+    }
+  }
+
+  const handleNutritionLabelSelected = async (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    try {
+      const image = await prepareAiImageUploadFromFile(file);
+      await recognizeNutritionLabelToMenu(image.base64, image.name);
+    } catch (error) {
+      setNutritionOcrMessage(error instanceof Error ? error.message : "营养表识别失败");
+    } finally {
       input.value = "";
     }
   };
+
+  async function recognizeNutritionLabelToMenu(base64: string, imageName: string) {
+    setNutritionOcrBusy(true);
+    setNutritionOcrMessage("正在识别营养成分表...");
+
+    try {
+      const result = await recognizeNutritionLabelImage(base64, imageName);
+      const food = buildCustomFoodFromNutritionLabel(result.metrics);
+      addCustomFood(food);
+      addMenuFood(food);
+      setMenuName(food.name);
+      setMenuCalories(String(Math.round(food.caloriesPer100g)));
+      setMenuProtein(String(food.proteinPer100g));
+      setMenuFat(String(food.fatPer100g));
+      setMenuCarbs(String(food.carbsPer100g));
+      setMenuGram(String(food.defaultUnitGram));
+      setMenuCollapsed(false);
+      setNutritionOcrMessage(`已识别并保存：${food.name}`);
+    } catch (error) {
+      setNutritionOcrMessage(error instanceof Error ? error.message : "营养成分表识别失败");
+    } finally {
+      setNutritionOcrBusy(false);
+    }
+  }
 
   function saveCustomFood() {
     const name = menuName.trim();
@@ -656,7 +719,21 @@ export default function TodayScreen() {
               <SmallInput label="碳水g" value={menuCarbs} onChangeText={setMenuCarbs} />
               <SmallInput label="每份g" value={menuGram} onChangeText={setMenuGram} />
             </View>
-            <Button variant="filled" color="accent" block onPress={saveCustomFood}>保存到我的菜单</Button>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Button variant="filled" color="accent" block onPress={saveCustomFood}>保存到我的菜单</Button>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Button variant="glass" color="accent" block onPress={openNutritionLabelPicker}>
+                  {nutritionOcrBusy ? "识别中..." : "识别营养表"}
+                </Button>
+              </View>
+            </View>
+            {nutritionOcrMessage ? (
+              <BentoText variant="micro" color={nutritionOcrMessage.includes("失败") ? c.warn : c.inkMute}>
+                {nutritionOcrMessage}
+              </BentoText>
+            ) : null}
             {menuFoods.map((food) => (
               <View key={food.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderTopWidth: 1, borderTopColor: c.glassBorder }}>
                 <View style={{ flex: 1 }}>
@@ -679,6 +756,17 @@ export default function TodayScreen() {
             accept: "image/jpeg,image/png,image/webp",
             capture: "environment",
             onChange: handleDishImageSelected,
+            style: { display: "none" },
+          })
+        : null}
+
+      {Platform.OS === "web"
+        ? createElement("input", {
+            ref: nutritionLabelInputRef,
+            type: "file",
+            accept: "image/jpeg,image/png,image/webp",
+            capture: "environment",
+            onChange: handleNutritionLabelSelected,
             style: { display: "none" },
           })
         : null}
@@ -1775,13 +1863,20 @@ function numberOr(value: string, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
-    reader.onerror = () => reject(reader.error ?? new Error("图片读取失败"));
-    reader.readAsDataURL(file);
+async function pickNativeImage(): Promise<{ base64: string; name: string } | null> {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permission.granted) return null;
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ["images"],
+    base64: true,
+    quality: 0.85,
   });
+
+  if (result.canceled || !result.assets[0]) return null;
+  const asset = result.assets[0];
+  const image = prepareAiImageUploadFromBase64Asset(asset);
+  return { base64: image.base64, name: image.name };
 }
 
 function round1(value: number): number {

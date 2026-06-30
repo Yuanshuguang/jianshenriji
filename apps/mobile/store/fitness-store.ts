@@ -16,6 +16,9 @@ export type UserProfile = {
 };
 
 export type BodyCompositionSource = "manual" | "report" | "selfie";
+export type BodyFatVisualLevel = "unknown" | "soft" | "flat" | "lines" | "defined";
+export type BodyFatEvidenceMediaType = "image" | "video" | null;
+export type BodyFatVisualQualitySignal = "frontVisible" | "waistVisible" | "lightingOk" | "tightClothing";
 
 export type BodyCompositionDraft = {
   /** 数据来源：手填、报告或自拍估算 */
@@ -24,6 +27,8 @@ export type BodyCompositionDraft = {
   evidenceName: string | null;
   /** 上传的报告或图片地址 */
   evidenceUri: string | null;
+  /** 自拍估算证据类型：图片或视频 */
+  evidenceMediaType: BodyFatEvidenceMediaType;
   /** 体脂率 % */
   bodyFatPercent: number | null;
   /** 骨骼肌 kg */
@@ -32,6 +37,16 @@ export type BodyCompositionDraft = {
   waterPercent: number | null;
   /** 基础代谢 kcal */
   basalMetabolismKcal: number | null;
+  /** 自拍/视频估算时用户确认的可见体态特征 */
+  visualLevel: BodyFatVisualLevel;
+  /** 自拍/视频估算时用户确认的画面质量条件 */
+  visualQualitySignals: BodyFatVisualQualitySignal[];
+  /** 自拍/视频估算区间下限 */
+  bodyFatEstimateMin: number | null;
+  /** 自拍/视频估算区间上限 */
+  bodyFatEstimateMax: number | null;
+  /** 自拍/视频估算依据摘要 */
+  bodyFatEstimateReason: string | null;
 };
 
 export function createDefaultBodyComposition(): BodyCompositionDraft {
@@ -39,10 +54,16 @@ export function createDefaultBodyComposition(): BodyCompositionDraft {
     source: "manual",
     evidenceName: null,
     evidenceUri: null,
+    evidenceMediaType: null,
     bodyFatPercent: null,
     skeletalMuscleKg: null,
     waterPercent: null,
-    basalMetabolismKcal: null
+    basalMetabolismKcal: null,
+    visualLevel: "unknown",
+    visualQualitySignals: [],
+    bodyFatEstimateMin: null,
+    bodyFatEstimateMax: null,
+    bodyFatEstimateReason: null
   };
 }
 

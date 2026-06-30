@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { parseImageRecognitionRequest } from "../ai-security.js";
 
 type BaiduTokenResponse = {
   access_token?: string;
@@ -31,13 +32,6 @@ export type BaiduDishRecognitionCandidate = {
   source: "baidu-dish-image";
 };
 
-type DishRecognitionRequestBody = {
-  imageBase64?: string;
-  imageMimeType?: string;
-  imageName?: string;
-  topNum?: number;
-};
-
 const BAIDU_TOKEN_URL = "https://aip.baidubce.com/oauth/2.0/token";
 const BAIDU_DISH_URL = "https://aip.baidubce.com/rest/2.0/image-classify/v2/dish";
 const DEFAULT_TOP_NUM = 5;
@@ -52,17 +46,9 @@ export const baiduDishRoute = new Hono().post("/", async (context) => {
     return context.json({ error: "Baidu dish recognition is not configured" }, 503);
   }
 
-  let body: DishRecognitionRequestBody;
-  try {
-    body = await context.req.json();
-  } catch {
-    return context.json({ error: "Invalid JSON body" }, 400);
-  }
-
-  const imageBase64 = normalizeImageBase64(body.imageBase64);
-  if (!imageBase64) {
-    return context.json({ error: "imageBase64 is required" }, 400);
-  }
+  const parsedRequest = await parseImageRecognitionRequest(context);
+  if (!parsedRequest.ok) return parsedRequest.response;
+  const body = parsedRequest.body;
 
   const topNum = normalizeTopNum(body.topNum);
   const accessToken = await getBaiduAccessToken(credentials.apiKey, credentials.secretKey);
@@ -76,7 +62,7 @@ export const baiduDishRoute = new Hono().post("/", async (context) => {
       "content-type": "application/x-www-form-urlencoded",
     },
     body: new URLSearchParams({
-      image: imageBase64,
+      image: body.imageBase64,
       top_num: String(topNum),
       baike_num: "0",
     }),
@@ -144,16 +130,6 @@ async function getBaiduAccessToken(apiKey: string, secretKey: string): Promise<s
   cachedAccessToken = payload.access_token;
   cachedAccessTokenExpiresAt = now + Math.max(0, expiresIn * 1000 - TOKEN_SAFETY_WINDOW_MS);
   return cachedAccessToken;
-}
-
-function normalizeImageBase64(value?: string): string {
-  if (!value) return "";
-  const trimmed = value.trim();
-  const commaIndex = trimmed.indexOf(",");
-  if (trimmed.startsWith("data:") && commaIndex >= 0) {
-    return trimmed.slice(commaIndex + 1);
-  }
-  return trimmed;
 }
 
 function normalizeTopNum(value: number | undefined): number {

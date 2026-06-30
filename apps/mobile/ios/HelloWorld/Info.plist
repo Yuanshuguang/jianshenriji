@@ -33,6 +33,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>用于拍摄体成分报告、营养成分表和食物照片。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>用于选择体成分报告、营养成分表和食物照片。</string>
 	<key>UILaunchStoryboardName</key>
 	<string>SplashScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

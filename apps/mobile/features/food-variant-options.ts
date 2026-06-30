@@ -39,11 +39,15 @@ type FoodVariantFamily =
   | "yogurt-sweetness"
   | "popcorn-processing"
   | "fried-skewer-type"
+  | "hotpot-ingredient-type"
   | "hotpot-spicy"
   | "luosifen-topping"
   | "congee-flavor"
   | "soup-base"
-  | "noodle-style";
+  | "noodle-style"
+  | "sauce-type"
+  | "cake-dessert-type"
+  | "sausage-processing";
 
 type FoodForVariant = Pick<Food, "id" | "name" | "aliases" | "category">;
 
@@ -86,11 +90,15 @@ const foodVariantFamilyLabels: Record<FoodVariantFamily, string> = {
   "yogurt-sweetness": "酸奶类型",
   "popcorn-processing": "爆米花口味",
   "fried-skewer-type": "炸串食材类型",
+  "hotpot-ingredient-type": "火锅食材类型",
   "hotpot-spicy": "火锅汤底/蘸料",
   "luosifen-topping": "螺蛳粉加料",
   "congee-flavor": "粥品类型",
   "soup-base": "汤品类型",
   "noodle-style": "面食做法",
+  "sauce-type": "酱料类型",
+  "cake-dessert-type": "甜品类型",
+  "sausage-processing": "肠类加工类型",
 };
 
 const foodVariantFamilies: Record<FoodVariantFamily, FoodVariantOption[]> = {
@@ -223,6 +231,13 @@ const foodVariantFamilies: Record<FoodVariantFamily, FoodVariantOption[]> = {
     variant("豆制品串", "filling", "豆皮、豆泡等吸油差异较大"),
     variant("主食串", "filling", "年糕、面筋等碳水更高"),
   ],
+  "hotpot-ingredient-type": [
+    variant("鲜肉卷", "filling", "肥牛卷、肥羊卷等脂肪差异大", { caloriesPer100g: 295, proteinPer100g: 15, fatPer100g: 26, carbsPer100g: 1 }),
+    variant("丸滑类", "filling", "牛肉丸、鱼丸、虾滑等含淀粉和调味", { caloriesPer100g: 150, proteinPer100g: 12, fatPer100g: 6, carbsPer100g: 10 }),
+    variant("内脏脆口", "filling", "毛肚、鸭肠等蛋白高，热量主要受蘸料影响", { caloriesPer100g: 105, proteinPer100g: 14, fatPer100g: 5, carbsPer100g: 1 }),
+    variant("豆制品", "filling", "油豆腐、腐竹、豆皮等吸汤吸油后热量变化明显", { caloriesPer100g: 220, proteinPer100g: 16, fatPer100g: 13, carbsPer100g: 9 }),
+    variant("蔬菜菌菇", "filling", "蔬菜和菌菇本体热量低，主要看锅底和蘸料", { caloriesPer100g: 35, proteinPer100g: 2, fatPer100g: 1, carbsPer100g: 6 }),
+  ],
   "hotpot-spicy": [
     variant("清汤", "flavor", "汤底油脂较低"),
     variant("菌汤", "flavor", "菌汤汤底油脂通常较低，但需注意额外蘸料"),
@@ -258,6 +273,28 @@ const foodVariantFamilies: Record<FoodVariantFamily, FoodVariantOption[]> = {
     variant("炒面", "cooking", "烹调用油会显著增加热量"),
     variant("炒粉", "cooking", "烹调用油会显著增加热量"),
   ],
+  "sauce-type": [
+    variant("芝麻酱/麻酱", "processing", "芝麻本体脂肪高，一小勺也会明显增加热量", { caloriesPer100g: 630, proteinPer100g: 18, fatPer100g: 54, carbsPer100g: 19 }),
+    variant("油碟/香油", "processing", "基本按食用油估算，热量密度最高", { caloriesPer100g: 880, proteinPer100g: 0, fatPer100g: 100, carbsPer100g: 0 }),
+    variant("沙拉酱", "processing", "常见蛋黄酱基底，脂肪和糖都需要计入", { caloriesPer100g: 480, proteinPer100g: 1, fatPer100g: 45, carbsPer100g: 18 }),
+    variant("蛋黄酱", "processing", "脂肪密度高，重量小但热量高", { caloriesPer100g: 680, proteinPer100g: 1, fatPer100g: 75, carbsPer100g: 2 }),
+    variant("花生酱", "processing", "坚果酱脂肪高，也有一定蛋白质", { caloriesPer100g: 600, proteinPer100g: 24, fatPer100g: 50, carbsPer100g: 22 }),
+    variant("辣椒油/红油", "processing", "主要按油脂估算，少量即可增加热量", { caloriesPer100g: 880, proteinPer100g: 0, fatPer100g: 100, carbsPer100g: 0 }),
+  ],
+  "cake-dessert-type": [
+    variant("奶油蛋糕", "processing", "奶油和糖较多，脂肪和碳水都高", { caloriesPer100g: 330, proteinPer100g: 5, fatPer100g: 20, carbsPer100g: 34 }),
+    variant("芝士蛋糕", "processing", "奶酪和黄油更多，脂肪较高", { caloriesPer100g: 350, proteinPer100g: 7, fatPer100g: 26, carbsPer100g: 22 }),
+    variant("慕斯/提拉米苏", "processing", "奶油、奶酪和糖为主，按甜品估算", { caloriesPer100g: 320, proteinPer100g: 6, fatPer100g: 20, carbsPer100g: 28 }),
+    variant("蛋挞", "processing", "酥皮和蛋奶馅都贡献热量", { caloriesPer100g: 310, proteinPer100g: 5, fatPer100g: 18, carbsPer100g: 32 }),
+    variant("冰淇淋/雪糕", "processing", "奶脂和糖为主，品牌差异较大", { caloriesPer100g: 200, proteinPer100g: 4, fatPer100g: 10, carbsPer100g: 24 }),
+    variant("中式甜品", "processing", "双皮奶、龟苓膏等含水高，主要看糖量和奶量", { caloriesPer100g: 95, proteinPer100g: 3, fatPer100g: 3, carbsPer100g: 15 }),
+  ],
+  "sausage-processing": [
+    variant("鸡肉肠", "processing", "健身低脂款通常蛋白较高、脂肪较低", { caloriesPer100g: 150, proteinPer100g: 18, fatPer100g: 7, carbsPer100g: 4 }),
+    variant("火腿肠", "processing", "常规即食火腿肠脂肪和淀粉都需要计入", { caloriesPer100g: 220, proteinPer100g: 12, fatPer100g: 16, carbsPer100g: 8 }),
+    variant("烤肠/香肠", "processing", "油脂更高，街边烤肠按高脂估算", { caloriesPer100g: 260, proteinPer100g: 12, fatPer100g: 20, carbsPer100g: 8 }),
+    variant("低脂高蛋白肠", "processing", "蛋白更高、脂肪较低，但仍需看包装配方", { caloriesPer100g: 130, proteinPer100g: 20, fatPer100g: 4, carbsPer100g: 4 }),
+  ],
 };
 
 const familyRules: FamilyRule[] = [
@@ -269,12 +306,12 @@ const familyRules: FamilyRule[] = [
   {
     family: "egg-cooking",
     terms: ["鸡蛋羹", "蒸蛋", "水蒸蛋", "炖蛋", "水煮蛋", "煮鸡蛋", "白煮蛋", "煎蛋", "荷包蛋", "炸蛋", "卤蛋", "茶叶蛋", "鸡蛋", "蛋", "egg"],
-    exclude: ["蛋糕", "蛋挞", "蛋白棒", "蛋白粉", "蛋卷", "蛋黄酥", "皮蛋瘦肉粥", "紫菜蛋花汤", "番茄炒蛋", "西红柿炒鸡蛋", "韭菜炒蛋", "虾仁滑蛋"],
+    exclude: ["蛋糕", "蛋挞", "蛋白棒", "蛋白粉", "蛋卷", "蛋黄酥", "蛋黄酱", "鸡肉肠", "火腿肠", "烤肠", "香肠", "皮蛋瘦肉粥", "紫菜蛋花汤", "番茄炒蛋", "西红柿炒鸡蛋", "韭菜炒蛋", "虾仁滑蛋"],
   },
   {
     family: "peanut-processing",
     terms: ["水煮花生", "煮花生", "油炸花生", "炸花生", "炒花生", "生花生", "花生", "花生米", "落花生", "peanut", "peanuts"],
-    exclude: ["花生酱", "花生油", "花生汤", "汤圆", "蛋白棒", "巧克力", "三明治"],
+    exclude: ["花生酱", "花生油", "花生汤", "汤圆", "蛋白棒", "巧克力", "三明治", "螺蛳粉"],
   },
   {
     family: "popcorn-processing",
@@ -342,6 +379,7 @@ const familyRules: FamilyRule[] = [
   {
     family: "hotpot-spicy",
     terms: ["火锅", "麻辣烫", "冒菜", "麻辣香锅", "串串"],
+    exclude: ["芝麻酱", "麻酱", "油碟", "沙拉酱", "蛋黄酱", "美乃滋", "花生酱", "辣椒油", "红油"],
   },
   {
     family: "luosifen-topping",
@@ -350,6 +388,24 @@ const familyRules: FamilyRule[] = [
   {
     family: "fried-skewer-type",
     terms: ["炸串", "油炸串"],
+  },
+  {
+    family: "hotpot-ingredient-type",
+    terms: ["虾滑", "鱼滑", "牛肉丸", "鱼丸", "贡丸", "蟹棒", "蟹柳", "毛肚", "鸭肠", "肥牛卷", "肥羊卷", "腐竹", "油豆腐", "魔芋结", "竹轮"],
+    exclude: ["螺蛳粉"],
+  },
+  {
+    family: "sauce-type",
+    terms: ["芝麻酱", "麻酱", "油碟", "香油碟", "沙拉酱", "蛋黄酱", "美乃滋", "花生酱", "辣椒油", "红油", "油泼辣子"],
+  },
+  {
+    family: "cake-dessert-type",
+    terms: ["蛋糕", "芝士蛋糕", "巴斯克蛋糕", "提拉米苏", "慕斯", "蛋挞", "双皮奶", "龟苓膏", "冰淇淋", "冰激凌", "雪糕", "冰棍", "甜筒"],
+    exclude: ["蛋黄酥", "月饼"],
+  },
+  {
+    family: "sausage-processing",
+    terms: ["鸡肉肠", "低脂鸡肉肠", "高蛋白鸡肉肠", "火腿肠", "烤肠", "香肠", "热狗肠"],
   },
   {
     family: "congee-flavor",
@@ -502,6 +558,13 @@ const explicitVariantTerms: Partial<Record<FoodVariantFamily, Array<{ label: str
     { label: "焦糖爆米花", terms: ["焦糖"] },
     { label: "黄油爆米花", terms: ["黄油", "奶油"] },
   ],
+  "hotpot-ingredient-type": [
+    { label: "鲜肉卷", terms: ["肥牛卷", "肥羊卷", "肥牛", "肥羊", "雪花肥牛"] },
+    { label: "丸滑类", terms: ["虾滑", "鱼滑", "牛肉丸", "鱼丸", "贡丸", "蟹棒", "蟹柳"] },
+    { label: "内脏脆口", terms: ["毛肚", "鸭肠"] },
+    { label: "豆制品", terms: ["腐竹", "油豆腐", "豆泡", "魔芋结", "竹轮"] },
+    { label: "蔬菜菌菇", terms: ["金针菇", "蘑菇", "青菜", "娃娃菜"] },
+  ],
   "hotpot-spicy": [
     { label: "清汤", terms: ["清汤"] },
     { label: "菌汤", terms: ["菌汤"] },
@@ -536,6 +599,28 @@ const explicitVariantTerms: Partial<Record<FoodVariantFamily, Array<{ label: str
     { label: "拌面", terms: ["拌面", "干拌", "热干"] },
     { label: "炒面", terms: ["炒面"] },
     { label: "炒粉", terms: ["炒粉"] },
+  ],
+  "sauce-type": [
+    { label: "芝麻酱/麻酱", terms: ["芝麻酱", "麻酱"] },
+    { label: "油碟/香油", terms: ["油碟", "香油碟", "香油"] },
+    { label: "沙拉酱", terms: ["沙拉酱", "凯撒酱", "千岛酱"] },
+    { label: "蛋黄酱", terms: ["蛋黄酱", "美乃滋"] },
+    { label: "花生酱", terms: ["花生酱"] },
+    { label: "辣椒油/红油", terms: ["辣椒油", "红油", "油泼辣子"] },
+  ],
+  "cake-dessert-type": [
+    { label: "奶油蛋糕", terms: ["奶油蛋糕", "黑森林", "红丝绒"] },
+    { label: "芝士蛋糕", terms: ["芝士蛋糕", "巴斯克"] },
+    { label: "慕斯/提拉米苏", terms: ["慕斯", "提拉米苏"] },
+    { label: "蛋挞", terms: ["蛋挞"] },
+    { label: "冰淇淋/雪糕", terms: ["冰淇淋", "冰激凌", "雪糕", "冰棍", "甜筒"] },
+    { label: "中式甜品", terms: ["双皮奶", "龟苓膏", "烧仙草"] },
+  ],
+  "sausage-processing": [
+    { label: "鸡肉肠", terms: ["鸡肉肠"] },
+    { label: "火腿肠", terms: ["火腿肠"] },
+    { label: "烤肠/香肠", terms: ["烤肠", "香肠", "热狗肠"] },
+    { label: "低脂高蛋白肠", terms: ["低脂", "高蛋白"] },
   ],
 };
 
@@ -638,6 +723,8 @@ function isAmbiguousBaseFood(family: FoodVariantFamily, food: FoodForVariant): b
       return /爆米花|popcorn/.test(text);
     case "fried-skewer-type":
       return /炸串/.test(text);
+    case "hotpot-ingredient-type":
+      return /丸|滑|卷|毛肚|鸭肠|火锅食材/.test(text);
     case "hotpot-spicy":
       return /火锅|麻辣烫|冒菜/.test(text);
     case "luosifen-topping":
@@ -648,6 +735,12 @@ function isAmbiguousBaseFood(family: FoodVariantFamily, food: FoodForVariant): b
       return /汤$/.test(text);
     case "noodle-style":
       return /面条|面食|noodles?/.test(text);
+    case "sauce-type":
+      return /酱$|油$|油碟|麻酱/.test(text);
+    case "cake-dessert-type":
+      return /蛋糕|甜品|冰淇淋|冰激凌|雪糕/.test(text);
+    case "sausage-processing":
+      return /肠$/.test(text);
     default:
       return false;
   }
@@ -667,6 +760,15 @@ export function getFoodVariantDetailStatus(food: FoodForVariant, context?: FoodV
   const baseOptions = foodVariantFamilies[family] ?? [];
   const options = refineByExplicitContext(family, baseOptions, getContextText(context));
   const narrowedByInput = baseOptions.length > 1 && options.length === 1;
+
+  if (family === "cake-dessert-type" && options.length > 0) {
+    return {
+      groupLabel,
+      options,
+      needsDetails: true,
+      detailHint: `需要确认${groupLabel}`,
+    };
+  }
 
   if (narrowedByInput) {
     return {
@@ -717,6 +819,21 @@ const finishedProteinTerms = [
   "鸡肉肠",
   "即食鸡胸肉",
   "鱼豆腐",
+  "虾滑",
+  "鱼滑",
+  "牛肉丸",
+  "鱼丸",
+  "贡丸",
+  "蟹棒",
+  "蟹柳",
+  "毛肚",
+  "鸭肠",
+  "肥牛卷",
+  "肥羊卷",
+  "鸡肉肠",
+  "火腿肠",
+  "烤肠",
+  "香肠",
   "臭豆腐",
   "油豆腐",
   "豆腐干",

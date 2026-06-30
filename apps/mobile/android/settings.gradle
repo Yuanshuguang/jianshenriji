@@ -1,11 +1,4 @@
 pluginManagement {
-  repositories {
-    maven { url 'https://mirrors.cloud.tencent.com/nexus/repository/maven-public/' }
-    maven { url 'https://mirrors.cloud.tencent.com/nexus/repository/gradle-plugins/' }
-    google()
-    mavenCentral()
-    gradlePluginPortal()
-  }
   def reactNativeGradlePlugin = new File(
     providers.exec {
       workingDir(rootDir)

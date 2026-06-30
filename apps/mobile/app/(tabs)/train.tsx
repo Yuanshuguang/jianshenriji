@@ -9,7 +9,6 @@
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Image, Pressable, View } from "react-native";
-import { CalendarHistoryPanel } from "../../components/CalendarHistoryPanel";
 import {
   Badge,
   Button,
@@ -26,6 +25,7 @@ import {
 } from "../../components/bento";
 import { ActualTrainingInputSection } from "../../components/training/ActualTrainingInputSection";
 import { CustomTrainingExerciseRow } from "../../components/training/CustomTrainingExerciseRow";
+import { TrainingPlanOverview } from "../../components/training/TrainingPlanOverview";
 import {
   buildLocalExerciseFallback,
   buildTrainingTextReferences,
@@ -55,7 +55,6 @@ const focusOptions: MuscleGroup[] = ["chest", "back", "legs", "shoulders", "arms
 export default function TrainScreen() {
   const router = useRouter();
   const c = useBentoTheme().colors;
-  const [trainingCalendarOpen, setTrainingCalendarOpen] = useState(false);
   const [referenceCollapsed, setReferenceCollapsed] = useState(true);
   const [libraryItems, setLibraryItems] = useState<LibraryExercise[]>([]);
   const [supplementalLibraryItems, setSupplementalLibraryItems] = useState<LibraryExercise[]>([]);
@@ -91,11 +90,9 @@ export default function TrainScreen() {
   const selectedFocus = dietTrainingRecommendation.focus;
   const selectedMinutes = dietTrainingRecommendation.durationMinutes;
   const selectedNextFocus = todayTrainingPlan.nextFocus ?? dietTrainingRecommendation.nextFocus ?? selectedFocus;
-  const previousFocus = previousInCycle(focusOptions, selectedFocus);
   const todayWorkout = buildWorkoutForSelection(selectedFocus, selectedMinutes, preference);
   const customTrainingExercises = todayTrainingPlan.customExercises ?? [];
   const actualTrainingCalories = Math.round(actualTraining.calories);
-  const hasTrainingFeedback = actualTraining.status !== "pending";
   const actualFood = useMemo(
     () => buildActualFoodPortionsFromText(actualFoodText, customFoods, { dailyCalorieTarget: energyPlan.calories }),
     [actualFoodText, customFoods, energyPlan.calories]
@@ -201,57 +198,13 @@ export default function TrainScreen() {
     <Screen>
       <PetReminderCard reminder={trainingReminder} />
 
-      <GlassTile glow="accent2" padding={10} style={{ gap: 8 }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-          <Label color={c.inkMute} variant="label">今日练</Label>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Badge color={hasTrainingFeedback ? "positive" : "amber"} size="sm">
-              {hasTrainingFeedback ? "已记录" : "待记录"}
-            </Badge>
-            <Pressable
-              onPress={() => setTrainingCalendarOpen((value) => !value)}
-              hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
-            >
-              <BentoText weight="semibold" color={c.accent2} style={{ fontSize: 12 }}>
-                {trainingCalendarOpen ? "收起" : "历史"}
-              </BentoText>
-            </Pressable>
-          </View>
-        </View>
-
-        <View style={{ flexDirection: "row", gap: 8, alignItems: "stretch" }}>
-          <TrendCard
-            tone="muted"
-            label="昨日练"
-            value={muscleNameMap[previousFocus]}
-            caption={dietTrainingRecommendation.movementPattern}
-          />
-          <TrendCard
-            tone="accent"
-            label="今日练"
-            value={muscleNameMap[selectedFocus]}
-            caption="今天重点"
-            emphasis
-          />
-          <TrendCard
-            tone="muted"
-            label="明日练"
-            value={muscleNameMap[selectedNextFocus]}
-            caption={dietTrainingRecommendation.nextFocus ? muscleNameMap[dietTrainingRecommendation.nextFocus] : "后续调整"}
-          />
-        </View>
-
-        <View style={{ gap: 6 }}>
-          <BentoText weight="semibold" color={c.ink} style={{ fontSize: 15 }}>
-            {resolvedDietDay.status} · {dietTrainingRecommendation.intensityLabel}
-          </BentoText>
-          <BentoText variant="micro" color={c.inkMute}>
-            参考时长 {selectedMinutes} 分钟 · {dietTrainingRecommendation.movementPattern} · 下次优先 {muscleNameMap[selectedNextFocus]}
-          </BentoText>
-        </View>
-
-        {trainingCalendarOpen ? <CalendarHistoryPanel /> : null}
-      </GlassTile>
+      <TrainingPlanOverview
+        currentFocus={selectedFocus}
+        nextFocus={selectedNextFocus}
+        focusSequence={focusOptions}
+        selectedMinutes={selectedMinutes}
+        intensityLabel={dietTrainingRecommendation.intensityLabel}
+      />
 
       <TrainingEnergySummary
         burnCalories={burnCalories}
@@ -359,55 +312,6 @@ export default function TrainScreen() {
   );
 }
 
-function TrendCard({
-  tone,
-  label,
-  value,
-  caption,
-  emphasis = false,
-}: {
-  tone: "accent" | "muted";
-  label: string;
-  value: string;
-  caption: string;
-  emphasis?: boolean;
-}) {
-  const c = useBentoTheme().colors;
-  const accentBackground = tone === "accent" ? `${c.accent2}16` : c.glass;
-  const accentBorder = tone === "accent" ? `${c.accent2}66` : c.glassBorder;
-  return (
-    <View
-      style={{
-        flex: emphasis ? 1.4 : 1,
-        minWidth: 0,
-        minHeight: emphasis ? 108 : 94,
-        borderRadius: 14,
-        paddingHorizontal: 10,
-        paddingVertical: 8,
-        gap: 6,
-        backgroundColor: accentBackground,
-        borderWidth: 1,
-        borderColor: accentBorder,
-      }}
-    >
-      <BentoText variant="micro" color={c.inkMute} style={{ textAlign: "center" }}>
-        {label}
-      </BentoText>
-      <BentoText
-        weight={emphasis ? "bold" : "semibold"}
-        color={tone === "accent" ? c.accent2 : c.ink}
-        style={{ fontSize: emphasis ? 21 : 17, textAlign: "center" }}
-        numberOfLines={2}
-      >
-        {value}
-      </BentoText>
-      <BentoText variant="micro" color={c.inkMute} style={{ textAlign: "center" }} numberOfLines={2}>
-        {caption}
-      </BentoText>
-    </View>
-  );
-}
-
 function TrainingEnergySummary({
   burnCalories,
   burnTarget,
@@ -492,13 +396,6 @@ function EnergyMetric({
       </BentoText>
     </View>
   );
-}
-
-function previousInCycle<T>(values: readonly T[], current: T): T {
-  if (values.length === 0) return current;
-  const index = values.indexOf(current);
-  if (index <= 0) return values[values.length - 1];
-  return values[index - 1];
 }
 
 function fatigueToWeightLevel(fatigue: number): number {

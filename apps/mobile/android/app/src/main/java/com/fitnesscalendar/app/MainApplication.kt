@@ -1,4 +1,4 @@
-package com.app
+package com.fitnesscalendar.app
 
 import android.app.Application
 import android.content.res.Configuration

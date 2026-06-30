@@ -1,5 +1,13 @@
 packages:
   - "apps/*"
   - "shared"
+overrides:
+  "@react-native/metro-config": 0.85.3
+  uuid: 11.1.1
+peerDependencyRules:
+  allowedVersions:
+    react-native-worklets: 0.9.2
 allowBuilds:
+  dtrace-provider: false
   esbuild: true
+onlyBuiltDependencies: '[dtrace-provider]'
