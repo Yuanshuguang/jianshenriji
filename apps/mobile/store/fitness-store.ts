@@ -11,7 +11,40 @@ export type UserProfile = {
   heightCm: number;
   weightKg: number;
   trainingLevel: "beginner" | "intermediate" | "regular";
+  /** 身体成分补充数据：可选，来源于手填或图片估算 */
+  bodyComposition?: BodyCompositionDraft;
 };
+
+export type BodyCompositionSource = "manual" | "report" | "selfie";
+
+export type BodyCompositionDraft = {
+  /** 数据来源：手填、报告或自拍估算 */
+  source: BodyCompositionSource;
+  /** 上传的报告或图片名称 */
+  evidenceName: string | null;
+  /** 上传的报告或图片地址 */
+  evidenceUri: string | null;
+  /** 体脂率 % */
+  bodyFatPercent: number | null;
+  /** 骨骼肌 kg */
+  skeletalMuscleKg: number | null;
+  /** 身体水分 % */
+  waterPercent: number | null;
+  /** 基础代谢 kcal */
+  basalMetabolismKcal: number | null;
+};
+
+export function createDefaultBodyComposition(): BodyCompositionDraft {
+  return {
+    source: "manual",
+    evidenceName: null,
+    evidenceUri: null,
+    bodyFatPercent: null,
+    skeletalMuscleKg: null,
+    waterPercent: null,
+    basalMetabolismKcal: null
+  };
+}
 
 export type UserGoal = {
   targetWeightKg: number;
@@ -265,7 +298,8 @@ const defaultProfile: UserProfile = {
   age: 30,
   heightCm: 175,
   weightKg: 70,
-  trainingLevel: "intermediate"
+  trainingLevel: "intermediate",
+  bodyComposition: createDefaultBodyComposition()
 };
 
 const defaultGoal: UserGoal = {

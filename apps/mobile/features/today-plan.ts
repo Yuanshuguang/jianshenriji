@@ -11,7 +11,13 @@ import {
   type NutritionTotals,
   type WorkoutPlan
 } from "@fitness-calendar/shared";
-import { parseFoodIntelligence, type FoodMealSlot, type FoodServingContext } from "./food-intelligence-engine";
+import { resolveFoodNutrition } from "./food-nutrition-resolver";
+import {
+  parseFoodIntelligencePipeline,
+  type FoodIntelligenceFallbackRequest,
+  type FoodMealSlot,
+  type FoodServingContext
+} from "./food-intelligence-engine";
 import type { ActualTrainingStatus } from "../store/fitness-store";
 
 export type FoodTextMatch = {
@@ -32,6 +38,7 @@ export type FoodTextMatch = {
 export type ParsedFoodText = {
   matched: FoodTextMatch[];
   unmatched: string[];
+  fallbackRequests: FoodIntelligenceFallbackRequest[];
 };
 
 export type ActualFoodPortionResult = {
@@ -67,6 +74,7 @@ export type MealFood = {
   calories: number;
   totals: NutritionTotals;
   displayAmount?: string;
+  sourceIndex?: number;
 };
 
 export type MealPlan = {
@@ -77,7 +85,7 @@ export type MealPlan = {
 };
 
 type MealId = MealPlan["id"];
-type FoodPortionWithMeal = FoodPortion & { meal?: FoodMealSlot; displayAmount?: string };
+type FoodPortionWithMeal = FoodPortion & { meal?: FoodMealSlot; displayAmount?: string; sourceIndex?: number };
 
 export const muscleNameMap: Record<MuscleGroup, string> = muscleGroupLabels;
 export const exerciseNameMap = Object.fromEntries(exercises.map((item) => [item.id, item.name])) as Record<string, string>;
@@ -90,10 +98,10 @@ const mealSlots: MealPlan[] = [
 ];
 
 export function parseFoodText(text: string, customFoods: Food[] = [], servingContext: FoodServingContext = {}): ParsedFoodText {
-  const result = parseFoodIntelligence(text, customFoods, servingContext);
+  const result = parseFoodIntelligencePipeline(text, customFoods, servingContext);
   return {
     matched: result.items.map((item) => ({
-      input: item.food.name,
+      input: item.rawText || item.food.name,
       food: item.food,
       grams: item.grams,
       quantity: item.quantity,
@@ -106,22 +114,33 @@ export function parseFoodText(text: string, customFoods: Food[] = [], servingCon
       needsDetails: item.needsDetails,
       detailHint: item.detailHint
     })),
-    unmatched: result.unmatched
+    unmatched: result.unmatched,
+    fallbackRequests: result.fallbackRequests
   };
 }
 
 export function buildActualFoodPortionsFromText(text: string, customFoods: Food[] = [], servingContext: FoodServingContext = {}): ActualFoodPortionResult {
   const parsed = parseFoodText(text, customFoods, servingContext);
-  const portions: FoodPortionWithMeal[] = parsed.matched.map((match) => {
+  const portions: FoodPortionWithMeal[] = parsed.matched.map((match, index) => {
     const multiplier = isNegativeDelta(text, match.input) ? -1 : 1;
     const grams = Math.max(1, match.grams) * multiplier;
+    const resolution = resolveFoodNutrition({
+      food: match.food,
+      grams: Math.abs(grams),
+      rawText: match.input,
+      quantity: match.quantity,
+      unit: match.unit,
+    });
     return {
       foodId: match.food.id,
       name: match.food.name,
       grams,
       meal: match.meal && match.meal !== "unknown" ? match.meal : undefined,
       displayAmount: match.displayAmount,
-      totals: calculateFoodTotals(match.food, grams)
+      sourceIndex: index,
+      totals: grams < 0
+        ? calculateFoodTotals(resolution.resolvedFood, Math.abs(grams))
+        : resolution.totals,
     };
   });
 
@@ -145,7 +164,8 @@ export function buildMealPlan(portions: FoodPortion[], customFoods: Food[] = [])
         fatG: portion.totals.fatG,
         carbsG: portion.totals.carbsG
       },
-      displayAmount: (portion as FoodPortionWithMeal).displayAmount
+      displayAmount: (portion as FoodPortionWithMeal).displayAmount,
+      sourceIndex: (portion as FoodPortionWithMeal).sourceIndex ?? index
     });
   });
 

@@ -1,4 +1,6 @@
 import { getFoodCatalog, type Food } from "@fitness-calendar/shared";
+import { getFoodVariantDetailStatus } from "./food-variant-options";
+import { parseFoodSemantics, type FoodSemanticParseResult } from "./food-semantic-parser";
 
 export type FoodMealSlot = "breakfast" | "lunch" | "dinner" | "snack" | "unknown";
 
@@ -29,6 +31,7 @@ export type FoodIntelligenceResult = {
   unmatched: string[];
   meal: FoodMealSlot;
   confidence: number;
+  semantic: FoodSemanticParseResult;
 };
 
 type Candidate = {
@@ -252,7 +255,7 @@ function detectSizeModifier(text: string): number {
 export function parseFoodIntelligence(text: string, customFoods: Food[] = [], servingContext: FoodServingContext = {}): FoodIntelligenceResult {
   const normalizedText = normalizeFoodText(text);
   if (!normalizedText) {
-    return { normalizedText: "", items: [], unmatched: [], meal: "unknown", confidence: 0 };
+    return { normalizedText: "", items: [], unmatched: [], meal: "unknown", confidence: 0, semantic: { normalizedText: "", segments: [], tokens: [], discardedText: [] } };
   }
 
   const mealMarkers = detectMealMarkers(normalizedText);
@@ -265,12 +268,14 @@ export function parseFoodIntelligence(text: string, customFoods: Food[] = [], se
     ? 0
     : round2(items.reduce((sum, item) => sum + item.confidence, 0) / items.length);
 
+  const semantic = parseFoodSemantics(text, customFoods);
   return {
     normalizedText,
     items,
     unmatched,
     meal: fallbackMeal,
-    confidence
+    confidence,
+    semantic
   };
 }
 
@@ -673,6 +678,12 @@ function assessDetailNeed(food: Food, serving: { reason: string }, context: stri
   const aliases = food.aliases.map(normalizeFoodText).join(" ");
   const terms = `${name} ${aliases}`;
 
+  // 优先走变体系统：如果食物有细分选项，由 variant-options 判定是否需追问
+  const variantStatus = getFoodVariantDetailStatus(food, { inputText: context });
+  if (variantStatus.options.length > 0) {
+    return { needsDetails: variantStatus.needsDetails, hint: variantStatus.detailHint };
+  }
+
   if (/奶茶|伯牙绝弦|茶姬|奶盖|芝士茶/.test(terms)) {
     return { needsDetails: true, hint: "糖度/小料会显著影响热量" };
   }
@@ -693,9 +704,7 @@ function assessDetailNeed(food: Food, serving: { reason: string }, context: stri
   }
 
   return { needsDetails: false };
-}
-
-function isSemanticMealUnit(unit: string): boolean {
+}function isSemanticMealUnit(unit: string): boolean {
   return unit === "顿" || unit === "餐";
 }
 

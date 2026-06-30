@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { calculateFoodTotals, foods, recommendMacroAwarePortions, type Food } from "@fitness-calendar/shared";
-import { parseFoodIntelligence, type FoodIntelligenceItem } from "../food-intelligence-engine";
+import { parseFoodIntelligence, parseFoodIntelligencePipeline, type FoodIntelligenceItem } from "../food-intelligence-engine";
 import { buildActualFoodPortionsFromText, buildMealPlan } from "../today-plan";
 
 const customFood: Food = {
@@ -478,13 +478,13 @@ test("电商食品类目：常见零食和冲调营养兜底可识别", () => {
 test("类目兜底：酒水饮品、生鲜海鲜、外卖和街头小吃可识别", () => {
   const cases: Array<[string, string]> = [
     ["喝了一瓶气泡水", "fallback-sparkling-water"],
-    ["晚上喝了一罐啤酒", "fallback-beer"],
+    ["晚上喝了一罐啤酒", "beer"],
     ["喝了一杯芝士奶盖茶", "fallback-cheese-tea"],
     ["吃了一份三文鱼", "fallback-salmon"],
     ["吃了两只生蚝", "fallback-oyster"],
     ["吃了一份花甲", "fallback-clam"],
-    ["晚上吃了一份烤冷面", "fallback-grilled-cold-noodle"],
-    ["夜宵吃了三串炸串", "fallback-fried-skewer"],
+    ["晚上吃了一份烤冷面", "fried-cold-noodles"],
+    ["夜宵吃了三串炸串", "fried-skewer"],
     ["中午点了一份麻辣香锅", "fallback-spicy-hot-pot-dry"],
     ["午餐吃了一盒外卖便当", "fallback-bento"]
   ];
@@ -511,7 +511,7 @@ test("类目兜底第二批：电商、外卖、生鲜、烧烤、便利店和�
     ["夜宵吃了两串五花肉串", "fallback-b2-pork-belly-skewer"],
     ["晚上吃了两串烤鸡胗", "fallback-b2-bbq-gizzard"],
     ["晚上吃了一份锡纸花甲", "fallback-b2-foil-clam"],
-    ["便利店买了一个金枪鱼饭团", "fallback-b2-tuna-onigiri"],
+    ["便利店买了一个金枪鱼饭团", "rice-ball"],
     ["中午吃了一盒咖喱猪排饭", "fallback-b2-katsu-curry-rice"],
     ["晚上吃了一包火鸡面", "fallback-b2-buldak-ramen"],
     ["午餐吃了一份藜麦沙拉", "fallback-b2-quinoa-salad"],
@@ -610,8 +610,8 @@ test("真实口语：后置重量优先于半个、半杯、一桶等容器估�
   assert.equal(calculateFoodTotals(watermelonItem!.food, watermelonItem!.grams).calories, 78);
 
   const popcorn = parseFoodIntelligence("一桶爆米花，大概半斤");
-  const popcornItem = popcorn.items.find((item) => item.food.id === "fallback-popcorn");
-  assert.ok(popcornItem, "expected fallback-popcorn");
+  const popcornItem = popcorn.items.find((item) => item.food.id === "popcorn");
+  assert.ok(popcornItem, "expected popcorn");
   assert.equal(popcornItem?.grams, 250);
   assert.equal(popcornItem?.reason, "explicit-weight");
   assert.equal(popcornItem?.needsDetails, true);
@@ -649,6 +649,114 @@ test("模糊食品：品牌奶茶、甜品份量和花生做法需要用户补�
   assert.equal(friedPeanut.items[0]?.needsDetails, false);
 });
 
+test("食物智能识别管线：泛品类要追问，明确食物不重复拆分", () => {
+  const result = parseFoodIntelligence("一个鸡蛋，两个蒸蛋，一碗南瓜粥，一碗豆腐脑");
+  const byId = new Map(result.items.map((item) => [item.food.id, item]));
+
+  const egg = byId.get("egg");
+  assert.ok(egg, "expected generic egg");
+  assert.equal(egg?.needsDetails, true);
+  assert.match(egg?.detailHint ?? "", /鸡蛋做法/);
+
+  const steamedEgg = byId.get("steamed-egg");
+  assert.ok(steamedEgg, "expected steamed-egg");
+  assert.equal(steamedEgg?.needsDetails, false);
+
+  const pumpkinCongee = byId.get("pumpkin-congee");
+  assert.ok(pumpkinCongee, "expected pumpkin-congee");
+  assert.equal(pumpkinCongee?.food.name, "南瓜粥");
+  assert.equal(pumpkinCongee?.needsDetails, false);
+  assert.ok(!byId.has("sweet-congee"), "南瓜粥不应回落成甜粥");
+
+  const tofuPudding = byId.get("tofu-pudding");
+  assert.ok(tofuPudding, "expected tofu-pudding");
+  assert.equal(tofuPudding?.needsDetails, true);
+  assert.match(tofuPudding?.detailHint ?? "", /豆腐脑口味/);
+});
+
+test("食物智能识别管线：豆腐脑已给出口味时不再提示待细分", () => {
+  const salty = parseFoodIntelligence("一碗咸豆腐脑");
+  const sweet = parseFoodIntelligence("一碗甜豆腐脑");
+
+  assert.equal(salty.items[0]?.food.id, "tofu-pudding");
+  assert.equal(salty.items[0]?.needsDetails, false);
+  assert.equal(sweet.items[0]?.food.id, "tofu-pudding");
+  assert.equal(sweet.items[0]?.needsDetails, false);
+});
+
+test("食物智能识别管线：兜底请求只收敛未识别、低置信度和待细分项", () => {
+  const result = parseFoodIntelligencePipeline("一个鸡蛋，两个蒸蛋，一碗南瓜粥，一碗豆腐脑，神秘太空食物");
+  const requests = result.fallbackRequests;
+
+  assert.ok(requests.some((item) => item.reason === "needs-details" && item.matchedFoodId === "egg"));
+  assert.ok(requests.some((item) => item.reason === "needs-details" && item.matchedFoodId === "tofu-pudding"));
+  assert.ok(requests.some((item) => item.reason === "unmatched" && /神秘|太空/.test(item.rawText)));
+  assert.equal(requests.some((item) => item.matchedFoodId === "steamed-egg"), false);
+  assert.equal(requests.some((item) => item.matchedFoodId === "pumpkin-congee"), false);
+});
+
+test("食物智能识别管线：输出估算审查信息，但不把置信度作为 UI 必填信息", () => {
+  const result = parseFoodIntelligencePipeline("一个鸡蛋，两个蒸蛋，一碗豆腐脑，3个面包，一碗水饺");
+  const reviews = new Map(result.reviewItems.map((item) => [item.foodId, item]));
+
+  const egg = reviews.get("egg");
+  assert.ok(egg, "expected egg review");
+  assert.equal(egg?.estimateLabel, "估算");
+  assert.equal(egg?.title, "鸡蛋估算");
+  assert.equal(egg?.needsReview, true);
+  assert.equal(egg?.variantGroupLabel, "鸡蛋做法");
+  assert.ok(egg?.missingFields.some((field) => field.label === "鸡蛋做法" && field.required));
+  assert.ok(egg?.variantOptions.some((option) => option.label === "水煮蛋"));
+  assert.match(egg?.defaultAssumption.description ?? "", /默认|暂按|估算/);
+  assert.ok(egg && !("confidence" in egg), "review item should not expose confidence as UI contract");
+
+  const steamedEgg = reviews.get("steamed-egg");
+  assert.ok(steamedEgg, "expected steamed egg review");
+  assert.equal(steamedEgg?.needsReview, false);
+  assert.deepEqual(steamedEgg?.missingFields, []);
+  assert.equal(steamedEgg?.estimateLabel, "估算");
+
+  const bread = reviews.get("bread");
+  assert.ok(bread, "expected bread review");
+  assert.equal(bread?.variantGroupLabel, "面包类型");
+  assert.ok(bread?.variantOptions.length && bread.variantOptions.length >= 5);
+  assert.ok(bread?.missingFields.some((field) => field.label === "面包类型"));
+
+  const dumplings = reviews.get("dumplings");
+  assert.ok(dumplings, "expected generic dumplings review");
+  assert.equal(dumplings?.variantGroupLabel, "水饺馅料");
+  assert.ok(dumplings?.missingFields.some((field) => field.label === "水饺馅料"));
+
+  const tofuPudding = reviews.get("tofu-pudding");
+  assert.ok(tofuPudding, "expected tofu pudding review");
+  assert.equal(tofuPudding?.variantGroupLabel, "豆腐脑口味");
+  assert.ok(tofuPudding?.nutrition.calories && tofuPudding.nutrition.calories > 0);
+  assert.ok(tofuPudding?.nutrition.proteinG !== undefined);
+  assert.ok(tofuPudding?.nutrition.fatG !== undefined);
+  assert.ok(tofuPudding?.nutrition.carbsG !== undefined);
+});
+
+test("食物智能识别管线：用户真实长句中泛化面包和水饺必须保留待细分", () => {
+  const input = "一个鸡蛋，两个蒸蛋，一碗南瓜粥，一碗豆腐脑，中午吃了半斤猪肉、一份菠菜、3个面包、一碗水饺，还有一份鸡胸肉。";
+  const result = parseFoodIntelligence(input);
+  const byId = new Map(result.items.map((item) => [item.food.id, item]));
+
+  assert.equal(byId.get("bread")?.quantity, 3);
+  assert.equal(byId.get("bread")?.unit, "个");
+  assert.equal(byId.get("bread")?.needsDetails, true);
+  assert.match(byId.get("bread")?.detailHint ?? "", /面包类型/);
+
+  assert.ok(byId.get("dumplings"), "泛化水饺应识别为水饺基础条目");
+  assert.equal(byId.get("dumplings")?.unit, "碗");
+  assert.equal(byId.get("dumplings")?.needsDetails, true);
+  assert.match(byId.get("dumplings")?.detailHint ?? "", /水饺馅料/);
+  assert.equal(byId.has("pork-scallion-dumplings"), false, "用户没说猪肉大葱时不能默认成猪肉大葱水饺");
+
+  assert.equal(byId.get("pork-lean")?.grams, 250);
+  assert.equal(byId.get("pork-lean")?.needsDetails, true);
+  assert.equal(byId.get("chicken-breast")?.needsDetails, true);
+});
+
 test("电商健身减脂食品：高频入口识别为独立食品而不是拆成通用词", () => {
   const cases: Array<[string, string, number]> = [
     ["吃了一袋即食鸡胸肉", "ready-chicken-breast", 100],
@@ -683,6 +791,63 @@ test("细分类展示：咖啡和坚果优先显示具体食品", () => {
   assert.ok(ids.includes("cashew"), "expected cashew, got [" + ids.join(",") + "]");
   assert.ok(ids.includes("pistachio"), "expected pistachio, got [" + ids.join(",") + "]");
   assert.ok(!ids.includes("nuts"), "specific nuts should not fall back to generic nuts");
+});
+
+test("食物识别管线硬性回归：真实长句不能乱拆、乱分餐、乱套细分或给出离谱重量", () => {
+  const input = `下午：
+吃了两斤高蛋白鸡胸肉丸、一盒蓝莓、两块黑巧克力、一包薯片、3 袋牛奶、一个黑巧布朗尼。
+
+下午茶：
+吃了一包烤馍、两个麻辣鸭腿、3 杯 3 勺蛋白粉、一碗螺蛳粉。
+
+晚上：
+又吃了一个盐水鸭、三个板栗、半包干脆面。`;
+
+  const result = parseFoodIntelligencePipeline(input);
+  const ids = result.items.map((item) => item.food.id);
+  const byId = new Map(result.items.map((item) => [item.food.id, item]));
+  const reviews = new Map(result.reviewItems.map((item) => [item.foodId, item]));
+
+  assert.deepEqual(ids, [
+    "high-protein-chicken-meatballs",
+    "blueberry",
+    "dark-chocolate",
+    "chips",
+    "milk",
+    "dark-chocolate-brownie",
+    "roasted-mantou",
+    "spicy-duck-leg",
+    "protein-powder",
+    "luo-si-fan",
+    "salted-duck",
+    "chestnut",
+    "crispy-noodles"
+  ]);
+
+  assert.equal(byId.get("high-protein-chicken-meatballs")?.grams, 1000);
+  assert.equal(byId.get("high-protein-chicken-meatballs")?.meal, "snack");
+  assert.equal(byId.get("dark-chocolate-brownie")?.quantity, 1);
+  assert.equal(byId.get("dark-chocolate-brownie")?.meal, "snack");
+  assert.equal(byId.get("roasted-mantou")?.meal, "snack");
+  assert.equal(byId.get("spicy-duck-leg")?.quantity, 2);
+  assert.equal(byId.get("protein-powder")?.needsDetails, true);
+  assert.match(byId.get("protein-powder")?.detailHint ?? "", /蛋白粉类型/);
+  assert.equal(byId.get("luo-si-fan")?.meal, "snack");
+  assert.equal(byId.get("salted-duck")?.meal, "dinner");
+  assert.ok((byId.get("salted-duck")?.grams ?? 0) >= 1000, "一个盐水鸭不能按十几克估算");
+  assert.equal(byId.get("crispy-noodles")?.quantity, 0.5);
+  assert.equal(byId.get("crispy-noodles")?.meal, "dinner");
+
+  assert.equal(ids.includes("egg"), false, "高蛋白鸡胸肉丸不能拆成鸡蛋");
+  assert.equal(ids.includes("chicken-breast"), false, "高蛋白鸡胸肉丸不能拆成鸡胸肉");
+  assert.equal(ids.includes("chocolate"), false, "黑巧克力和黑巧布朗尼不能回落成普通巧克力");
+  assert.equal(ids.includes("noodles"), false, "干脆面不能识别成面条");
+
+  assert.equal(reviews.get("dark-chocolate")?.variantGroupLabel, "巧克力可可含量");
+  assert.equal(reviews.get("dark-chocolate-brownie")?.variantGroupLabel, "布朗尼类型");
+  assert.equal(reviews.get("protein-powder")?.variantGroupLabel, "蛋白粉类型");
+  assert.equal(reviews.get("luo-si-fan")?.variantGroupLabel, "螺蛳粉加料");
+  assert.ok(reviews.get("luo-si-fan")?.variantOptions.some((option) => option.label === "炸蛋螺蛳粉"));
 });
 
 const spokenCases: Array<{ name: string; text: string; expected: Array<[string, number | undefined, string | undefined]>; meal?: Array<"breakfast" | "lunch" | "dinner" | "snack" | "unknown"> }> = [

@@ -24,7 +24,6 @@ export default function PlanScreen() {
   const router = useRouter();
   const c = useBentoTheme().colors;
   const profile = useFitnessStore((state) => state.profile);
-  const goal = useFitnessStore((state) => state.goal);
   const preference = useFitnessStore((state) => state.trainingPreference);
   const selectedDietPlanId = useFitnessStore((state) => state.selectedDietPlanId);
   const selectedDietPlanVariantId = useFitnessStore((state) => state.selectedDietPlanVariantId);
@@ -69,9 +68,6 @@ export default function PlanScreen() {
     };
   }, [preference, resolvedDietDay.dayType, resolvedDietDay.status, selectedDietPlanId, todayTrainingPlan.focus, todayTrainingPlan.minutes]);
 
-  const weightDelta = goal.targetWeightKg - profile.weightKg;
-  const weeklyWeightPace = goal.targetDays > 0 ? (weightDelta / goal.targetDays) * 7 : 0;
-
   return (
     <Screen>
       <ScreenHeader
@@ -109,13 +105,6 @@ export default function PlanScreen() {
           subtitle={`${profile.weightKg} kg · ${profile.heightCm} cm · ${profile.age} 岁`}
           badge={trainingLevelLabels[profile.trainingLevel] ?? profile.trainingLevel}
           onPress={() => router.push("/onboarding/body")}
-        />
-        <ModernSettingCard
-          icon="标"
-          title="体重目标"
-          subtitle={`目标 ${goal.targetWeightKg} kg · ${goal.targetDays} 天 · 每周 ${weeklyWeightPace >= 0 ? "+" : ""}${weeklyWeightPace.toFixed(2)} kg`}
-          badge={`${Math.round(energyPlan.calories)} kcal`}
-          onPress={() => router.push("/onboarding/goal")}
         />
         <ModernSettingCard
           icon="训"

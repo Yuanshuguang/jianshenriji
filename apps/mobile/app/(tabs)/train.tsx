@@ -1,7 +1,8 @@
-import {
+﻿import {
   exercises,
   resolveDietPlanDay,
   resolveTrainingDietRecommendation,
+  sumNutrition,
   type DietPlanCycleSelection,
   type MuscleGroup
 } from "@fitness-calendar/shared";
@@ -15,6 +16,7 @@ import {
   GlassTile,
   Label,
   PetReminderCard,
+  ProgressBar,
   Screen,
   SelectChip,
   Text as BentoText,
@@ -31,16 +33,16 @@ import {
   loadSupplementalExerciseDataset,
   mergeExerciseLibraries,
   normalizeSupplementalExercises,
-  nextInCycle,
 } from "../../components/training/training-utils";
 import { generateTrainingReminder, getPresetPetById, type ActivePet } from "../../features/pet";
 import {
+  buildActualFoodPortionsFromText,
   estimateTodayWorkoutCalories,
   exerciseNameMap,
   muscleNameMap,
   parseTrainingText,
 } from "../../features/today-plan";
-import { type ActualTrainingStatus, useFitnessStore } from "../../store/fitness-store";
+import { type ActualTrainingStatus, useCurrentEnergyPlan, useFitnessStore } from "../../store/fitness-store";
 import type { LibraryExercise } from "../../types/training";
 
 const statusOptions: Array<{ value: ActualTrainingStatus; label: string; color: SemanticColor }> = [
@@ -49,21 +51,23 @@ const statusOptions: Array<{ value: ActualTrainingStatus; label: string; color: 
 ];
 
 const focusOptions: MuscleGroup[] = ["chest", "back", "legs", "shoulders", "arms", "core", "cardio"];
-const durationOptions = [20, 30, 45, 60, 75, 90];
 
 export default function TrainScreen() {
   const router = useRouter();
   const c = useBentoTheme().colors;
   const [trainingCalendarOpen, setTrainingCalendarOpen] = useState(false);
+  const [referenceCollapsed, setReferenceCollapsed] = useState(true);
   const [libraryItems, setLibraryItems] = useState<LibraryExercise[]>([]);
   const [supplementalLibraryItems, setSupplementalLibraryItems] = useState<LibraryExercise[]>([]);
 
+  const energyPlan = useCurrentEnergyPlan();
   const profile = useFitnessStore((state) => state.profile);
   const preference = useFitnessStore((state) => state.trainingPreference);
   const actualTraining = useFitnessStore((state) => state.actualTraining);
   const setActualTraining = useFitnessStore((state) => state.setActualTraining);
+  const actualFoodText = useFitnessStore((state) => state.actualFoodText);
+  const customFoods = useFitnessStore((state) => state.customFoods);
   const todayTrainingPlan = useFitnessStore((state) => state.todayTrainingPlan);
-  const setTodayTrainingPlan = useFitnessStore((state) => state.setTodayTrainingPlan);
   const selectedDietPlanId = useFitnessStore((state) => state.selectedDietPlanId);
   const selectedDietPlanVariantId = useFitnessStore((state) => state.selectedDietPlanVariantId);
   const selectedPetId = useFitnessStore((state) => state.selectedPetId);
@@ -87,21 +91,31 @@ export default function TrainScreen() {
   const selectedFocus = dietTrainingRecommendation.focus;
   const selectedMinutes = dietTrainingRecommendation.durationMinutes;
   const selectedNextFocus = todayTrainingPlan.nextFocus ?? dietTrainingRecommendation.nextFocus ?? selectedFocus;
+  const previousFocus = previousInCycle(focusOptions, selectedFocus);
   const todayWorkout = buildWorkoutForSelection(selectedFocus, selectedMinutes, preference);
   const customTrainingExercises = todayTrainingPlan.customExercises ?? [];
-  const suggestedExerciseIds = dietTrainingRecommendation.exerciseIds.length > 0
-    ? dietTrainingRecommendation.exerciseIds
-    : todayWorkout.exercises.slice(0, 4).map((item) => item.exerciseId);
   const actualTrainingCalories = Math.round(actualTraining.calories);
   const hasTrainingFeedback = actualTraining.status !== "pending";
+  const actualFood = useMemo(
+    () => buildActualFoodPortionsFromText(actualFoodText, customFoods, { dailyCalorieTarget: energyPlan.calories }),
+    [actualFoodText, customFoods, energyPlan.calories]
+  );
+  const actualIntake = Math.round(sumNutrition(actualFood.portions.map((portion) => portion.totals)).calories);
+  const burnCalories = Math.round(energyPlan.tdee + actualTraining.calories);
+  const deficit = Math.max(0, burnCalories - actualIntake);
 
   const combinedLibraryItems = useMemo(
     () => mergeExerciseLibraries(libraryItems, supplementalLibraryItems),
     [libraryItems, supplementalLibraryItems]
   );
   const suggestedLibraryExercises = useMemo(
-    () => suggestedExerciseIds.map((exerciseId) => resolveRecommendedLibraryExercise(exerciseId, combinedLibraryItems)),
-    [suggestedExerciseIds, combinedLibraryItems]
+    () => buildSuggestedLibraryExercises({
+      focus: selectedFocus,
+      libraryItems: combinedLibraryItems,
+      workout: todayWorkout,
+      extraExerciseIds: dietTrainingRecommendation.exerciseIds,
+    }),
+    [selectedFocus, combinedLibraryItems, todayWorkout, dietTrainingRecommendation.exerciseIds]
   );
   const trainingTextReferences = useMemo(
     () => buildTrainingTextReferences(customTrainingExercises, combinedLibraryItems),
@@ -117,37 +131,6 @@ export default function TrainScreen() {
     ),
     [actualTraining.text, actualTraining.minutes, profile.heightCm, profile.weightKg, todayWorkout, trainingTextReferences]
   );
-
-  useEffect(() => {
-    let cancelled = false;
-    setLibraryItems(buildLocalExerciseFallback());
-    loadSupplementalExerciseDataset()
-      .then((payload) => {
-        if (!cancelled) setSupplementalLibraryItems(normalizeSupplementalExercises(payload));
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
-
-  const activePet: ActivePet = petEnabled
-    ? customPet
-      ? { kind: "custom", pet: customPet }
-      : selectedPetId
-        ? { kind: "preset", pet: getPresetPetById(selectedPetId)! }
-        : null
-    : null;
-  const trainingReminder = activePet
-    ? generateTrainingReminder(activePet, {
-        plannedTitle: `${muscleNameMap[selectedFocus]}参考训练`,
-        plannedCalories: estimateTodayWorkoutCalories(todayWorkout, profile.weightKg),
-        status: actualTraining.status,
-        actualCalories: actualTraining.calories
-      })
-    : null;
-
-  const updatePlanSelection = (patch: Partial<typeof todayTrainingPlan>) => {
-    setTodayTrainingPlan({ ...todayTrainingPlan, ...patch });
-  };
 
   const updateActualTraining = (patch: Partial<typeof actualTraining>) => {
     const next = { ...actualTraining, ...patch };
@@ -183,13 +166,44 @@ export default function TrainScreen() {
     height: 44
   } as const;
 
+  const activePet: ActivePet = petEnabled
+    ? customPet
+      ? { kind: "custom", pet: customPet }
+      : selectedPetId
+        ? { kind: "preset", pet: getPresetPetById(selectedPetId)! }
+        : null
+    : null;
+  const trainingReminder = activePet
+    ? generateTrainingReminder(activePet, {
+        plannedTitle: `${muscleNameMap[selectedFocus]}参考训练`,
+        plannedCalories: estimateTodayWorkoutCalories(todayWorkout, profile.weightKg),
+        status: actualTraining.status,
+        actualCalories: actualTraining.calories
+      })
+    : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    setLibraryItems(buildLocalExerciseFallback());
+    loadSupplementalExerciseDataset()
+      .then((payload) => {
+        if (!cancelled) setSupplementalLibraryItems(normalizeSupplementalExercises(payload));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const actualWeightLevel = fatigueToWeightLevel(actualTraining.fatigue);
+
   return (
     <Screen>
       <PetReminderCard reminder={trainingReminder} />
 
       <GlassTile glow="accent2" padding={10} style={{ gap: 8 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-          <Label color={c.inkMute} variant="label">今日建议练</Label>
+          <Label color={c.inkMute} variant="label">今日练</Label>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Badge color={hasTrainingFeedback ? "positive" : "amber"} size="sm">
               {hasTrainingFeedback ? "已记录" : "待记录"}
@@ -205,88 +219,122 @@ export default function TrainScreen() {
           </View>
         </View>
 
-        <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
-          <PlanChip
-            label="部位"
+        <View style={{ flexDirection: "row", gap: 8, alignItems: "stretch" }}>
+          <TrendCard
+            tone="muted"
+            label="昨日练"
+            value={muscleNameMap[previousFocus]}
+            caption={dietTrainingRecommendation.movementPattern}
+          />
+          <TrendCard
+            tone="accent"
+            label="今日练"
             value={muscleNameMap[selectedFocus]}
-            onPress={() => updatePlanSelection({ focus: nextInCycle(dietTrainingRecommendation.focusCandidates.length ? dietTrainingRecommendation.focusCandidates : focusOptions, selectedFocus) })}
+            caption="今天重点"
+            emphasis
           />
-          <PlanChip
-            label="参考时长"
-            value={`${selectedMinutes} 分钟`}
-            onPress={() => updatePlanSelection({ minutes: nextInCycle(durationOptions, selectedMinutes) })}
-          />
-          <PlanChip
-            label="下次优先"
+          <TrendCard
+            tone="muted"
+            label="明日练"
             value={muscleNameMap[selectedNextFocus]}
-            onPress={() => updatePlanSelection({ nextFocus: nextInCycle(focusOptions, selectedNextFocus) })}
+            caption={dietTrainingRecommendation.nextFocus ? muscleNameMap[dietTrainingRecommendation.nextFocus] : "后续调整"}
           />
         </View>
 
-        <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
-          <Badge color={dietTrainingRecommendation.intensity === "heavy" ? "warn" : dietTrainingRecommendation.intensity === "recovery" ? "positive" : "accent2"} size="sm">
+        <View style={{ gap: 6 }}>
+          <BentoText weight="semibold" color={c.ink} style={{ fontSize: 15 }}>
             {resolvedDietDay.status} · {dietTrainingRecommendation.intensityLabel}
-          </Badge>
-          <Badge color="accent" size="sm">{dietTrainingRecommendation.movementPattern}</Badge>
-        </View>
-        {trainingCalendarOpen ? <CalendarHistoryPanel /> : null}
-      </GlassTile>
-
-      <GlassTile glow="accent2" style={{ gap: 10 }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-          <Label color={c.inkMute} variant="label">动作参考</Label>
-          <Button variant="glass" color="positive" size="sm" onPress={() => router.push("/exercise-library")}>
-            打开动作库
-          </Button>
-        </View>
-
-        {customTrainingExercises.length > 0 ? (
-          <View style={{ gap: 8 }}>
-            <BentoText variant="caption" color={c.inkMute}>你从动作库加入的参考动作</BentoText>
-            {customTrainingExercises.map((item) => (
-              <CustomTrainingExerciseRow key={item.id} item={item} />
-            ))}
-          </View>
-        ) : null}
-
-        <View style={{ gap: 8 }}>
-          <BentoText variant="caption" color={c.inkMute}>APP 推荐参考动作</BentoText>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-            {suggestedLibraryExercises.map((item, index) => (
-              <ReferenceExerciseCard
-                key={`${item.exerciseId}-${index}`}
-                item={item}
-                onPress={() => router.push("/exercise-library")}
-              />
-            ))}
-          </View>
-        </View>
-      </GlassTile>
-
-      <GlassTile glow="accent" style={{ gap: 12 }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <Label color={c.inkMute} variant="label">我今天练了什么</Label>
-          <BentoText mono weight="semibold" color={c.accent} style={{ fontSize: 13 }}>
-            {actualTrainingCalories} kcal
+          </BentoText>
+          <BentoText variant="micro" color={c.inkMute}>
+            参考时长 {selectedMinutes} 分钟 · {dietTrainingRecommendation.movementPattern} · 下次优先 {muscleNameMap[selectedNextFocus]}
           </BentoText>
         </View>
 
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          {statusOptions.map((item) => (
-            <SelectChip
-              key={item.value}
-              label={item.label}
-              active={actualTraining.status === item.value}
-              color={item.color}
-              size="sm"
-              onPress={() =>
-                updateActualTraining({
-                  status: item.value,
-                  minutes: item.value === "done" ? selectedMinutes : actualTraining.minutes
-                })
-              }
-            />
-          ))}
+        {trainingCalendarOpen ? <CalendarHistoryPanel /> : null}
+      </GlassTile>
+
+      <TrainingEnergySummary
+        burnCalories={burnCalories}
+        burnTarget={Math.round(energyPlan.tdee)}
+        deficit={deficit}
+        deficitTarget={Math.max(0, Math.round(energyPlan.dailyDeficit))}
+        intakeCalories={actualIntake}
+        trainingCalories={actualTrainingCalories}
+      />
+
+      <GlassTile glow="accent2" style={{ gap: 10 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Label color={c.inkMute} variant="label">动作参考</Label>
+            <BentoText variant="micro" color={c.inkMute}>推荐 {suggestedLibraryExercises.length} 个 · 已加入 {customTrainingExercises.length} 个</BentoText>
+          </View>
+          <Button variant="glass" color="accent2" size="sm" onPress={() => setReferenceCollapsed((value) => !value)}>
+            {referenceCollapsed ? "展开" : "收起"}
+          </Button>
+          <Button variant="glass" color="positive" size="sm" onPress={() => router.push("/exercise-library")}>
+            动作库
+          </Button>
+        </View>
+
+        {!referenceCollapsed ? (
+          <>
+            {customTrainingExercises.length > 0 ? (
+              <View style={{ gap: 8 }}>
+                <BentoText variant="caption" color={c.inkMute}>你从动作库加入的参考动作</BentoText>
+                {customTrainingExercises.map((item) => (
+                  <CustomTrainingExerciseRow key={item.id} item={item} />
+                ))}
+              </View>
+            ) : null}
+
+            <View style={{ gap: 8 }}>
+              <BentoText variant="caption" color={c.inkMute}>APP 推荐参考动作</BentoText>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {suggestedLibraryExercises.map((item, index) => (
+                  <ReferenceExerciseCard
+                    key={`${item.exerciseId}-${index}`}
+                    item={item}
+                    onPress={() => router.push("/exercise-library")}
+                  />
+                ))}
+              </View>
+            </View>
+          </>
+        ) : (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+            {suggestedLibraryExercises.slice(0, 3).map((item, index) => (
+              <Badge key={`${item.exerciseId}-${index}`} color="accent2" size="sm">
+                {item.displayName}
+              </Badge>
+            ))}
+          </View>
+        )}
+      </GlassTile>
+
+      <GlassTile glow="accent" style={{ gap: 10 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", gap: 12 }}>
+          <View style={{ flex: 1, gap: 8 }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {statusOptions.map((item) => (
+                <SelectChip
+                  key={item.value}
+                  label={item.label}
+                  active={actualTraining.status === item.value}
+                  color={item.color}
+                  size="sm"
+                  onPress={() =>
+                    updateActualTraining({
+                      status: item.value,
+                      minutes: item.value === "done" ? selectedMinutes : actualTraining.minutes
+                    })
+                  }
+                />
+              ))}
+            </View>
+            <BentoText mono weight="semibold" color={c.accent} style={{ fontSize: 13 }}>
+              {actualTrainingCalories} kcal
+            </BentoText>
+          </View>
         </View>
 
         {actualTraining.status !== "missed" ? (
@@ -295,11 +343,11 @@ export default function TrainScreen() {
             parsed={actualTrainingParsed}
             actualCalories={actualTraining.calories}
             minutes={actualTraining.minutes}
-            fatigue={actualTraining.fatigue}
+            weightLevel={actualWeightLevel}
             inputStyle={inputStyle}
             onTextChange={(text) => updateActualTraining({ status: text.trim() ? "changed" : "pending", text })}
             onMinutesChange={(minutes) => updateActualTraining({ status: "changed", minutes })}
-            onFatigueChange={(fatigue) => updateActualTraining({ fatigue })}
+            onWeightLevelChange={(weightLevel) => updateActualTraining({ fatigue: weightLevelToFatigue(weightLevel) })}
           />
         ) : (
           <BentoText variant="caption" color={c.warn}>
@@ -311,30 +359,188 @@ export default function TrainScreen() {
   );
 }
 
-function PlanChip({ label, value, onPress }: { label: string; value: string; onPress: () => void }) {
+function TrendCard({
+  tone,
+  label,
+  value,
+  caption,
+  emphasis = false,
+}: {
+  tone: "accent" | "muted";
+  label: string;
+  value: string;
+  caption: string;
+  emphasis?: boolean;
+}) {
   const c = useBentoTheme().colors;
+  const accentBackground = tone === "accent" ? `${c.accent2}16` : c.glass;
+  const accentBorder = tone === "accent" ? `${c.accent2}66` : c.glassBorder;
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
-        minWidth: 86,
-        flexGrow: 1,
-        borderRadius: 12,
+    <View
+      style={{
+        flex: emphasis ? 1.4 : 1,
+        minWidth: 0,
+        minHeight: emphasis ? 108 : 94,
+        borderRadius: 14,
         paddingHorizontal: 10,
         paddingVertical: 8,
-        backgroundColor: c.glassRaised,
+        gap: 6,
+        backgroundColor: accentBackground,
         borderWidth: 1,
-        borderColor: c.glassBorderBright,
-        opacity: pressed ? 0.78 : 1,
-        gap: 2,
-      })}
+        borderColor: accentBorder,
+      }}
     >
-      <BentoText variant="micro" color={c.inkFaint}>{label}</BentoText>
-      <BentoText weight="bold" color={c.ink} numberOfLines={1}>{value}</BentoText>
-    </Pressable>
+      <BentoText variant="micro" color={c.inkMute} style={{ textAlign: "center" }}>
+        {label}
+      </BentoText>
+      <BentoText
+        weight={emphasis ? "bold" : "semibold"}
+        color={tone === "accent" ? c.accent2 : c.ink}
+        style={{ fontSize: emphasis ? 21 : 17, textAlign: "center" }}
+        numberOfLines={2}
+      >
+        {value}
+      </BentoText>
+      <BentoText variant="micro" color={c.inkMute} style={{ textAlign: "center" }} numberOfLines={2}>
+        {caption}
+      </BentoText>
+    </View>
   );
 }
 
+function TrainingEnergySummary({
+  burnCalories,
+  burnTarget,
+  deficit,
+  deficitTarget,
+  intakeCalories,
+  trainingCalories,
+}: {
+  burnCalories: number;
+  burnTarget: number;
+  deficit: number;
+  deficitTarget: number;
+  intakeCalories: number;
+  trainingCalories: number;
+}) {
+  const c = useBentoTheme().colors;
+  const burnPercent = burnTarget > 0 ? Math.min(1, burnCalories / burnTarget) : 0;
+  const deficitPercent = deficitTarget > 0 ? Math.min(1, deficit / deficitTarget) : 0;
+  const deficitColor: SemanticColor = deficit >= deficitTarget ? "positive" : "accent";
+
+  return (
+    <GlassTile glow={deficitColor} padding={10} style={{ gap: 10 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+        <Label color={c.inkMute} variant="label">训练消耗与赤字</Label>
+        <Badge color={trainingCalories > 0 ? "positive" : "amber"} size="sm">
+          训练 {Math.round(trainingCalories)} kcal
+        </Badge>
+      </View>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <EnergyMetric
+          label="消耗热量"
+          value={burnCalories}
+          target={burnTarget}
+          unit="kcal"
+          percent={burnPercent}
+          color="positive"
+        />
+        <EnergyMetric
+          label="热量赤字"
+          value={deficit}
+          target={deficitTarget}
+          unit="kcal"
+          percent={deficitPercent}
+          color={deficitColor}
+        />
+      </View>
+      <BentoText variant="micro" color={c.inkMute}>
+        消耗 = 基础日消耗 + 实际训练；赤字 = 消耗 - 饮食页实际摄入 {Math.round(intakeCalories)} kcal。
+      </BentoText>
+    </GlassTile>
+  );
+}
+
+function EnergyMetric({
+  label,
+  value,
+  target,
+  unit,
+  percent,
+  color,
+}: {
+  label: string;
+  value: number;
+  target: number;
+  unit: string;
+  percent: number;
+  color: SemanticColor;
+}) {
+  const c = useBentoTheme().colors;
+  return (
+    <View style={{ flex: 1, minWidth: 0, borderRadius: 12, padding: 9, gap: 6, backgroundColor: c.glass, borderWidth: 1, borderColor: c.glassBorder }}>
+      <BentoText variant="micro" color={c.inkMute}>{label}</BentoText>
+      <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
+        <BentoText mono weight="bold" color={c[color]} style={{ fontSize: 22, lineHeight: 24 }}>
+          {Math.round(value)}
+        </BentoText>
+        <BentoText mono color={c.inkMute} style={{ fontSize: 10 }}>{unit}</BentoText>
+      </View>
+      <ProgressBar percent={percent} color={color} height={6} />
+      <BentoText variant="micro" color={c.inkFaint}>
+        目标 {Math.round(target)}{unit}
+      </BentoText>
+    </View>
+  );
+}
+
+function previousInCycle<T>(values: readonly T[], current: T): T {
+  if (values.length === 0) return current;
+  const index = values.indexOf(current);
+  if (index <= 0) return values[values.length - 1];
+  return values[index - 1];
+}
+
+function fatigueToWeightLevel(fatigue: number): number {
+  if (fatigue <= 2) return 1;
+  if (fatigue <= 4) return 2;
+  return 3;
+}
+
+function weightLevelToFatigue(weightLevel: number): number {
+  if (weightLevel <= 1) return 1;
+  if (weightLevel === 2) return 3;
+  return 5;
+}
+
+function buildSuggestedLibraryExercises({
+  focus,
+  libraryItems,
+  workout,
+  extraExerciseIds,
+}: {
+  focus: MuscleGroup;
+  libraryItems: LibraryExercise[];
+  workout: ReturnType<typeof buildWorkoutForSelection> | undefined;
+  extraExerciseIds: string[];
+}): RecommendedLibraryExercise[] {
+  const workoutExerciseIds = new Set(workout?.exercises.map((item) => item.exerciseId) ?? []);
+  const priorityExerciseIds = new Set(extraExerciseIds);
+  const scored = exercises
+    .map((exercise) => {
+      let score = 100;
+      if (exercise.primaryMuscleGroup === focus) score -= 40;
+      if (priorityExerciseIds.has(exercise.id)) score -= 30;
+      if (workoutExerciseIds.has(exercise.id)) score -= 20;
+      if (exercise.primaryMuscleGroup === "core" && focus === "core") score -= 10;
+      return { exercise, score };
+    })
+    .sort((left, right) => left.score - right.score || left.exercise.name.localeCompare(right.exercise.name))
+    .slice(0, 9)
+    .map(({ exercise }) => resolveRecommendedLibraryExercise(exercise.id, libraryItems));
+
+  return scored;
+}
 type RecommendedLibraryExercise = {
   exerciseId: string;
   displayName: string;
@@ -350,8 +556,8 @@ function ReferenceExerciseCard({ item, onPress }: { item: RecommendedLibraryExer
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        width: "47%",
-        minHeight: 154,
+        width: "31.5%",
+        minHeight: 146,
         borderRadius: 14,
         padding: 9,
         gap: 8,
@@ -500,3 +706,4 @@ function translateBodyPart(value?: string | null): string | null {
   if (normalized.includes("neck")) return "颈部";
   return value;
 }
+

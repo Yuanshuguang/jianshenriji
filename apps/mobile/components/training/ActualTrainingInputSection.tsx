@@ -1,5 +1,5 @@
 import { TextInput, View } from "react-native";
-import { Badge, LabeledInput, Text as BentoText, useBentoTheme } from "../../components/bento";
+import { Badge, LabeledInput, SelectChip, Text as BentoText, useBentoTheme } from "../../components/bento";
 
 export type ParsedTrainingText = {
   matched: Array<{ exercise: { name: string; met: number }; minutes: number; calories: number; intensityMultiplier: number }>;
@@ -13,24 +13,29 @@ export function ActualTrainingInputSection({
   parsed,
   actualCalories,
   minutes,
-  fatigue,
+  weightLevel,
   inputStyle,
   onTextChange,
   onMinutesChange,
-  onFatigueChange
+  onWeightLevelChange
 }: {
   text: string;
   parsed: ParsedTrainingText;
   actualCalories: number;
   minutes: number;
-  fatigue: number;
+  weightLevel: number;
   inputStyle: any;
   onTextChange: (text: string) => void;
   onMinutesChange: (minutes: number) => void;
-  onFatigueChange: (fatigue: number) => void;
+  onWeightLevelChange: (weightLevel: number) => void;
 }) {
   const c = useBentoTheme().colors;
   const displayMinutes = parsed.totalMinutes || minutes;
+  const weightOptions = [
+    { value: 1, label: "轻重量" },
+    { value: 2, label: "中等重量" },
+    { value: 3, label: "大重量" },
+  ] as const;
 
   return (
     <View style={{ gap: 10 }}>
@@ -63,7 +68,7 @@ export function ActualTrainingInputSection({
                 borderRadius: 12,
                 backgroundColor: `${c.accent}12`,
                 borderWidth: 1,
-                borderColor: `${c.accent}33`
+                borderColor: `${c.accent}33`,
               }}
             >
               <View style={{ flex: 1, minWidth: 0 }}>
@@ -71,7 +76,7 @@ export function ActualTrainingInputSection({
                   {item.exercise.name}
                 </BentoText>
                 <BentoText variant="micro" color={c.inkMute}>
-                  {item.minutes} 分钟，作为活动消耗估算
+                  {item.minutes} 分钟，作为动作消耗估算
                 </BentoText>
               </View>
               <BentoText mono weight="bold" color={c.accent} style={{ fontSize: 12 }}>
@@ -82,7 +87,7 @@ export function ActualTrainingInputSection({
         </View>
       ) : text.trim() ? (
         <BentoText variant="caption" color={c.warn}>
-          暂未识别到具体动作，会按填写的总时长估算活动消耗。建议写“动作 + 分钟”，不需要写组数。
+          暂未识别到具体动作，会按填写的总时长估算动作消耗。建议写“动作 + 分钟”，不需要写组数。
         </BentoText>
       ) : null}
 
@@ -101,13 +106,22 @@ export function ActualTrainingInputSection({
             onChangeText={(value: string) => onMinutesChange(Number(value) || 0)}
           />
         </View>
-        <View style={{ flex: 1 }}>
-          <LabeledInput
-            label="疲劳 1-5"
-            keyboardType="numeric"
-            value={String(fatigue)}
-            onChangeText={(value: string) => onFatigueChange(Math.max(1, Math.min(5, Number(value) || 1)))}
-          />
+      </View>
+
+      <View style={{ gap: 6 }}>
+        <BentoText variant="micro" color={c.inkMute}>重量</BentoText>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          {weightOptions.map((option) => (
+            <SelectChip
+              key={option.value}
+              label={option.label}
+              active={weightLevel === option.value}
+              color={weightLevel === option.value ? "accent" : "accent2"}
+              size="sm"
+              block
+              onPress={() => onWeightLevelChange(option.value)}
+            />
+          ))}
         </View>
       </View>
     </View>

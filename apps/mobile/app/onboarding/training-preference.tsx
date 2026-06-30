@@ -43,7 +43,7 @@ export default function TrainingPreferenceScreen() {
   return (
     <Screen>
       <ScreenHeader
-        kicker="Onboarding / 3"
+        kicker="Onboarding / 2 / 2"
         title="训练偏好"
         subtitle="只记录训练方向，不给每天锁死动作、组数和固定课表；今日训练页会按饮食日和部位给参考建议。"
       />
