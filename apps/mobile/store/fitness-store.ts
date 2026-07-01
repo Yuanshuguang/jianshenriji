@@ -1,9 +1,8 @@
-﻿import { calculateGoalEnergyPlan, generateTrainingQueue, type DailyLogEntry, type DynamicAdjustmentSettings, type Food, type Gender, type MealAdjustmentKey, type MuscleGroup, type NutritionAdjustmentKey, type TrainingAdjustmentKey } from "@fitness-calendar/shared";
+import { calculateGoalEnergyPlan, generateTrainingQueue, type DailyLogEntry, type DynamicAdjustmentSettings, type Food, type Gender, type MealAdjustmentKey, type MuscleGroup, type NutritionAdjustmentKey, type TrainingAdjustmentKey } from "@fitness-calendar/shared";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
-import { type CustomPet } from "../features/pet";
 
 export type UserProfile = {
   gender: Gender;
@@ -172,12 +171,6 @@ type FitnessState = {
   /** 当前选中的饮食方案模板 id，null 表示未选择 */
   selectedDietPlanId: string | null;
   selectedDietPlanVariantId: string | null;
-  /** 选中的预设宠物 id，null 表示未选预设 */
-  selectedPetId: string | null;
-  /** 自定义宠物（若用户用照片创建），优先级高于 selectedPetId */
-  customPet: CustomPet | null;
-  /** 宠物功能开关：关闭后隐藏饮食/训练页宠物提醒，但保留已选择宠物。 */
-  petEnabled: boolean;
   setProfile: (profile: UserProfile) => void;
   setGoal: (goal: UserGoal) => void;
   setTrainingPreference: (trainingPreference: TrainingPreferenceDraft) => void;
@@ -198,9 +191,6 @@ type FitnessState = {
   setDashboardStyle: (style: DashboardStyle) => void;
   setSelectedDietPlan: (planId: string | null) => void;
   setSelectedDietPlanVariant: (variantId: string | null) => void;
-  setSelectedPet: (petId: string | null) => void;
-  setCustomPet: (pet: CustomPet | null) => void;
-  setPetEnabled: (enabled: boolean) => void;
   /** 历史日志：按日期 YYYY-MM-DD 索引 */
   historyLogs: Record<string, DailyLogEntry>;
   /** 保存或更新某日的日志 */
@@ -407,9 +397,6 @@ export const useFitnessStore = create<FitnessState>()(
       dashboardStyle: "bullet",
       selectedDietPlanId: null,
       selectedDietPlanVariantId: null,
-      selectedPetId: null,
-      customPet: null,
-      petEnabled: true,
       setProfile: (profile) => set({ profile }),
       setGoal: (goal) => set({ goal }),
       setTrainingPreference: (trainingPreference) => set({ trainingPreference }),
@@ -448,9 +435,6 @@ export const useFitnessStore = create<FitnessState>()(
       setDashboardStyle: (dashboardStyle) => set({ dashboardStyle }),
       setSelectedDietPlan: (planId) => set({ selectedDietPlanId: planId }),
       setSelectedDietPlanVariant: (variantId) => set({ selectedDietPlanVariantId: variantId }),
-      setSelectedPet: (petId) => set({ selectedPetId: petId }),
-      setCustomPet: (pet) => set({ customPet: pet }),
-      setPetEnabled: (petEnabled) => set({ petEnabled }),
       saveDailyLog: (date, entry) =>
         set((state) => ({
           historyLogs: { ...state.historyLogs, [date]: entry }
@@ -486,9 +470,6 @@ export const useFitnessStore = create<FitnessState>()(
           historyLogs: {},
           selectedDietPlanId: null,
           selectedDietPlanVariantId: null,
-          customPet: state.customPet,
-          selectedPetId: state.selectedPetId,
-          petEnabled: state.petEnabled,
           appearanceMode: state.appearanceMode,
           fontScale: state.fontScale,
           dashboardStyle: state.dashboardStyle,
@@ -517,7 +498,6 @@ export const useFitnessStore = create<FitnessState>()(
             dinner: "",
             snack: ""
           },
-          petEnabled: state.petEnabled ?? true,
           todayTrainingPlan: {
             ...defaultTodayTrainingPlan,
             ...state.todayTrainingPlan,
@@ -561,9 +541,6 @@ export const useFitnessStore = create<FitnessState>()(
         dashboardStyle: state.dashboardStyle,
         selectedDietPlanId: state.selectedDietPlanId,
         selectedDietPlanVariantId: state.selectedDietPlanVariantId,
-        selectedPetId: state.selectedPetId,
-        customPet: state.customPet,
-        petEnabled: state.petEnabled
       })
     }
   )

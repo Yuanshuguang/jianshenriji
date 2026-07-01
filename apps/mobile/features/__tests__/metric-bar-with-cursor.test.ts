@@ -3,6 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { computeMetricDisplay } from "../../components/bento/metric-display";
+import { getMetricCompareParts } from "../../components/bento/metric-compare";
 
 test("未达成：actual=92, target=140, unit=g", () => {
   const d = computeMetricDisplay({ actual: 92, target: 140, unit: "g", baseColor: "accent" });
@@ -11,6 +12,7 @@ test("未达成：actual=92, target=140, unit=g", () => {
   assert.equal(d.cursorColor, "accent");
   assert.equal(d.hasTarget, true);
   assert.ok(Math.abs(d.percent - 92 / 140) < 1e-6);
+  assert.equal(d.cursorPercent, 1);
   assert.equal(d.subtitle, "还差 48g");
   assert.equal(d.subtitleTone, "inkMute");
   assert.ok(d.ratio > 0.65 && d.ratio < 0.7);
@@ -32,18 +34,19 @@ test("已达成边界：99.9% 仍判为 met", () => {
 test("超额：actual=148, target=140, unit=g", () => {
   const d = computeMetricDisplay({ actual: 148, target: 140, unit: "g" });
   assert.equal(d.state, "over");
-  assert.equal(d.fillColor, "amber");
-  assert.equal(d.cursorColor, "amber");
+  assert.equal(d.fillColor, "accent");
+  assert.equal(d.cursorColor, "accent");
   assert.equal(d.percent, 1);
-  assert.equal(d.cursorPercent, 1);
+  assert.ok(Math.abs(d.cursorPercent - 140 / 148) < 1e-6);
   assert.equal(d.subtitle, "超 8g");
-  assert.equal(d.subtitleTone, "amber");
+  assert.equal(d.subtitleTone, "warn");
 });
 
 test("严重超额：actual=200, target=140, unit=g，sub 仍然显示差额", () => {
   const d = computeMetricDisplay({ actual: 200, target: 140, unit: "g" });
   assert.equal(d.state, "over");
   assert.equal(d.percent, 1);
+  assert.equal(d.cursorPercent, 0.7);
   assert.equal(d.subtitle, "超 60g");
 });
 
@@ -74,7 +77,7 @@ test("NaN 输入：实际和目标都被夹紧为 0", () => {
   const d = computeMetricDisplay({ actual: Number.NaN, target: 140, unit: "g" });
   assert.equal(d.hasTarget, true);
   assert.equal(d.percent, 0);
-  assert.equal(d.cursorPercent, 0);
+  assert.equal(d.cursorPercent, 1);
   assert.equal(d.subtitle, "还差 140g");
 });
 
@@ -83,7 +86,7 @@ test("超量阈值：overThreshold=1.05 时 104% 仍为 under，106% 为 over", 
   assert.equal(near.state, "met");
   const over = computeMetricDisplay({ actual: 106, target: 100, unit: "g", overThreshold: 1.05 });
   assert.equal(over.state, "over");
-  assert.equal(over.fillColor, "amber");
+  assert.equal(over.fillColor, "accent");
 });
 
 test("无 unit 时副标题只显示数字", () => {
@@ -103,9 +106,17 @@ test("超量但仅 1%：sub 仍显示\"超 1g\"", () => {
   assert.equal(d.subtitle, "超 1g");
 });
 
-test("极端超额：实际 5 倍目标，percent 仍 clamp 到 1", () => {
+test("极端超额：实际 5 倍目标，目标刻度按比例退到 20%", () => {
   const d = computeMetricDisplay({ actual: 500, target: 100, unit: "kcal" });
   assert.equal(d.percent, 1);
-  assert.equal(d.cursorPercent, 1);
+  assert.equal(d.cursorPercent, 0.2);
   assert.equal(d.subtitle, "超 400kcal");
+});
+
+test("比较条：超出目标时只把超出段标为红色区间", () => {
+  const parts = getMetricCompareParts(1826, 1713);
+  assert.equal(parts.actualPercent, 1);
+  assert.ok(Math.abs(parts.targetPercent - 1713 / 1826) < 1e-6);
+  assert.ok(Math.abs(parts.overflowStartPercent - 1713 / 1826) < 1e-6);
+  assert.ok(Math.abs(parts.overflowPercent - 113 / 1826) < 1e-6);
 });

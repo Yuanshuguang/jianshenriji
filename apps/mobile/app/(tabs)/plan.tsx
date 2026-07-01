@@ -9,7 +9,7 @@
 import { useRouter } from "expo-router";
 import { useMemo } from "react";
 import { Pressable, View } from "react-native";
-import { Badge, Button, GlassTile, Label, MetricBarWithCursor, ProgressBar, Screen, ScreenHeader, Text as BentoText, radius, useBentoTheme } from "../../components/bento";
+import { Badge, Button, GlassTile, Label, MetricBarWithCursor, Screen, ScreenHeader, Text as BentoText, radius, useBentoTheme } from "../../components/bento";
 import { getDietPlanById } from "../../features/diet-plans";
 import { exerciseNameMap, muscleNameMap } from "../../features/today-plan";
 import { useCurrentEnergyPlan, useFitnessStore } from "../../store/fitness-store";
@@ -158,9 +158,9 @@ function TodayDietCard({
         <Badge color="accent" size="sm">{status}</Badge>
       </View>
       <View style={{ flexDirection: "row", gap: 8 }}>
-        <MacroBar label="蛋白" value={protein} target={protein} percent={ratio.protein} color="positive" />
-        <MacroBar label="脂肪" value={fat} target={fat} percent={ratio.fat} color="warn" />
-        <MacroBar label="碳水" value={carbs} target={carbs} percent={ratio.carbs} color="accent2" />
+        <MacroBar label="蛋白" value={protein} target={protein} />
+        <MacroBar label="脂肪" value={fat} target={fat} />
+        <MacroBar label="碳水" value={carbs} target={carbs} />
       </View>
       <Button variant="filled" color="accent" size="sm" block onPress={onPress}>去记录饮食</Button>
     </GlassTile>
@@ -255,7 +255,7 @@ function ModernSettingCard({
   );
 }
 
-function MacroBar({ label, value, target, percent: _percent, color }: { label: string; value: number; target: number; percent: number; color: "positive" | "warn" | "accent2" }) {
+function MacroBar({ label, value, target }: { label: string; value: number; target: number }) {
   const c = useBentoTheme().colors;
   return (
     <View style={{ flex: 1, padding: 9, borderRadius: radius.md, backgroundColor: c.glassRaised, borderWidth: 1, borderColor: c.glassBorder }}>
@@ -264,7 +264,7 @@ function MacroBar({ label, value, target, percent: _percent, color }: { label: s
         actual={value}
         target={target}
         unit="g"
-        baseColor={color}
+        baseColor="accent"
         size="compact"
       />
     </View>

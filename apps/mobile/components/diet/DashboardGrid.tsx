@@ -11,9 +11,8 @@ import { Pressable, View, useWindowDimensions } from "react-native";
 import {
   GlassTile,
   Label,
+  MetricCompareBar,
   MetricBarWithCursor,
-  ProgressBar,
-  ProgressRing,
   Text as BentoText,
   type SemanticColor,
   useBentoTheme,
@@ -74,14 +73,15 @@ function BulletGrid({ metrics, onMetricPress }: { metrics: DashboardCell[]; onMe
 
 function BulletCell({ cell, flex }: { cell: DashboardCell; flex: number }) {
   const c = useBentoTheme().colors;
+  const chartColor: SemanticColor = "accent";
   const display = computeMetricDisplay({
     actual: cell.actual,
     target: cell.target,
     unit: cell.unit,
-    baseColor: cell.baseColor
+    baseColor: chartColor
   });
-  const valueColor = display.state === "over" ? c.amber : c[cell.baseColor];
-  const statusColor = display.state === "over" ? c.amber : display.state === "met" ? c.positive : c.inkMute;
+  const valueColor = c[chartColor];
+  const statusColor = display.state === "over" ? c.warn : c.inkMute;
   const targetLabel = display.hasTarget ? `目标 ${Math.round(cell.target)}${cell.unit}` : "未设目标";
 
   return (
@@ -95,7 +95,7 @@ function BulletCell({ cell, flex }: { cell: DashboardCell; flex: number }) {
             borderRadius: 999,
             backgroundColor: c.glass,
             borderWidth: 1,
-            borderColor: display.state === "under" ? c.glassBorder : statusColor,
+            borderColor: display.state === "over" ? c.warn : c.glassBorder,
           }}
         >
           <BentoText variant="micro" color={statusColor} style={{ fontSize: 10, lineHeight: 12 }} numberOfLines={1}>
@@ -118,7 +118,12 @@ function BulletCell({ cell, flex }: { cell: DashboardCell; flex: number }) {
             {Math.round(display.ratio * 100)}%
           </BentoText>
         </View>
-        <ProgressBar percent={display.percent} color={display.fillColor} height={7} />
+        <MetricCompareBar
+          actual={cell.actual}
+          target={cell.target}
+          color={chartColor}
+          height={7}
+        />
       </View>
     </GlassTile>
   );
@@ -141,7 +146,7 @@ function BarCursorList({ metrics, onMetricPress }: { metrics: DashboardCell[]; o
             actual={cell.actual}
             target={cell.target}
             unit={cell.unit}
-            baseColor={cell.baseColor}
+            baseColor="accent"
             size="full"
           />
         </Pressable>
@@ -181,16 +186,17 @@ function KpiCardsGrid({ metrics, onMetricPress }: { metrics: DashboardCell[]; on
 
 function KpiCard({ cell, flex }: { cell: DashboardCell; flex: number }) {
   const c = useBentoTheme().colors;
+  const chartColor: SemanticColor = "accent";
   const display = computeMetricDisplay({
     actual: cell.actual,
     target: cell.target,
     unit: cell.unit,
-    baseColor: cell.baseColor
+    baseColor: chartColor
   });
   return (
     <GlassTile radius={16} padding={12} style={{ flex, gap: 8, minHeight: 124 }}>
       <Label color={c.inkMute} variant="label">{cell.label}</Label>
-      <BentoText mono weight="bold" color={c[display.state === "over" ? "amber" : cell.baseColor]} style={{ fontSize: 28, lineHeight: 30 }}>
+      <BentoText mono weight="bold" color={c[chartColor]} style={{ fontSize: 28, lineHeight: 30 }}>
         {Math.round(cell.actual)}
         <BentoText mono color={c.inkMute} style={{ fontSize: 11 }}> {cell.unit}</BentoText>
       </BentoText>
@@ -202,7 +208,7 @@ function KpiCard({ cell, flex }: { cell: DashboardCell; flex: number }) {
         actual={cell.actual}
         target={cell.target}
         unit={cell.unit}
-        baseColor={cell.baseColor}
+        baseColor={chartColor}
         size="compact"
         showSubtitle={false}
       />
@@ -245,27 +251,31 @@ function RingsGrid({ metrics, onMetricPress }: { metrics: DashboardCell[]; onMet
 
 function RingCard({ cell, flex }: { cell: DashboardCell; flex: number }) {
   const c = useBentoTheme().colors;
-  const ratio = cell.target > 0 ? cell.actual / cell.target : 0;
   const display = computeMetricDisplay({
     actual: cell.actual,
     target: cell.target,
     unit: cell.unit,
-    baseColor: cell.baseColor
+    baseColor: "accent"
   });
 
   return (
-    <GlassTile radius={16} padding={12} style={{ flex, minHeight: 132, alignItems: "center", gap: 8 }}>
-      <ProgressRing
-        size={76}
-        stroke={9}
-        percent={ratio}
-        color={display.state === "over" ? "amber" : cell.baseColor}
-        value={`${Math.round(Math.min(999, ratio * 100))}%`}
-      />
-      <View style={{ alignItems: "center", gap: 2 }}>
+    <GlassTile radius={16} padding={12} style={{ flex, minHeight: 132, gap: 9 }}>
+      <View style={{ gap: 3 }}>
         <Label color={c.inkMute} variant="label">{cell.label}</Label>
+        <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
+          <BentoText mono weight="bold" color={c.accent} style={{ fontSize: 24, lineHeight: 26 }}>
+            {Math.round(cell.actual)}
+          </BentoText>
+          <BentoText mono color={c.inkMute} style={{ fontSize: 10 }}>{cell.unit}</BentoText>
+        </View>
+      </View>
+      <MetricCompareBar actual={cell.actual} target={cell.target} height={7} />
+      <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
         <BentoText variant="micro" color={c.inkMute}>
-          {Math.round(cell.actual)} / {Math.round(cell.target)} {cell.unit}
+          目标 {Math.round(cell.target)}{cell.unit}
+        </BentoText>
+        <BentoText variant="micro" color={display.state === "over" ? c.warn : c.inkFaint}>
+          {display.subtitle}
         </BentoText>
       </View>
     </GlassTile>

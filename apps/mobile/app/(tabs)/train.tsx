@@ -1,4 +1,4 @@
-﻿import {
+import {
   exercises,
   resolveDietPlanDay,
   resolveTrainingDietRecommendation,
@@ -14,8 +14,7 @@ import {
   Button,
   GlassTile,
   Label,
-  PetReminderCard,
-  ProgressBar,
+  MetricCompareBar,
   Screen,
   SelectChip,
   Text as BentoText,
@@ -34,7 +33,6 @@ import {
   mergeExerciseLibraries,
   normalizeSupplementalExercises,
 } from "../../components/training/training-utils";
-import { generateTrainingReminder, getPresetPetById, type ActivePet } from "../../features/pet";
 import {
   buildActualFoodPortionsFromText,
   estimateTodayWorkoutCalories,
@@ -69,9 +67,6 @@ export default function TrainScreen() {
   const todayTrainingPlan = useFitnessStore((state) => state.todayTrainingPlan);
   const selectedDietPlanId = useFitnessStore((state) => state.selectedDietPlanId);
   const selectedDietPlanVariantId = useFitnessStore((state) => state.selectedDietPlanVariantId);
-  const selectedPetId = useFitnessStore((state) => state.selectedPetId);
-  const customPet = useFitnessStore((state) => state.customPet);
-  const petEnabled = useFitnessStore((state) => state.petEnabled);
 
   const today = new Date();
   const dietPlanCycleSelection: DietPlanCycleSelection = selectedDietPlanVariantId
@@ -89,7 +84,6 @@ export default function TrainScreen() {
   });
   const selectedFocus = dietTrainingRecommendation.focus;
   const selectedMinutes = dietTrainingRecommendation.durationMinutes;
-  const selectedNextFocus = todayTrainingPlan.nextFocus ?? dietTrainingRecommendation.nextFocus ?? selectedFocus;
   const todayWorkout = buildWorkoutForSelection(selectedFocus, selectedMinutes, preference);
   const customTrainingExercises = todayTrainingPlan.customExercises ?? [];
   const actualTrainingCalories = Math.round(actualTraining.calories);
@@ -163,22 +157,6 @@ export default function TrainScreen() {
     height: 44
   } as const;
 
-  const activePet: ActivePet = petEnabled
-    ? customPet
-      ? { kind: "custom", pet: customPet }
-      : selectedPetId
-        ? { kind: "preset", pet: getPresetPetById(selectedPetId)! }
-        : null
-    : null;
-  const trainingReminder = activePet
-    ? generateTrainingReminder(activePet, {
-        plannedTitle: `${muscleNameMap[selectedFocus]}参考训练`,
-        plannedCalories: estimateTodayWorkoutCalories(todayWorkout, profile.weightKg),
-        status: actualTraining.status,
-        actualCalories: actualTraining.calories
-      })
-    : null;
-
   useEffect(() => {
     let cancelled = false;
     setLibraryItems(buildLocalExerciseFallback());
@@ -196,14 +174,10 @@ export default function TrainScreen() {
 
   return (
     <Screen>
-      <PetReminderCard reminder={trainingReminder} />
 
       <TrainingPlanOverview
         currentFocus={selectedFocus}
-        nextFocus={selectedNextFocus}
         focusSequence={focusOptions}
-        selectedMinutes={selectedMinutes}
-        intensityLabel={dietTrainingRecommendation.intensityLabel}
       />
 
       <TrainingEnergySummary
@@ -328,8 +302,6 @@ function TrainingEnergySummary({
   trainingCalories: number;
 }) {
   const c = useBentoTheme().colors;
-  const burnPercent = burnTarget > 0 ? Math.min(1, burnCalories / burnTarget) : 0;
-  const deficitPercent = deficitTarget > 0 ? Math.min(1, deficit / deficitTarget) : 0;
   const deficitColor: SemanticColor = deficit >= deficitTarget ? "positive" : "accent";
 
   return (
@@ -346,16 +318,12 @@ function TrainingEnergySummary({
           value={burnCalories}
           target={burnTarget}
           unit="kcal"
-          percent={burnPercent}
-          color="positive"
         />
         <EnergyMetric
           label="热量赤字"
           value={deficit}
           target={deficitTarget}
           unit="kcal"
-          percent={deficitPercent}
-          color={deficitColor}
         />
       </View>
       <BentoText variant="micro" color={c.inkMute}>
@@ -370,27 +338,23 @@ function EnergyMetric({
   value,
   target,
   unit,
-  percent,
-  color,
 }: {
   label: string;
   value: number;
   target: number;
   unit: string;
-  percent: number;
-  color: SemanticColor;
 }) {
   const c = useBentoTheme().colors;
   return (
     <View style={{ flex: 1, minWidth: 0, borderRadius: 12, padding: 9, gap: 6, backgroundColor: c.glass, borderWidth: 1, borderColor: c.glassBorder }}>
       <BentoText variant="micro" color={c.inkMute}>{label}</BentoText>
       <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
-        <BentoText mono weight="bold" color={c[color]} style={{ fontSize: 22, lineHeight: 24 }}>
+        <BentoText mono weight="bold" color={c.accent} style={{ fontSize: 22, lineHeight: 24 }}>
           {Math.round(value)}
         </BentoText>
         <BentoText mono color={c.inkMute} style={{ fontSize: 10 }}>{unit}</BentoText>
       </View>
-      <ProgressBar percent={percent} color={color} height={6} />
+      <MetricCompareBar actual={value} target={target} height={6} />
       <BentoText variant="micro" color={c.inkFaint}>
         目标 {Math.round(target)}{unit}
       </BentoText>

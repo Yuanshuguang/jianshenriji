@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Bento Glass · 组件库统一出口
  */
 export { Text } from "./Text";
@@ -6,6 +6,8 @@ export { Label } from "./Label";
 export { GlassTile } from "./GlassTile";
 export { ProgressRing } from "./ProgressRing";
 export { ProgressBar } from "./ProgressBar";
+export { getMetricCompareParts } from "./metric-compare";
+export { MetricCompareBar, type MetricCompareBarProps } from "./MetricCompareBar";
 export { MetricBarWithCursor, computeMetricDisplay, type MetricBarSize, type MetricDisplay, type MetricState, type MetricBarWithCursorProps } from "./MetricBarWithCursor";
 export { BulletChart, type BulletChartProps } from "./BulletChart";
 export { Button } from "./Button";
@@ -18,7 +20,6 @@ export { LabeledInput } from "./LabeledInput";
 export { SelectChip } from "./SelectChip";
 export { CollapsibleCard } from "./CollapsibleCard";
 export { Switch } from "./Switch";
-export { PetReminderCard } from "./PetReminderCard";
 export { BentoThemeProvider, useBentoTheme, useThemeColors, useFontScale, resolveThemeColor, type BentoTheme, type BentoThemeColors } from "./ThemeProvider";
 
 export {

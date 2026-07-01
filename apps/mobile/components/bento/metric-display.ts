@@ -42,11 +42,12 @@ export function computeMetricDisplay(args: {
   else if (ratio >= 0.999) state = "met";
   else state = "under";
 
-  const percent = hasTarget ? Math.min(1, ratio) : 0;
-  const cursorPercent = percent;
+  const visualMax = Math.max(safeActual, safeTarget);
+  const percent = hasTarget && visualMax > 0 ? safeActual / visualMax : 0;
+  const cursorPercent = hasTarget && visualMax > 0 ? safeTarget / visualMax : 0;
 
-  const fillColor: SemanticColor = state === "over" ? "amber" : baseColor;
-  const cursorColor: SemanticColor = state === "over" ? "amber" : baseColor;
+  const fillColor: SemanticColor = baseColor;
+  const cursorColor: SemanticColor = baseColor;
 
   const formatUnit = (value: number) => {
     const rounded = Math.round(value);
@@ -63,7 +64,7 @@ export function computeMetricDisplay(args: {
     subtitleTone = "positive";
   } else if (state === "over") {
     subtitle = `超 ${formatUnit(safeActual - safeTarget)}`;
-    subtitleTone = "amber";
+    subtitleTone = "warn";
   } else {
     subtitle = `还差 ${formatUnit(safeTarget - safeActual)}`;
     subtitleTone = "inkMute";

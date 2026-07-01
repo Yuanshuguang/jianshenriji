@@ -8,7 +8,7 @@ import { View, type ViewStyle } from "react-native";
 import Svg, { Polygon } from "react-native-svg";
 import { Text } from "./Text";
 import { Label } from "./Label";
-import { ProgressBar } from "./ProgressBar";
+import { MetricCompareBar } from "./MetricCompareBar";
 import { type SemanticColor } from "./tokens";
 import { useBentoTheme, resolveThemeColor } from "./ThemeProvider";
 import { computeMetricDisplay, type MetricDisplay, type MetricState } from "./metric-display";
@@ -52,7 +52,6 @@ export function MetricBarWithCursor({
   );
 
   const dim = sizeDims[size];
-  const trackColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
   const cursorPixelX = `${display.cursorPercent * 100}%`;
   const actualLabel = actualText ?? `${Math.round(actual)}${unit}`;
   const targetLabel = targetText ?? `${Math.round(target)}${unit}`;
@@ -69,7 +68,7 @@ export function MetricBarWithCursor({
           <Text
             mono
             weight="bold"
-            color={display.state === "over" ? colors.amber : colors[baseColor]}
+            color={colors[baseColor]}
             style={{ fontSize: dim.actualFontSize, lineHeight: dim.actualFontSize + 2 }}
           >
             {actualLabel}
@@ -115,7 +114,13 @@ export function MetricBarWithCursor({
             />
           </Svg>
         </View>
-        <ProgressBar percent={display.percent} color={display.fillColor} trackColor={trackColor} height={dim.barHeight} />
+        <MetricCompareBar
+          actual={actual}
+          target={target}
+          color={display.fillColor}
+          height={dim.barHeight}
+          showTargetMarker={false}
+        />
       </View>
       {showSubtitle ? (
         <Text

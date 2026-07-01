@@ -1,4 +1,4 @@
-﻿import {
+import {
   calculateNutritionGap,
   calculateFoodTotals,
   calculateDietPlanMacroTargets,
@@ -28,7 +28,7 @@ import {
   Button,
   GlassTile,
   Label,
-  ProgressBar,
+  MetricCompareBar,
   Screen,
   ScreenHeader,
   Text as BentoText,
@@ -578,23 +578,19 @@ export default function TodayScreen() {
               metrics={dashboardCells}
               onMetricPress={(cell) => setDashboardDetailKey(cell.key)}
             />
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", alignItems: "center" }}>
-              <PillButton label="更换样式" onPress={() => router.push("/more")} color="accent" />
-            </View>
           </View>
         ) : null}
+        {dynamicAdjustmentEnabled && (actualIntake > 0 || hasTrainingRecord(actualTraining.status)) ? (
+          <AdjustmentSummaryInline summary={adjustmentSummary} />
+        ) : null}
       </GlassTile>
-
-      {dynamicAdjustmentEnabled && (actualIntake > 0 || hasTrainingRecord(actualTraining.status)) ? (
-        <AdjustmentSummaryCard summary={adjustmentSummary} />
-      ) : null}
 
       <GlassTile style={{ gap: 12 }}>
         <CardHeader
           title="饮食记录"
           collapsed={recordCollapsed}
           onToggle={() => setRecordCollapsed((value) => !value)}
-          trailing={<BentoText mono color={c.inkMute} style={{ fontSize: 12 }}>{actualIntake} kcal</BentoText>}
+          trailing={null}
         />
         {!recordCollapsed ? (
           <View style={{ gap: 12 }}>
@@ -683,21 +679,9 @@ export default function TodayScreen() {
                 onEditTag={(key, item, label, calories) => setEditingFoodTag(buildFoodTagEdit(key, item, label, calories))}
               />
             ))}
-            {mealDisplayMode === "actual" ? (
-              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", paddingTop: 2 }}>
-                <Badge color={intakeDiff > 0 ? "warn" : "positive"} size="sm">{`实际摄入 ${Math.round(actualIntake)} kcal`}</Badge>
-                <Badge color={intakeDiff > 0 ? "warn" : "accent"} size="sm">{intakeDiffLabel}</Badge>
-                <Badge color="accent" size="sm">蛋白差 {Math.round(actualGap.proteinG)}g</Badge>
-              </View>
-            ) : (
-              <View style={{ gap: 8, paddingTop: 2 }}>
-                <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-                  <Badge color="positive" size="sm">{`计划摄入 ${Math.round(plannedTotals.calories)} kcal`}</Badge>
-                  <Badge color="accent" size="sm">{`目标 ${dietTarget.calories} kcal`}</Badge>
-                  <Badge color="accent2" size="sm">{dietPlanSummary.status}</Badge>
-                </View>
-              </View>
-            )}
+            <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
+              <Badge color="accent2" size="sm">{dietPlanSummary.status}</Badge>
+            </View>
           </View>
         ) : null}
       </GlassTile>
@@ -1262,9 +1246,6 @@ function DeficitHero({
   target: number;
 }) {
   const c = useBentoTheme().colors;
-  const remaining = Math.max(0, target - deficit);
-  const hint = remaining > 0 ? `还需 ${Math.round(remaining)} kcal` : "已达成";
-  const progress = target > 0 ? Math.min(1, deficit / target) : 0;
   const delta = deficit - target;
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 2, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
@@ -1272,11 +1253,12 @@ function DeficitHero({
         <BentoText variant="caption" color={c.inkMute} style={{ fontSize: 13, lineHeight: 16 }}>
           热量赤字
         </BentoText>
-        <BentoText variant="micro" color={c.accent}>{hint}</BentoText>
+        <BentoText variant="micro" color={delta > 0 ? c.warn : c.accent}>
+          {delta > 0 ? `超 ${Math.round(delta)} kcal` : `还需 ${Math.round(Math.abs(delta))} kcal`}
+        </BentoText>
       </View>
       <View style={{ flex: 1, gap: 6 }}>
-        <MetricDataRow label="目标" value={target} unit="kcal" textColor={c.positive} barColor="positive" percent={1} large />
-        <MetricDataRow label="实际" value={deficit} unit="kcal" textColor={c.accent} barColor="accent" percent={progress} large />
+        <MetricCompareDataRow actual={deficit} target={target} unit="kcal" large />
       </View>
       <MetricDelta value={delta} />
     </View>
@@ -1294,8 +1276,7 @@ function MetricMini({ metric }: { metric: DashboardMetric }) {
         </BentoText>
       </View>
       <View style={{ flex: 1, gap: 6 }}>
-        <MetricDataRow label="目标" value={metric.target} unit={metric.unit} textColor={c.positive} barColor="positive" percent={1} />
-        <MetricDataRow label="实际" value={metric.actual} unit={metric.unit} textColor={c.accent} barColor="accent" percent={metric.progress} />
+        <MetricCompareDataRow actual={metric.actual} target={metric.target} unit={metric.unit} />
       </View>
       <MetricDelta value={delta} compact />
     </View>
@@ -1316,28 +1297,28 @@ function MetricDelta({ value, compact = false }: { value: number; compact?: bool
   );
 }
 
-function MetricDataRow({
-  value,
+function MetricCompareDataRow({
+  actual,
+  target,
   unit,
-  textColor,
-  barColor,
-  percent,
   large = false,
 }: {
-  label: string;
-  value: number;
+  actual: number;
+  target: number;
   unit: string;
-  textColor: string;
-  barColor: SemanticColor;
-  percent: number;
   large?: boolean;
 }) {
+  const c = useBentoTheme().colors;
+  const delta = actual - target;
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: large ? 10 : 8 }}>
-      <MetricValueRow value={value} unit={unit} color={textColor} large={large} />
-      <View style={{ flex: 1, minWidth: large ? 92 : 72 }}>
-        <ProgressBar percent={percent} color={barColor} height={large ? 7 : 6} />
+    <View style={{ gap: large ? 5 : 4 }}>
+      <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+        <MetricValueRow value={actual} unit={unit} color={c.accent} large={large} />
+        <BentoText mono color={delta > 0 ? c.warn : c.inkMute} style={{ fontSize: large ? 11 : 10 }}>
+          目标 {Math.round(target)}{unit}
+        </BentoText>
       </View>
+      <MetricCompareBar actual={actual} target={target} height={large ? 7 : 6} />
     </View>
   );
 }
@@ -1377,8 +1358,7 @@ function MacroRow({ metric }: { metric: DashboardMetric }) {
         {metric.label}
       </BentoText>
       <View style={{ flex: 1, gap: 4 }}>
-        <MetricDataRow label="目标" value={metric.target} unit={metric.unit} textColor={c.positive} barColor="positive" percent={1} />
-        <MetricDataRow label="实际" value={metric.actual} unit={metric.unit} textColor={c.accent} barColor="accent" percent={metric.progress} />
+        <MetricCompareDataRow actual={metric.actual} target={metric.target} unit={metric.unit} />
       </View>
       <MetricDelta value={delta} />
     </View>
@@ -1889,15 +1869,15 @@ function createCustomFoodId(): string {
   return `custom-${Math.random().toString(36).slice(2)}-${new Date().getTime().toString(36)}`;
 }
 
-function AdjustmentSummaryCard({ summary }: { summary: ReturnType<typeof buildDailyAdjustmentSummary> }) {
+function AdjustmentSummaryInline({ summary }: { summary: ReturnType<typeof buildDailyAdjustmentSummary> }) {
   const c = useBentoTheme().colors;
   const color: SemanticColor = summary.netDelta > 0 ? "warn" : "positive";
   return (
-    <GlassTile glow={color} style={{ gap: 10 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-        <View style={{ flex: 1, gap: 4 }}>
-          <Label color={c.inkMute} variant="label">ADJUST / 动态调整</Label>
-          <BentoText weight="semibold" variant="caption" color={c[color]}>
+    <View style={{ marginTop: 4, paddingTop: 10, borderTopWidth: 1, borderTopColor: c.glassBorder, gap: 8 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <BentoText variant="micro" color={c.inkMute}>动态调整</BentoText>
+          <BentoText weight="semibold" variant="caption" color={c[color]} numberOfLines={1}>
             {summary.title}
           </BentoText>
         </View>
@@ -1905,18 +1885,17 @@ function AdjustmentSummaryCard({ summary }: { summary: ReturnType<typeof buildDa
           {summary.netDelta >= 0 ? "+" : ""}{summary.netDelta} kcal
         </Badge>
       </View>
-      <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 20 }}>
-        {summary.reason}
-      </BentoText>
-      <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+      <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
         <Badge color="accent" size="sm">分摊 {summary.days} 天</Badge>
         <Badge color="positive" size="sm">新目标 {summary.adjustedDailyCalories} kcal/天</Badge>
         <Badge color="accent2" size="sm">蛋白 {Math.round(summary.adjustedMacros.proteinG)}g</Badge>
       </View>
       {summary.warning ? (
-        <BentoText variant="caption" color={c.warn}>{summary.warning}</BentoText>
+        <BentoText variant="micro" color={c.warn} style={{ lineHeight: 16 }}>
+          {summary.warning}
+        </BentoText>
       ) : null}
-    </GlassTile>
+    </View>
   );
 }
 

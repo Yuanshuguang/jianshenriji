@@ -1,151 +1,162 @@
-import { useMemo, useState } from "react";
-import { Pressable, View } from "react-native";
+import { useMemo } from "react";
+import { Pressable, ScrollView, View } from "react-native";
+import { useRouter } from "expo-router";
 import { type MuscleGroup } from "@fitness-calendar/shared";
 import { muscleNameMap } from "../../features/today-plan";
-import { Badge, GlassTile, Label, Text as BentoText, useBentoTheme } from "../bento";
+import { GlassTile, Text as BentoText, useBentoTheme } from "../bento";
 
 type TrainingPlanItem = {
-  label: string;
   dateLabel: string;
   focus: MuscleGroup;
 };
 
 type TrainingPlanOverviewProps = {
   currentFocus: MuscleGroup;
-  nextFocus: MuscleGroup;
   focusSequence: readonly MuscleGroup[];
-  selectedMinutes: number;
-  intensityLabel: string;
 };
 
-export function TrainingPlanOverview({
-  currentFocus,
-  nextFocus,
-  focusSequence,
-  selectedMinutes,
-  intensityLabel,
-}: TrainingPlanOverviewProps) {
+export function TrainingPlanOverview({ currentFocus, focusSequence }: TrainingPlanOverviewProps) {
+  const router = useRouter();
   const c = useBentoTheme().colors;
-  const [expanded, setExpanded] = useState(false);
-
-  const schedule = useMemo(() => buildTrainingSchedule(currentFocus, nextFocus, focusSequence), [currentFocus, nextFocus, focusSequence]);
+  const schedule = useMemo(() => buildTrainingSchedule(currentFocus, focusSequence), [currentFocus, focusSequence]);
 
   return (
-    <GlassTile glow="accent2" padding={10} style={{ gap: 10 }}>
-      <Pressable
-        onPress={() => setExpanded((value) => !value)}
-        style={({ pressed }) => ({
-          gap: 8,
-          opacity: pressed ? 0.9 : 1
-        })}
+    <GlassTile glow="accent2" padding={8} style={{ gap: 10 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+        <BentoText weight="bold" color={c.ink} style={{ fontSize: 19, lineHeight: 22 }}>
+          训练计划
+        </BentoText>
+        <Pressable
+          onPress={() => router.push("/more")}
+          style={({ pressed }) => ({
+            minHeight: 34,
+            paddingHorizontal: 14,
+            borderRadius: 999,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 1,
+            borderColor: c.glassBorder,
+            backgroundColor: c.bg,
+            opacity: pressed ? 0.84 : 1,
+          })}
+        >
+          <BentoText weight="semibold" color={c.ink} style={{ fontSize: 13 }}>
+            计划设置
+          </BentoText>
+        </Pressable>
+      </View>
+
+      <View
+        style={{
+          borderRadius: 24,
+          paddingHorizontal: 8,
+          paddingTop: 10,
+          paddingBottom: 10,
+          backgroundColor: c.bg,
+          borderWidth: 1,
+          borderColor: c.glassBorder,
+          overflow: "hidden",
+        }}
       >
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-          <Label color={c.inkMute} variant="label">
-            训练计划
-          </Label>
-          <Badge color="accent2" size="sm">
-            {expanded ? "收起" : "展开"}
-          </Badge>
-        </View>
-        <BentoText weight="bold" color={c.ink} style={{ fontSize: 22, lineHeight: 26 }}>
-          {muscleNameMap[currentFocus]}
-        </BentoText>
-        <BentoText variant="micro" color={c.inkMute}>
-          参考时长 {selectedMinutes} 分钟 · {intensityLabel} · 点击查看前天到未来 7 天
-        </BentoText>
-      </Pressable>
-
-      {expanded ? (
-        <View style={{ gap: 10 }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <BentoText variant="caption" color={c.inkMute}>
-              日程表
-            </BentoText>
-            <BentoText variant="micro" color={c.inkFaint}>
-              仅显示日期和训练部位
-            </BentoText>
-          </View>
-
-          <View style={{ gap: 8 }}>
-            {schedule.slice(0, 4).map((item) => (
-              <TrainingPlanRow key={item.label} item={item} />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          decelerationRate="fast"
+          snapToInterval={74}
+          snapToAlignment="start"
+          contentOffset={{ x: 74 * 3, y: 0 }}
+          contentContainerStyle={{ paddingHorizontal: 2 }}
+        >
+          <View style={{ flexDirection: "row", gap: 4 }}>
+            {schedule.map((item) => (
+              <TrainingTick key={item.dateLabel} item={item} currentFocus={currentFocus} />
             ))}
           </View>
-
-          <View style={{ gap: 8 }}>
-            <BentoText variant="caption" color={c.inkMute}>
-              未来 7 天
-            </BentoText>
-            {schedule.slice(4).map((item) => (
-              <TrainingPlanRow key={item.label} item={item} />
-            ))}
-          </View>
-        </View>
-      ) : null}
+        </ScrollView>
+      </View>
     </GlassTile>
   );
 }
 
-function TrainingPlanRow({ item }: { item: TrainingPlanItem }) {
+function TrainingTick({ item, currentFocus }: { item: TrainingPlanItem; currentFocus: MuscleGroup }) {
   const c = useBentoTheme().colors;
+  const active = item.focus === currentFocus;
+  const weekday = formatWeekday(item.dateLabel);
+  const dateOnly = formatDateOnly(item.dateLabel);
+
   return (
     <View
       style={{
-        flexDirection: "row",
-        justifyContent: "space-between",
+        width: 70,
         alignItems: "center",
-        gap: 12,
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderRadius: 12,
-        backgroundColor: c.glass,
-        borderWidth: 1,
-        borderColor: c.glassBorder
+        gap: 8,
       }}
     >
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <BentoText weight="semibold" color={c.ink} numberOfLines={1}>
-          {item.label}
-        </BentoText>
-        <BentoText variant="micro" color={c.inkFaint} numberOfLines={1}>
-          {item.dateLabel}
+      <BentoText weight={active ? "semibold" : "medium"} color={active ? c.accent : c.inkMute} style={{ fontSize: 12, lineHeight: 14 }}>
+        {weekday}
+      </BentoText>
+
+      <View style={{ minHeight: 68, alignItems: "center", justifyContent: "center" }}>
+        <View style={{ alignItems: "center", gap: 6 }}>
+          <View style={{ width: 2, height: 16, borderRadius: 999, backgroundColor: active ? c.accent : c.glassBorder }} />
+          <View
+            style={{
+              minWidth: 58,
+              paddingHorizontal: active ? 12 : 8,
+              paddingVertical: active ? 7 : 6,
+              borderRadius: 999,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: active ? c.accent : "transparent",
+            }}
+          >
+            <BentoText
+              weight="semibold"
+              color={active ? "#FFFFFF" : c.ink}
+              numberOfLines={1}
+              style={{ fontSize: active ? 18 : 16, lineHeight: active ? 22 : 20 }}
+            >
+              {dateOnly}
+            </BentoText>
+          </View>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: active ? c.accent : c.glassBorderBright }} />
+        </View>
+      </View>
+
+      <View style={{ minHeight: 28, alignItems: "center", justifyContent: "flex-start" }}>
+        <BentoText
+          weight={active ? "bold" : "semibold"}
+          color={c.accent2}
+          numberOfLines={1}
+          style={{ fontSize: active ? 14 : 13, lineHeight: 16, textAlign: "center" }}
+        >
+          {muscleNameMap[item.focus]}
         </BentoText>
       </View>
-      <BentoText weight="bold" color={c.accent2} numberOfLines={1}>
-        {muscleNameMap[item.focus]}
-      </BentoText>
     </View>
   );
 }
 
-function buildTrainingSchedule(
-  currentFocus: MuscleGroup,
-  nextFocus: MuscleGroup,
-  focusSequence: readonly MuscleGroup[]
-): TrainingPlanItem[] {
+function buildTrainingSchedule(currentFocus: MuscleGroup, focusSequence: readonly MuscleGroup[]): TrainingPlanItem[] {
   const today = new Date();
   return [
-    createScheduleItem(today, -2, "前天", shiftFocus(currentFocus, focusSequence, -2)),
-    createScheduleItem(today, -1, "昨天", shiftFocus(currentFocus, focusSequence, -1)),
-    createScheduleItem(today, 0, "今天", currentFocus),
-    createScheduleItem(today, 1, "明天", nextFocus),
-    createScheduleItem(today, 2, "后天", shiftFocus(currentFocus, focusSequence, 2)),
-    createScheduleItem(today, 3, "3天后", shiftFocus(currentFocus, focusSequence, 3)),
-    createScheduleItem(today, 4, "4天后", shiftFocus(currentFocus, focusSequence, 4)),
-    createScheduleItem(today, 5, "5天后", shiftFocus(currentFocus, focusSequence, 5)),
-    createScheduleItem(today, 6, "6天后", shiftFocus(currentFocus, focusSequence, 6)),
-    createScheduleItem(today, 7, "7天后", shiftFocus(currentFocus, focusSequence, 7)),
-    createScheduleItem(today, 8, "8天后", shiftFocus(currentFocus, focusSequence, 8)),
+    createScheduleItem(today, -3, shiftFocus(currentFocus, focusSequence, -3)),
+    createScheduleItem(today, -2, shiftFocus(currentFocus, focusSequence, -2)),
+    createScheduleItem(today, -1, shiftFocus(currentFocus, focusSequence, -1)),
+    createScheduleItem(today, 0, currentFocus),
+    createScheduleItem(today, 1, shiftFocus(currentFocus, focusSequence, 1)),
+    createScheduleItem(today, 2, shiftFocus(currentFocus, focusSequence, 2)),
+    createScheduleItem(today, 3, shiftFocus(currentFocus, focusSequence, 3)),
   ];
 }
 
-function createScheduleItem(baseDate: Date, offsetDays: number, label: string, focus: MuscleGroup): TrainingPlanItem {
+function createScheduleItem(baseDate: Date, offsetDays: number, focus: MuscleGroup): TrainingPlanItem {
   const date = new Date(baseDate);
   date.setDate(baseDate.getDate() + offsetDays);
   return {
-    label,
     dateLabel: formatDateLabel(date),
-    focus
+    focus,
   };
 }
 
@@ -163,4 +174,12 @@ function shiftFocus(currentFocus: MuscleGroup, focusSequence: readonly MuscleGro
 function formatDateLabel(date: Date): string {
   const weekday = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getDay()];
   return `${date.getMonth() + 1}/${date.getDate()} ${weekday}`;
+}
+
+function formatWeekday(label: string): string {
+  return label.split(" ")[1] ?? "";
+}
+
+function formatDateOnly(label: string): string {
+  return label.split(" ")[0] ?? label;
 }
