@@ -5452,7 +5452,7 @@ export const offFoods: Food[] = [
   ),
   food(
     "off-augurken-cornichons-zoetzuur-aigres-doux",
-    "??????? ?????? Augurken Cornichons zoetzuur/aigres-doux",
+    "甜酸小黄瓜 Augurken Cornichons zoetzuur/aigres-doux",
     [],
     "dish",
     33,

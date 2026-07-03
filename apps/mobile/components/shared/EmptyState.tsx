@@ -59,6 +59,36 @@ export function LoadingState({ label = "加载中..." }: { label?: string }) {
   );
 }
 
+export function AsyncStatusBanner({
+  status,
+  message,
+}: {
+  status: "idle" | "loading" | "success" | "error";
+  message?: string;
+}) {
+  const c = useBentoTheme().colors;
+  if (status === "idle" || !message) return null;
+
+  const color = status === "error" ? c.warn : status === "success" ? c.positive : c.accent;
+  return (
+    <View
+      style={{
+        borderRadius: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        borderWidth: 1,
+        borderColor: `${color}55`,
+        backgroundColor: `${color}12`,
+      }}
+    >
+      <BentoText variant="micro" color={color} style={{ lineHeight: 16 }}>
+        {status === "loading" ? "处理中 · " : status === "success" ? "已完成 · " : "需要处理 · "}
+        {message}
+      </BentoText>
+    </View>
+  );
+}
+
 export function SkeletonBlock({ width = "100%", height = 16, radius = 6 }: { width?: DimensionValue; height?: number; radius?: number }) {
   const c = useBentoTheme().colors;
   return (

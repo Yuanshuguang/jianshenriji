@@ -24,7 +24,7 @@ import {
   buildCustomTrainingExercise,
   equipmentRank,
 } from "../../components/training/training-utils";
-import { useFitnessStore } from "../../store/fitness-store";
+import { useFitnessStore, type ExerciseLibraryPreferences } from "../../store/fitness-store";
 import type { LibraryExercise, WorkoutXListResponse } from "../../types/training";
 
 const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? "";
@@ -32,6 +32,7 @@ const exerciseLibraryProxyUrl = apiBaseUrl ? `${apiBaseUrl.replace(/\/$/, "")}/a
 const exerciseLibraryBaseUrl = exerciseLibraryProxyUrl;
 
 const bodyPartOrder = ["Chest", "Back", "Upper Arms", "Lower Arms", "Shoulders", "Waist", "Upper Legs", "Lower Legs", "Cardio", "Neck"] as const;
+const favoriteBodyPartKey = "favorites";
 const bodyPartLabels: Record<string, string> = {
   Chest: "胸",
   Back: "背",
@@ -90,6 +91,10 @@ export default function ExerciseLibraryScreen() {
   const c = useBentoTheme().colors;
   const todayTrainingPlan = useFitnessStore((state) => state.todayTrainingPlan);
   const setTodayTrainingPlan = useFitnessStore((state) => state.setTodayTrainingPlan);
+  const exerciseLibraryPreferences = useFitnessStore((state) => state.exerciseLibraryPreferences);
+  const toggleFavoriteExercise = useFitnessStore((state) => state.toggleFavoriteExercise);
+  const pinExerciseToTop = useFitnessStore((state) => state.pinExerciseToTop);
+  const pinExerciseToBottom = useFitnessStore((state) => state.pinExerciseToBottom);
 
   const [libraryItems, setLibraryItems] = useState<LibraryExercise[]>([]);
   const [supplementalLibraryItems, setSupplementalLibraryItems] = useState<LibraryExercise[]>([]);
@@ -101,6 +106,7 @@ export default function ExerciseLibraryScreen() {
   const [selectedLibraryEquipment, setSelectedLibraryEquipment] = useState("all");
   const [selectedLibraryBodyPart, setSelectedLibraryBodyPart] = useState("Chest");
   const [selectedLibraryExercise, setSelectedLibraryExercise] = useState<LibraryExercise | null>(null);
+  const [actionExercise, setActionExercise] = useState<LibraryExercise | null>(null);
   const [libraryThumbUris, setLibraryThumbUris] = useState<Record<string, string>>({});
   const [libraryVisibleLimit, setLibraryVisibleLimit] = useState(24);
 
@@ -112,7 +118,7 @@ export default function ExerciseLibraryScreen() {
   );
   const libraryBodyParts = useMemo(() => {
     const dynamicParts = combinedLibraryItems.map((item) => item.bodyPart).filter(Boolean) as string[];
-    return Array.from(new Set([...bodyPartOrder, ...dynamicParts]));
+    return Array.from(new Set([favoriteBodyPartKey, ...bodyPartOrder, ...dynamicParts]));
   }, [combinedLibraryItems]);
   const libraryEquipmentOptions = useMemo(() => {
     const dynamicEquipment = combinedLibraryItems.map((item) => item.equipment).filter(Boolean) as string[];
@@ -122,9 +128,15 @@ export default function ExerciseLibraryScreen() {
   }, [combinedLibraryItems]);
   const filteredLibraryItems = useMemo(() => {
     return combinedLibraryItems
-      .filter((item) => selectedLibraryBodyPart === "all" || item.bodyPart === selectedLibraryBodyPart)
-      .filter((item) => selectedLibraryEquipment === "all" || item.equipment === selectedLibraryEquipment);
-  }, [combinedLibraryItems, selectedLibraryBodyPart, selectedLibraryEquipment]);
+      .filter((item) => {
+        if (selectedLibraryBodyPart === favoriteBodyPartKey) {
+          return exerciseLibraryPreferences.favoriteExerciseIds.includes(item.id);
+        }
+        return selectedLibraryBodyPart === "all" || item.bodyPart === selectedLibraryBodyPart;
+      })
+      .filter((item) => selectedLibraryEquipment === "all" || item.equipment === selectedLibraryEquipment)
+      .sort((left, right) => getLibrarySortRank(left.id, exerciseLibraryPreferences) - getLibrarySortRank(right.id, exerciseLibraryPreferences));
+  }, [combinedLibraryItems, selectedLibraryBodyPart, selectedLibraryEquipment, exerciseLibraryPreferences]);
   const groupedLibraryItems = useMemo(() => {
     const grouped: Array<{ title: string; items: LibraryExercise[] }> = [];
     filteredLibraryItems.slice(0, libraryVisibleLimit).forEach((item) => {
@@ -237,12 +249,23 @@ export default function ExerciseLibraryScreen() {
     });
   };
 
+  const openExerciseActions = (item: LibraryExercise) => {
+    setActionExercise(item);
+    setSelectedLibraryExercise(item);
+  };
+
+  const closeExerciseActions = () => setActionExercise(null);
+
+  const isFavoriteExercise = (item: LibraryExercise) => exerciseLibraryPreferences.favoriteExerciseIds.includes(item.id);
+  const isPinnedExercise = (item: LibraryExercise) => exerciseLibraryPreferences.pinnedExerciseIds.includes(item.id);
+  const isBottomExercise = (item: LibraryExercise) => exerciseLibraryPreferences.bottomExerciseIds.includes(item.id);
+
   return (
     <Screen>
       <ScreenHeader
         kicker="动作库"
         title="浏览动作"
-        subtitle="单击动作看讲解，长按动作加入或取消今日参考。"
+        subtitle="单击动作看讲解，点卡片右上角或长按可收藏、置顶、加入今日参考。"
         badge={{ text: `${combinedLibraryItems.length} 项`, color: "accent2" }}
       />
 
@@ -295,6 +318,63 @@ export default function ExerciseLibraryScreen() {
         </GlassTile>
       ) : null}
 
+      {actionExercise ? (
+        <GlassTile glow="positive" style={{ gap: 10 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Label color={c.inkMute} variant="label">动作操作</Label>
+              <BentoText weight="bold" color={c.ink} numberOfLines={1}>
+                {actionExercise.displayName}
+              </BentoText>
+            </View>
+            <Pressable
+              onPress={closeExerciseActions}
+              style={({ pressed }) => ({
+                width: 34,
+                height: 34,
+                borderRadius: 17,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: c.bg,
+                opacity: pressed ? 0.76 : 1
+              })}
+            >
+              <BentoText weight="bold" color={c.inkMute}>×</BentoText>
+            </Pressable>
+          </View>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            <ActionPill
+              label={isFavoriteExercise(actionExercise) ? "取消收藏" : "收藏"}
+              onPress={() => {
+                toggleFavoriteExercise(actionExercise.id);
+                closeExerciseActions();
+              }}
+            />
+            <ActionPill
+              label={isPinnedExercise(actionExercise) ? "已置顶" : "置顶"}
+              onPress={() => {
+                pinExerciseToTop(actionExercise.id);
+                closeExerciseActions();
+              }}
+            />
+            <ActionPill
+              label={isBottomExercise(actionExercise) ? "已置底" : "置底"}
+              onPress={() => {
+                pinExerciseToBottom(actionExercise.id);
+                closeExerciseActions();
+              }}
+            />
+            <ActionPill
+              label={isExerciseInTodayPlan(actionExercise) ? "取消今日参考" : "加入今日参考"}
+              onPress={() => {
+                toggleLibraryExerciseInPlan(actionExercise);
+                closeExerciseActions();
+              }}
+            />
+          </View>
+        </GlassTile>
+      ) : null}
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 8 }}>
         <LibraryEquipmentChip
           label="置顶"
@@ -320,7 +400,7 @@ export default function ExerciseLibraryScreen() {
           {libraryBodyParts.map((part) => (
             <LibraryBodyPartTab
               key={part}
-              label={bodyPartLabels[part] ?? part}
+              label={getBodyPartLabel(part)}
               active={selectedLibraryBodyPart === part}
               onPress={() => setSelectedLibraryBodyPart(part)}
             />
@@ -330,7 +410,7 @@ export default function ExerciseLibraryScreen() {
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <BentoText weight="bold" style={{ color: c.ink, fontSize: 15 }}>
-              {selectedLibraryBodyPart === "all" ? "全部动作" : `${bodyPartLabels[selectedLibraryBodyPart] ?? selectedLibraryBodyPart}动作`}
+              {selectedLibraryBodyPart === "all" ? "全部动作" : `${getBodyPartLabel(selectedLibraryBodyPart)}动作`}
             </BentoText>
             <BentoText mono variant="micro" color={c.positive}>
               {filteredLibraryItems.length}/{Math.max(libraryTotal, combinedLibraryItems.length)} 项
@@ -351,7 +431,7 @@ export default function ExerciseLibraryScreen() {
             <EmptyState
               icon="空"
               title="暂无动作"
-              subtitle="该部位暂无可用动作，试试其他部位。"
+              subtitle={selectedLibraryBodyPart === favoriteBodyPartKey ? "还没有收藏动作，点卡片右上角或长按动作即可收藏。" : "该部位暂无可用动作，试试其他部位。"}
             />
           ) : (
             <View style={{ gap: 18, paddingRight: 6, paddingBottom: 20 }}>
@@ -369,9 +449,13 @@ export default function ExerciseLibraryScreen() {
                         key={item.id}
                         item={item}
                         active={isExerciseInTodayPlan(item)}
+                        favorite={isFavoriteExercise(item)}
+                        pinned={isPinnedExercise(item)}
+                        bottom={isBottomExercise(item)}
                         thumbUri={libraryThumbUris[item.id]}
                         onPress={() => setSelectedLibraryExercise(item)}
-                        onLongPress={() => toggleLibraryExerciseInPlan(item)}
+                        onLongPress={() => openExerciseActions(item)}
+                        onActionPress={() => openExerciseActions(item)}
                       />
                     ))}
                   </View>
@@ -419,5 +503,42 @@ export default function ExerciseLibraryScreen() {
         </Pressable>
       </View>
     </Screen>
+  );
+}
+
+function getBodyPartLabel(part: string): string {
+  if (part === favoriteBodyPartKey) return "收藏";
+  return bodyPartLabels[part] ?? part;
+}
+
+function getLibrarySortRank(exerciseId: string, preferences: ExerciseLibraryPreferences): number {
+  const pinnedIndex = preferences.pinnedExerciseIds.indexOf(exerciseId);
+  if (pinnedIndex >= 0) return -10000 + pinnedIndex;
+  const bottomIndex = preferences.bottomExerciseIds.indexOf(exerciseId);
+  if (bottomIndex >= 0) return 10000 + bottomIndex;
+  return 0;
+}
+
+function ActionPill({ label, onPress }: { label: string; onPress: () => void }) {
+  const c = useBentoTheme().colors;
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        minHeight: 36,
+        paddingHorizontal: 14,
+        borderRadius: 999,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: c.bg,
+        borderWidth: 1,
+        borderColor: c.glassBorder,
+        opacity: pressed ? 0.76 : 1
+      })}
+    >
+      <BentoText weight="semibold" color={c.ink} style={{ fontSize: 13 }}>
+        {label}
+      </BentoText>
+    </Pressable>
   );
 }

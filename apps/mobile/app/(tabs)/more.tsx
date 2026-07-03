@@ -1,9 +1,13 @@
-import { useState, type ReactNode } from "react";
-import { Alert, Platform, Pressable, Share, View } from "react-native";
+import { useEffect, useState, type ReactNode } from "react";
+import { Alert, Modal, Platform, Pressable, Share, View } from "react-native";
 import { muscleGroupLabels, type DynamicAdjustmentSettings, type MealAdjustmentKey, type MuscleGroup, type NutritionAdjustmentKey, type TrainingAdjustmentKey } from "@fitness-calendar/shared";
 import {
   Button,
   Screen,
+  LabeledInput,
+  AppIcon,
+  type AppIconName,
+  type SemanticColor,
   Switch,
   Text as BentoText,
   radius,
@@ -39,6 +43,12 @@ const trainingAdjustmentOptions: Array<{ key: TrainingAdjustmentKey; label: stri
   { key: "fatigue", label: "疲劳恢复" }
 ];
 const muscleAdjustmentOptions: MuscleGroup[] = ["chest", "back", "legs", "shoulders", "arms", "core", "cardio"];
+const dietMealPreferenceOptions: Array<{ key: MealAdjustmentKey; label: string }> = [
+  { key: "breakfast", label: "早餐" },
+  { key: "lunch", label: "午餐" },
+  { key: "dinner", label: "晚餐" },
+  { key: "snack", label: "加餐" }
+];
 
 export default function MoreScreen() {
   const theme = useBentoTheme();
@@ -54,6 +64,8 @@ export default function MoreScreen() {
   const setFontScale = useFitnessStore((state) => state.setFontScale);
   const dashboardStyle = useFitnessStore((state) => state.dashboardStyle);
   const setDashboardStyle = useFitnessStore((state) => state.setDashboardStyle);
+  const dietPreference = useFitnessStore((state) => state.dietPreference);
+  const setDietPreference = useFitnessStore((state) => state.setDietPreference);
 
   const [fontSizeExpanded, setFontSizeExpanded] = useState(false);
   const [dashboardStyleExpanded, setDashboardStyleExpanded] = useState(false);
@@ -71,6 +83,7 @@ export default function MoreScreen() {
       link.download = `fitness-calendar-health-${payload.exportedAt.slice(0, 10)}.json`;
       link.click();
       URL.revokeObjectURL(url);
+      Alert.alert("导出完成", "健康数据 JSON 已开始下载，请在浏览器下载列表中查看。");
       return;
     }
 
@@ -78,21 +91,47 @@ export default function MoreScreen() {
       title: "健康数据导出",
       message: json,
     });
+    Alert.alert("导出完成", "已调用系统分享面板导出健康数据。");
   };
 
+  // 危险操作二次确认状态：用一个通用 sheet 取代系统 Alert.alert，按风险等级要求文本确认
+  type DangerAction = {
+    title: string;
+    impact: string;
+    confirmPhrase: string;
+    actionLabel: string;
+    onConfirm: () => void;
+  };
+  const [dangerAction, setDangerAction] = useState<DangerAction | null>(null);
+
   const handleClearHealthData = () => {
-    Alert.alert(
-      "清除健康数据",
-      "这会重置个人档案、目标、饮食记录、训练记录和饮食计划选择。界面设置会保留。",
-      [
-        { text: "取消", style: "cancel" },
-        {
-          text: "清除",
-          style: "destructive",
-          onPress: () => useFitnessStore.getState().resetHealthData(),
-        },
-      ]
-    );
+    setDangerAction({
+      title: "清除健康数据",
+      impact: "重置个人档案、目标、饮食记录、训练记录和饮食计划选择。界面设置会保留。",
+      confirmPhrase: "确认清除",
+      actionLabel: "清除",
+      onConfirm: () => useFitnessStore.getState().resetHealthData(),
+    });
+  };
+
+  const handleResetTodayRecords = () => {
+    setDangerAction({
+      title: "清空今日记录",
+      impact: "清空今天的饮食记录、餐次输入和训练记录。身体数据、目标和方案设置不会修改。",
+      confirmPhrase: "",
+      actionLabel: "清空",
+      onConfirm: () => useFitnessStore.getState().resetTodayRecords(),
+    });
+  };
+
+  const handleResetDevelopmentData = () => {
+    setDangerAction({
+      title: "清理开发测试数据",
+      impact: "清空示例输入、历史日志、我的菜单和动作库收藏/置顶等缓存，用于恢复干净体验。身体数据和当前方案会保留。",
+      confirmPhrase: "",
+      actionLabel: "清理",
+      onConfirm: () => useFitnessStore.getState().resetDevelopmentData(),
+    });
   };
 
   const toggleDynamicRule = <Section extends keyof DynamicAdjustmentSettings, Key extends keyof DynamicAdjustmentSettings[Section]>(
@@ -109,6 +148,17 @@ export default function MoreScreen() {
     });
   };
 
+  const toggleDietMealPreference = (meal: MealAdjustmentKey, value: boolean) => {
+    const nextEnabledMeals = {
+      ...dietPreference.enabledMeals,
+      [meal]: value
+    };
+    if (!Object.values(nextEnabledMeals).some(Boolean)) {
+      nextEnabledMeals.lunch = true;
+    }
+    setDietPreference({ enabledMeals: nextEnabledMeals });
+  };
+
   return (
     <Screen>
       <View style={{ gap: 20 }}>
@@ -123,7 +173,7 @@ export default function MoreScreen() {
           <SettingsGroup>
             {/* 仪表盘可视化 */}
             <SharedExpandableRow
-              icon="📊"
+              icon={<AppIcon name="chart" size={18} color="accent" />}
               label="仪表盘可视化"
               value={dashboardStyleLabels[dashboardStyle]}
               expanded={dashboardStyleExpanded}
@@ -161,7 +211,7 @@ export default function MoreScreen() {
             </SharedExpandableRow>
 
             {/* 外观模式 */}
-            <SettingsRow icon="🌓" label="外观模式">
+            <SettingsRow iconName="theme" label="外观模式">
               <View style={{ flexDirection: "row", gap: 4 }}>
                 <SegmentedPill
                   label="日间"
@@ -180,7 +230,7 @@ export default function MoreScreen() {
 
             {/* 字体大小 */}
             <SharedExpandableRow
-              icon="🔤"
+              icon={<AppIcon name="type" size={18} color="accent" />}
               label="字体大小"
               value={fontScaleLabels[fontScale]}
               expanded={fontSizeExpanded}
@@ -215,12 +265,34 @@ export default function MoreScreen() {
           </SettingsGroup>
         </View>
 
+        {/* ===== 饮食偏好 ===== */}
+        <View style={{ gap: 6 }}>
+          <SectionHeader>饮食偏好</SectionHeader>
+          <SettingsGroup>
+            {dietMealPreferenceOptions.map((item) => (
+              <SettingsRow
+                key={item.key}
+                iconName="food"
+                label={item.label}
+                subtitle={dietPreference.enabledMeals[item.key] === false ? "不参与今日餐次和储备食物分配" : "参与今日餐次和储备食物分配"}
+              >
+                <Switch
+                  value={dietPreference.enabledMeals[item.key] !== false}
+                  onValueChange={(value) => toggleDietMealPreference(item.key, value)}
+                  activeColor={c.accent}
+                  accessibilityLabel={`${item.label}饮食偏好开关`}
+                />
+              </SettingsRow>
+            ))}
+          </SettingsGroup>
+        </View>
+
         {/* ===== 计划引擎 ===== */}
         <View style={{ gap: 6 }}>
           <SectionHeader>计划引擎</SectionHeader>
           <SettingsGroup>
             {/* 动态调整 */}
-            <SettingsRow icon="⚡" label="动态调整">
+            <SettingsRow iconName="bolt" label="动态调整">
               <Switch
                 value={dynamicAdjustmentEnabled}
                 onValueChange={setDynamicAdjustmentEnabled}
@@ -232,7 +304,7 @@ export default function MoreScreen() {
             {/* 高级规则 */}
             {dynamicAdjustmentEnabled ? (
               <SharedExpandableRow
-                icon="⚙️"
+                icon={<AppIcon name="settings" size={18} color="accent" />}
                 label="高级规则"
                 expanded={rulesExpanded}
                 onToggle={() => setRulesExpanded((v) => !v)}
@@ -280,7 +352,13 @@ export default function MoreScreen() {
                   </AdjustmentRuleGroup>
                 </View>
               </SharedExpandableRow>
-            ) : null}
+            ) : (
+              <SettingsRow
+                iconName="settings"
+                label="高级规则"
+                subtitle="开启动态调整后可设置饮食、训练和部位联动规则"
+              />
+            )}
           </SettingsGroup>
         </View>
 
@@ -289,21 +367,77 @@ export default function MoreScreen() {
           <SectionHeader>健康数据</SectionHeader>
           <SettingsGroup>
             <SettingsRow
-              icon="⇩"
+              iconName="download"
               label="导出健康数据"
               subtitle="导出个人档案、饮食、训练、日志与当前计划"
               onPress={handleExportHealthData}
             />
+          </SettingsGroup>
+        </View>
+
+        {/* ===== 危险操作 ===== */}
+        <View style={{ gap: 8 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              paddingHorizontal: 4,
+            }}
+          >
+            <View
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: c.warn,
+              }}
+            />
+            <BentoText weight="bold" variant="micro" color={c.warn} style={{ letterSpacing: 0.08 }}>
+              危险操作
+            </BentoText>
+            <BentoText variant="micro" color={c.inkMute}>
+              · 无法撤销,请确认影响范围
+            </BentoText>
+          </View>
+          <SettingsGroup>
+            <View
+              style={{
+                borderWidth: 1.2,
+                borderColor: `${c.warn}55`,
+                borderRadius: radius.md,
+                backgroundColor: `${c.warn}08`,
+              }}
+            >
             <SettingsRow
-              icon="✕"
+              iconName="refresh"
+              label="清空今日记录"
+              subtitle="只清空今天饮食、餐次和训练记录"
+              dangerous
+              onPress={handleResetTodayRecords}
+            />
+            <SettingsRow
+              iconName="broom"
+              label="清理开发测试数据"
+              subtitle="清空示例输入、历史日志、我的菜单和动作库缓存"
+              dangerous
+              onPress={handleResetDevelopmentData}
+            />
+            <SettingsRow
+              iconName="x"
               label="清除健康数据"
               subtitle="重置饮食/训练记录与饮食计划选择"
               dangerous
               onPress={handleClearHealthData}
             />
+            </View>
           </SettingsGroup>
         </View>
       </View>
+        <DangerConfirmSheet
+          action={dangerAction}
+          onClose={() => setDangerAction(null)}
+        />
     </Screen>
   );
 }
@@ -322,13 +456,17 @@ function SectionHeader({ children }: { children: ReactNode }) {
 
 function SettingsRow({
   icon,
+  iconName,
+  iconColor,
   label,
   subtitle,
   children,
   onPress,
   dangerous = false,
 }: {
-  icon: string;
+  icon?: string;
+  iconName?: AppIconName;
+  iconColor?: SemanticColor;
   label: string;
   subtitle?: string;
   children?: ReactNode;
@@ -337,6 +475,9 @@ function SettingsRow({
 }) {
   const theme = useBentoTheme();
   const c = theme.colors;
+  const iconNode = iconName ? (
+    <AppIcon name={iconName} size={18} color={iconColor ?? (dangerous ? "warn" : "accent")} />
+  ) : null;
   const content = (
     <View
       style={{
@@ -349,9 +490,9 @@ function SettingsRow({
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
-        <BentoText style={{ fontSize: 18, lineHeight: 22 }}>{icon}</BentoText>
+        {iconNode ?? (icon ? <BentoText style={{ fontSize: 18, lineHeight: 22 }}>{icon}</BentoText> : null)}
         <View style={{ flex: 1, gap: 2 }}>
-          <BentoText variant="body" color={dangerous ? c.warn : c.ink}>{label}</BentoText>
+          <BentoText variant="body" weight="semibold" color={dangerous ? c.warn : "#F7FAFF"}>{label}</BentoText>
           {subtitle ? (
             <BentoText variant="micro" color={dangerous ? c.warn : c.inkMute} numberOfLines={2}>
               {subtitle}
@@ -365,12 +506,25 @@ function SettingsRow({
   );
 
   if (!onPress) {
-    return <View style={{ backgroundColor: c.glass, borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>{content}</View>;
+    return <View style={{ backgroundColor: c.glassRaised, borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>{content}</View>;
   }
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.72 : 1, backgroundColor: c.glass })}>
-      <View style={{ borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>{content}</View>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        opacity: pressed ? 0.72 : 1,
+        backgroundColor: dangerous ? `${c.warn}10` : c.glassRaised,
+      })}
+    >
+      <View
+        style={{
+          borderBottomWidth: 1,
+          borderBottomColor: dangerous ? `${c.warn}55` : c.glassBorder,
+        }}
+      >
+        {content}
+      </View>
     </Pressable>
   );
 }
@@ -424,6 +578,169 @@ function AdjustmentRuleGroup({ title, children }: { title: string; children: Rea
         {children}
       </View>
     </View>
+  );
+}
+
+/* ===== 危险操作二次确认 Sheet ===== */
+
+type DangerAction = {
+  title: string;
+  impact: string;
+  /** 需要用户输入的确认短语；为空表示只要点确认按钮 */
+  confirmPhrase: string;
+  actionLabel: string;
+  onConfirm: () => void;
+};
+
+type DangerConfirmSheetProps = {
+  action: DangerAction | null;
+  onClose: () => void;
+};
+
+function DangerConfirmSheet({ action, onClose }: DangerConfirmSheetProps) {
+  const theme = useBentoTheme();
+  const c = theme.colors;
+  const [input, setInput] = useState("");
+
+  // 打开新的 action 时清空输入
+  useEffect(() => {
+    setInput("");
+  }, [action]);
+
+  if (!action) return null;
+
+  const needsInput = action.confirmPhrase.length > 0;
+  const inputMatches = !needsInput || input.trim() === action.confirmPhrase;
+
+  const handleConfirm = () => {
+    if (!inputMatches) return;
+    action.onConfirm();
+    setInput("");
+    onClose();
+  };
+
+  const handleCancel = () => {
+    setInput("");
+    onClose();
+  };
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={handleCancel}>
+      <Pressable
+        onPress={handleCancel}
+        style={{ flex: 1, backgroundColor: c.scrim, justifyContent: "flex-end" }}
+      >
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{
+            backgroundColor: c.glass,
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            paddingHorizontal: 20,
+            paddingTop: 12,
+            paddingBottom: 28,
+            gap: 16,
+            borderTopWidth: 1,
+            borderColor: `${c.warn}66`,
+          }}
+        >
+          <View
+            style={{
+              alignSelf: "center",
+              width: 40,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: c.inkFaint,
+              opacity: 0.5,
+              marginBottom: 4,
+            }}
+          />
+
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <View
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: `${c.warn}1A`,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <BentoText weight="bold" color={c.warn} style={{ fontSize: 16 }}>
+                !
+              </BentoText>
+            </View>
+            <BentoText variant="h3" weight="bold" color={c.warn}>
+              {action.title}
+            </BentoText>
+          </View>
+
+          <View
+            style={{
+              backgroundColor: `${c.warn}0A`,
+              borderRadius: radius.md,
+              padding: 12,
+              gap: 4,
+            }}
+          >
+            <BentoText weight="semibold" variant="caption" color={c.warn}>
+              影响范围
+            </BentoText>
+            <BentoText variant="caption" color={c.ink} style={{ lineHeight: 18 }}>
+              {action.impact}
+            </BentoText>
+          </View>
+
+          {needsInput ? (
+            <LabeledInput
+              label={`请输入 "${action.confirmPhrase}" 以确认`}
+              value={input}
+              onChangeText={setInput}
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder={action.confirmPhrase}
+            />
+          ) : null}
+
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <Pressable
+              onPress={handleCancel}
+              style={({ pressed }) => ({
+                flex: 1,
+                paddingVertical: 12,
+                borderRadius: radius.md,
+                backgroundColor: c.glassRaised,
+                borderWidth: 1,
+                borderColor: c.glassBorder,
+                alignItems: "center",
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <BentoText weight="semibold" color={c.ink}>
+                取消
+              </BentoText>
+            </Pressable>
+            <Pressable
+              onPress={handleConfirm}
+              disabled={!inputMatches}
+              style={({ pressed }) => ({
+                flex: 1.2,
+                paddingVertical: 12,
+                borderRadius: radius.md,
+                backgroundColor: inputMatches ? c.warn : `${c.warn}33`,
+                alignItems: "center",
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <BentoText weight="bold" color="#FFFFFF">
+                {action.actionLabel}
+              </BentoText>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 

@@ -16,10 +16,10 @@ type TabBarProps = {
 };
 
 const tabItems: TabItem[] = [
-  { key: "index", label: "饮食" },
-  { key: "train", label: "训练" },
-  { key: "plan", label: "计划" },
-  { key: "more", label: "更多" },
+  { key: "index", label: "饮食", icon: "food" },
+  { key: "train", label: "训练", icon: "train" },
+  { key: "plan", label: "计划", icon: "plan" },
+  { key: "more", label: "更多", icon: "more" },
 ];
 
 function BottomTabBar({ state, navigation }: TabBarProps) {

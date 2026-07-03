@@ -1,5 +1,5 @@
 import { createElement, useEffect, useRef, useState } from "react";
-import { Image, Platform, View } from "react-native";
+import { Image, Platform, Pressable, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { bodyShapeOptions } from "@fitness-calendar/shared";
@@ -33,6 +33,7 @@ import {
   recognizeBodyReportImage,
 } from "../../features/body-image-recognition";
 import { prepareAiImageUploadFromBase64Asset, prepareAiImageUploadFromFile } from "../../features/ai-image-upload";
+import { AsyncStatusBanner } from "../../components/shared/EmptyState";
 
 const bodySourceLabels: Record<BodyCompositionSource, string> = {
   manual: "手动录入",
@@ -68,6 +69,8 @@ export default function BodyScreen() {
   const [goalDraft, setGoalDraft] = useState<UserGoal>(goal);
   const [previewUri, setPreviewUri] = useState<string | null>(profile.bodyComposition?.evidenceUri ?? null);
   const [message, setMessage] = useState("");
+  const [bodyRecognitionBusy, setBodyRecognitionBusy] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -254,6 +257,7 @@ export default function BodyScreen() {
       return;
     }
 
+    setBodyRecognitionBusy(true);
     setPreviewUri(base64);
     updateBodyComposition({
       evidenceName: name,
@@ -261,8 +265,8 @@ export default function BodyScreen() {
       evidenceMediaType: mediaType,
     });
 
-    if (source === "report") {
-      try {
+    try {
+      if (source === "report") {
         const result = await recognizeBodyReportImage(base64, name);
         const bmi = calculateBmi(draft.heightCm, draft.weightKg);
         updateBodyComposition({
@@ -277,33 +281,38 @@ export default function BodyScreen() {
             : "报告已识别，其余体成分字段已尽量自动填入。"
         );
         return;
-      } catch (error) {
+      }
+
+      if (source === "selfie") {
+        const estimated = estimateBodyFatFromVisualInput(draft, bodyComposition.visualLevel, {
+          mediaType,
+          qualitySignals: bodyComposition.visualQualitySignals,
+        });
+        updateBodyComposition({
+          bodyFatPercent: estimated?.percent ?? bodyComposition.bodyFatPercent,
+          bodyFatEstimateMin: estimated?.min ?? bodyComposition.bodyFatEstimateMin,
+          bodyFatEstimateMax: estimated?.max ?? bodyComposition.bodyFatEstimateMax,
+          bodyFatEstimateReason: estimated?.reason ?? bodyComposition.bodyFatEstimateReason,
+        });
+        setMessage(
+          estimated
+            ? `${mediaType === "video" ? "视频" : "自拍"}已给出粗略体脂率：约 ${estimated.percent}%（${estimated.min}% - ${estimated.max}%），可继续按画面特征校准。`
+            : `${mediaType === "video" ? "视频" : "自拍"}已导入，当前信息不足，暂时只保留文件名，体脂率可手动补填。`
+        );
+        return;
+      }
+
+      setMessage("图片已导入，后续可以把它作为 AI 估算体脂率的依据。");
+    } catch (error) {
+      if (source === "report") {
         console.error("[body-screen] report recognition failed", error);
         setMessage("报告识别失败，已保留图片，体成分字段可以手动补填。");
         return;
       }
+      setMessage(error instanceof Error ? error.message : "图片处理失败，已保留可手动补填。");
+    } finally {
+      setBodyRecognitionBusy(false);
     }
-
-    if (source === "selfie") {
-      const estimated = estimateBodyFatFromVisualInput(draft, bodyComposition.visualLevel, {
-        mediaType,
-        qualitySignals: bodyComposition.visualQualitySignals,
-      });
-      updateBodyComposition({
-        bodyFatPercent: estimated?.percent ?? bodyComposition.bodyFatPercent,
-        bodyFatEstimateMin: estimated?.min ?? bodyComposition.bodyFatEstimateMin,
-        bodyFatEstimateMax: estimated?.max ?? bodyComposition.bodyFatEstimateMax,
-        bodyFatEstimateReason: estimated?.reason ?? bodyComposition.bodyFatEstimateReason,
-      });
-      setMessage(
-        estimated
-          ? `${mediaType === "video" ? "视频" : "自拍"}已给出粗略体脂率：约 ${estimated.percent}%（${estimated.min}% - ${estimated.max}%），可继续按画面特征校准。`
-          : `${mediaType === "video" ? "视频" : "自拍"}已导入，当前信息不足，暂时只保留文件名，体脂率可手动补填。`
-      );
-      return;
-    }
-
-    setMessage("图片已导入，后续可以把它作为 AI 估算体脂率的依据。");
   };
 
   const handleVisualLevelChange = (visualLevel: BodyFatVisualLevel) => {
@@ -358,7 +367,7 @@ export default function BodyScreen() {
       <ScreenHeader
         kicker="Onboarding / 1 / 2"
         title="身体基线"
-        subtitle="年龄、体重和身高是必填；目标体重、周期天数和目标体型也一起在这里设置；体脂率、骨骼肌、身体水分和基础代谢是可选；也可以先上传报告或自拍，留给后续 AI 估算。"
+        subtitle="先填年龄、体重和身高，再补目标体重、周期和体型。体脂、骨骼肌、水分和基础代谢可后补，也能先上传报告或自拍。"
       />
 
       <GlassTile glow="accent" style={{ gap: 12 }}>
@@ -460,13 +469,40 @@ export default function BodyScreen() {
         </View>
       </GlassTile>
 
+      <Pressable
+        onPress={() => setAdvancedOpen((value) => !value)}
+        style={({ pressed }) => ({
+          borderRadius: 18,
+          opacity: pressed ? 0.78 : 1,
+        })}
+      >
+        <GlassTile glow="positive" style={{ gap: 8 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+          <Label color={colors.inkMute} variant="label">
+            高级数据（可选）
+          </Label>
+          <BentoText variant="caption" color={colors.inkMute}>
+            体脂率、骨骼肌、水分、基础代谢都可后补；报告 OCR 负责填数，自拍或视频主要粗估体脂率。
+          </BentoText>
+        </View>
+            <BentoText weight="bold" color={colors.accent}>
+              {advancedOpen ? "收起" : "展开"}
+            </BentoText>
+          </View>
+        </GlassTile>
+      </Pressable>
+
+      {advancedOpen ? (
+        <>
+
       <GlassTile glow="positive" style={{ gap: 12 }}>
         <View style={{ gap: 4 }}>
           <Label color={colors.inkMute} variant="label">
             身体成分补充
           </Label>
           <BentoText variant="caption" color={colors.inkMute}>
-            可先手动补填，也可以上传报告 OCR，或上传自拍/视频做体脂率粗略估算。
+            可手动补，也可上传报告 OCR 或自拍/视频做体脂率粗估。
           </BentoText>
         </View>
 
@@ -580,7 +616,7 @@ export default function BodyScreen() {
             图片上传与估算入口
           </Label>
           <BentoText variant="caption" color={colors.inkMute}>
-            支持上传体成分报告截图、自拍、训练照或短视频。体脂估算会自动填入上方字段，用户可继续手动修改。
+            支持报告截图、自拍、训练照或短视频；识别结果会回填上方字段，用户可继续手动改。
           </BentoText>
         </View>
 
@@ -675,14 +711,15 @@ export default function BodyScreen() {
           </View>
         )}
 
-        {message ? (
-          <BentoText variant="micro" color={colors.inkMute}>
-            {message}
-          </BentoText>
-        ) : null}
+        <AsyncStatusBanner
+          status={bodyRecognitionBusy ? "loading" : getBodyAsyncStatus(message)}
+          message={bodyRecognitionBusy ? "正在处理报告或体态图片..." : message}
+        />
       </GlassTile>
+        </>
+      ) : null}
 
-      <Button variant="filled" color="accent" block onPress={handleSave}>
+      <Button variant="filled" color="accent" style={{ alignSelf: "stretch" }} onPress={handleSave}>
         保存并继续
       </Button>
     </Screen>
@@ -712,6 +749,12 @@ function ensureBodyComposition(profile: UserProfile): UserProfile {
       bodyFatEstimateReason: bodyComposition?.bodyFatEstimateReason ?? defaultBodyComposition.bodyFatEstimateReason,
     },
   };
+}
+
+function getBodyAsyncStatus(message: string): "idle" | "loading" | "success" | "error" {
+  if (!message) return "idle";
+  if (message.includes("失败") || message.includes("需要") || message.includes("不能超过") || message.includes("只支持")) return "error";
+  return "success";
 }
 
 function parseInteger(value: string): number {

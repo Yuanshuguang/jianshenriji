@@ -69,6 +69,7 @@ export type ParsedTrainingText = {
 };
 
 export type MealFood = {
+  foodId: string;
   name: string;
   grams: number;
   calories: number;
@@ -155,6 +156,7 @@ export function buildMealPlan(portions: FoodPortion[], customFoods: Food[] = [])
     const food = catalog.find((item) => item.id === portion.foodId);
     const meal = meals[getMealIndex(food, index, (portion as FoodPortionWithMeal).meal)];
     meal.foods.push({
+      foodId: portion.foodId,
       name: portion.name,
       grams: Math.round(Math.abs(portion.grams)),
       calories: Math.round(portion.totals.calories),

@@ -129,6 +129,7 @@ const conversationalNoiseWords = [
   "食堂打饭",
   "打饭",
   "外卖",
+  "便利店",
   "便利店买",
   "出差",
   "加班到十点",

@@ -39,32 +39,32 @@ export const colors = {
 
 export const darkColors = {
   // 背景层：夜间 — 深黑底，护眼
-  bg: "#121212",
-  bgGlow: "#1E1E1E",
+  bg: "#07111D",
+  bgGlow: "#0D192A",
 
   // 卡片层：深灰卡片 + 微透明边框
-  glass: "#1E1E1E",
-  glassRaised: "#2A2A2A",
-  glassBorder: "rgba(255,255,255,0.08)",
-  glassBorderBright: "rgba(255,255,255,0.14)",
+  glass: "#0E1828",
+  glassRaised: "#172435",
+  glassBorder: "rgba(84,132,204,0.18)",
+  glassBorderBright: "rgba(95,165,255,0.34)",
 
   // 文字层：浅色文字，确保 WCAG AA 对比度（4.5:1 on #121212）
   // #FFFFFF on #121212 = 17.4:1 ✅
   // #CCCCCC on #121212 = 9.8:1 ✅
   // #888888 on #121212 = 4.6:1 ✅（勉强达标，用于 inkFaint）
-  ink: "#FFFFFF",
-  inkMute: "#CCCCCC",
-  inkFaint: "#888888",
+  ink: "#F4F8FF",
+  inkMute: "#D6DFEC",
+  inkFaint: "#7F93B2",
 
   // 强调色：夜间提高亮度确保对比度
-  accent: "#4DB5FF", // 蓝 · 更亮
-  accent2: "#9489FF", // 紫蓝 · 更亮
-  positive: "#3FE088", // 薄荷绿 · 更亮
-  warn: "#FF6B7D", // 红 · 更亮
-  amber: "#FFB930", // 琥珀 · 更亮
+  accent: "#4A9DFF", // 蓝 · 高亮
+  accent2: "#8E7DFF", // 紫蓝 · 高亮
+  positive: "#34D399", // 薄荷绿 · 高亮
+  warn: "#FF6478", // 红 · 高亮
+  amber: "#FFB84D", // 琥珀 · 高亮
 
   // 遮罩层：夜间更深的遮罩
-  scrim: "rgba(0,0,0,0.6)",
+  scrim: "rgba(0,0,0,0.72)",
 } as const;
 
 /** 辉光色（用于阴影 / 光晕，rgba 字符串） */

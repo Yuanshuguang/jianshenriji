@@ -1,4 +1,4 @@
-import { View, type ViewProps, type ViewStyle } from "react-native";
+import { Platform, View, type ViewProps, type ViewStyle } from "react-native";
 import { type SemanticColor } from "./tokens";
 import { useBentoTheme } from "./ThemeProvider";
 import { getMetricCompareParts } from "./metric-compare";
@@ -62,21 +62,28 @@ export function MetricCompareBar({
       ) : null}
       {showTargetMarker ? (
         <View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            left: markerLeft as unknown as number,
-            width: 2,
-            marginLeft: -1,
-            backgroundColor: colors[color],
-            borderWidth: 1,
-            borderColor: colors.bg,
-            shadowColor: colors[color],
-            shadowOpacity: 0.35,
-            shadowRadius: 4,
-          }}
+          style={[
+            {
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              left: markerLeft as unknown as number,
+              width: 2,
+              marginLeft: -1,
+              backgroundColor: colors[color],
+              borderWidth: 1,
+              borderColor: colors.bg,
+            },
+            Platform.OS === "web"
+              ? {
+                  boxShadow: `0px 0px 4px ${colors[color]}66`,
+                }
+              : {
+                  shadowColor: colors[color],
+                  shadowOpacity: 0.35,
+                  shadowRadius: 4,
+                },
+          ]}
         />
       ) : null}
     </View>

@@ -20,6 +20,7 @@ export { LabeledInput } from "./LabeledInput";
 export { SelectChip } from "./SelectChip";
 export { CollapsibleCard } from "./CollapsibleCard";
 export { Switch } from "./Switch";
+export { AppIcon, type AppIconName, type AppIconProps } from "./AppIcon";
 export { BentoThemeProvider, useBentoTheme, useThemeColors, useFontScale, resolveThemeColor, type BentoTheme, type BentoThemeColors } from "./ThemeProvider";
 
 export {

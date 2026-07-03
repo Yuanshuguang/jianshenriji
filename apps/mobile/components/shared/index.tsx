@@ -79,9 +79,15 @@ export function SettingsRow({
         minHeight: 52,
       }}
     >
-      {icon ? <BentoText style={{ fontSize: 22, width: 28, textAlign: "center" }}>{icon}</BentoText> : null}
+      {icon ? (
+        typeof icon === "string" ? (
+          <BentoText style={{ fontSize: 22, width: 28, textAlign: "center" }}>{icon}</BentoText>
+        ) : (
+          <View style={{ width: 28, alignItems: "center", justifyContent: "center" }}>{icon}</View>
+        )
+      ) : null}
       <View style={{ flex: 1, gap: 2 }}>
-        <BentoText weight="medium" variant="body" color={dangerous ? c.warn : undefined} style={{ fontSize: 15 }}>
+        <BentoText weight="medium" variant="body" color={dangerous ? c.warn : "#F7FAFF"} style={{ fontSize: 15 }}>
           {label}
         </BentoText>
         {subtitle ? (
@@ -120,7 +126,7 @@ export function ExpandableRow({
   onToggle,
   children,
 }: {
-  icon: string;
+  icon: ReactNode;
   label: string;
   value?: string;
   expanded: boolean;
@@ -143,7 +149,7 @@ export function ExpandableRow({
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
           <BentoText style={{ fontSize: 18, lineHeight: 22 }}>{icon}</BentoText>
-          <BentoText variant="body">{label}</BentoText>
+          <BentoText variant="body" weight="semibold" color="#F7FAFF">{label}</BentoText>
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           {value ? <BentoText variant="caption" color={c.inkMute}>{value}</BentoText> : null}
@@ -160,3 +166,5 @@ export function ExpandableRow({
     </View>
   );
 }
+
+export { WeekDateRail, type WeekDateRailItem } from "./WeekDateRail";

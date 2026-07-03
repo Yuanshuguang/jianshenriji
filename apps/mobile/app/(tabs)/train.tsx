@@ -1,7 +1,7 @@
 import {
   exercises,
-  resolveDietPlanDay,
-  resolveTrainingDietRecommendation,
+  getTodayTrainingScheduleEntry,
+  resolveTrainingSchedule,
   sumNutrition,
   type DietPlanCycleSelection,
   type MuscleGroup
@@ -48,8 +48,6 @@ const statusOptions: Array<{ value: ActualTrainingStatus; label: string; color: 
   { value: "missed", label: "今天休息", color: "warn" },
 ];
 
-const focusOptions: MuscleGroup[] = ["chest", "back", "legs", "shoulders", "arms", "core", "cardio"];
-
 export default function TrainScreen() {
   const router = useRouter();
   const c = useBentoTheme().colors;
@@ -72,18 +70,18 @@ export default function TrainScreen() {
   const dietPlanCycleSelection: DietPlanCycleSelection = selectedDietPlanVariantId
     ? { variantId: selectedDietPlanVariantId }
     : {};
-  const resolvedDietDay = resolveDietPlanDay(selectedDietPlanId, today, dietPlanCycleSelection);
-  const dietTrainingRecommendation = resolveTrainingDietRecommendation({
+  const trainingSchedule = useMemo(() => resolveTrainingSchedule({
     planId: selectedDietPlanId,
-    dayType: resolvedDietDay.dayType,
+    dietPlanSelection: dietPlanCycleSelection,
     exercises,
-    preferredMuscleGroups: preference.preferredMuscleGroups,
-    baseMinutes: preference.minutesPerSession,
-    manualFocus: todayTrainingPlan.focus,
-    manualMinutes: todayTrainingPlan.minutes
-  });
-  const selectedFocus = dietTrainingRecommendation.focus;
-  const selectedMinutes = dietTrainingRecommendation.durationMinutes;
+    preference,
+    anchorDate: today,
+    manualTodayFocus: todayTrainingPlan.focus,
+    manualTodayMinutes: todayTrainingPlan.minutes
+  }), [selectedDietPlanId, selectedDietPlanVariantId, preference, todayTrainingPlan.focus, todayTrainingPlan.minutes]);
+  const todayScheduleEntry = getTodayTrainingScheduleEntry(trainingSchedule);
+  const selectedFocus: MuscleGroup = todayScheduleEntry.focus ?? "cardio";
+  const selectedMinutes = todayScheduleEntry.minutes;
   const todayWorkout = buildWorkoutForSelection(selectedFocus, selectedMinutes, preference);
   const customTrainingExercises = todayTrainingPlan.customExercises ?? [];
   const actualTrainingCalories = Math.round(actualTraining.calories);
@@ -100,13 +98,15 @@ export default function TrainScreen() {
     [libraryItems, supplementalLibraryItems]
   );
   const suggestedLibraryExercises = useMemo(
-    () => buildSuggestedLibraryExercises({
-      focus: selectedFocus,
-      libraryItems: combinedLibraryItems,
-      workout: todayWorkout,
-      extraExerciseIds: dietTrainingRecommendation.exerciseIds,
-    }),
-    [selectedFocus, combinedLibraryItems, todayWorkout, dietTrainingRecommendation.exerciseIds]
+    () => todayScheduleEntry.trainingType === "rest"
+      ? []
+      : buildSuggestedLibraryExercises({
+          focus: selectedFocus,
+          libraryItems: combinedLibraryItems,
+          workout: todayWorkout,
+          extraExerciseIds: todayScheduleEntry.exerciseIds,
+        }),
+    [selectedFocus, combinedLibraryItems, todayWorkout, todayScheduleEntry.exerciseIds, todayScheduleEntry.trainingType]
   );
   const trainingTextReferences = useMemo(
     () => buildTrainingTextReferences(customTrainingExercises, combinedLibraryItems),
@@ -171,23 +171,32 @@ export default function TrainScreen() {
   }, []);
 
   const actualWeightLevel = fatigueToWeightLevel(actualTraining.fatigue);
+  const isRestDay = todayScheduleEntry.trainingType === "rest";
 
   return (
     <Screen>
 
       <TrainingPlanOverview
-        currentFocus={selectedFocus}
-        focusSequence={focusOptions}
+        schedule={trainingSchedule}
       />
 
-      <TrainingEnergySummary
-        burnCalories={burnCalories}
-        burnTarget={Math.round(energyPlan.tdee)}
-        deficit={deficit}
-        deficitTarget={Math.max(0, Math.round(energyPlan.dailyDeficit))}
-        intakeCalories={actualIntake}
-        trainingCalories={actualTrainingCalories}
-      />
+      {isRestDay ? (
+        <RestDaySummary
+          dietLabel={todayScheduleEntry.dietLabel}
+          reason={todayScheduleEntry.reason}
+          baseBurnCalories={Math.round(energyPlan.tdee)}
+          intakeCalories={actualIntake}
+        />
+      ) : (
+        <TrainingEnergySummary
+          burnCalories={burnCalories}
+          burnTarget={Math.round(energyPlan.tdee)}
+          deficit={deficit}
+          deficitTarget={Math.max(0, Math.round(energyPlan.dailyDeficit))}
+          intakeCalories={actualIntake}
+          trainingCalories={actualTrainingCalories}
+        />
+      )}
 
       <GlassTile glow="accent2" style={{ gap: 10 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
@@ -264,7 +273,7 @@ export default function TrainScreen() {
           </View>
         </View>
 
-        {actualTraining.status !== "missed" ? (
+        {actualTraining.status !== "missed" && !isRestDay ? (
           <ActualTrainingInputSection
             text={actualTraining.text}
             parsed={actualTrainingParsed}
@@ -278,11 +287,51 @@ export default function TrainScreen() {
           />
         ) : (
           <BentoText variant="caption" color={c.warn}>
-            今天作为休息日记录。饮食联动会把实际训练消耗按 0 处理。
+            今天按恢复日处理。饮食联动会把实际训练消耗按 0 处理；如有散步、拉伸或临时训练，可切换为“已记录训练”后补充。
           </BentoText>
         )}
       </GlassTile>
     </Screen>
+  );
+}
+
+function RestDaySummary({
+  dietLabel,
+  reason,
+  baseBurnCalories,
+  intakeCalories,
+}: {
+  dietLabel: string;
+  reason: string;
+  baseBurnCalories: number;
+  intakeCalories: number;
+}) {
+  const c = useBentoTheme().colors;
+  return (
+    <GlassTile glow="amber" padding={12} style={{ gap: 10 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+          <Label color={c.inkMute} variant="label">今日恢复日</Label>
+          <BentoText weight="bold" color={c.ink} style={{ fontSize: 18 }}>
+            不安排正式训练
+          </BentoText>
+        </View>
+        <Badge color="amber" size="sm">{dietLabel}</Badge>
+      </View>
+      <BentoText variant="caption" color={c.inkMute}>
+        {reason}
+      </BentoText>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <View style={{ flex: 1, borderRadius: 12, padding: 9, backgroundColor: c.glass, borderWidth: 1, borderColor: c.glassBorder }}>
+          <BentoText variant="micro" color={c.inkMute}>基础日消耗</BentoText>
+          <BentoText mono weight="bold" color={c.accent} style={{ fontSize: 20 }}>{baseBurnCalories} kcal</BentoText>
+        </View>
+        <View style={{ flex: 1, borderRadius: 12, padding: 9, backgroundColor: c.glass, borderWidth: 1, borderColor: c.glassBorder }}>
+          <BentoText variant="micro" color={c.inkMute}>今日已摄入</BentoText>
+          <BentoText mono weight="bold" color={c.accent} style={{ fontSize: 20 }}>{Math.round(intakeCalories)} kcal</BentoText>
+        </View>
+      </View>
+    </GlassTile>
   );
 }
 

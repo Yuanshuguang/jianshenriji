@@ -1,18 +1,18 @@
-﻿import {
-  calculateDietPlanMacroTargets,
+import {
+  bodyShapeOptions,
   exercises,
-  resolveDietPlanDay,
-  resolveTrainingDietRecommendation,
+  resolveTrainingSchedule,
   type DietPlanCycleSelection,
-  type MuscleGroup
+  type TrainingScheduleEntry,
 } from "@fitness-calendar/shared";
 import { useRouter } from "expo-router";
 import { useMemo } from "react";
 import { Pressable, View } from "react-native";
-import { Badge, Button, GlassTile, Label, MetricBarWithCursor, Screen, ScreenHeader, Text as BentoText, radius, useBentoTheme } from "../../components/bento";
+import { Badge, Screen, ScreenHeader, Text as BentoText, useBentoTheme } from "../../components/bento";
+import { WeekDateRail, type WeekDateRailItem } from "../../components/shared";
 import { getDietPlanById } from "../../features/diet-plans";
-import { exerciseNameMap, muscleNameMap } from "../../features/today-plan";
-import { useCurrentEnergyPlan, useFitnessStore } from "../../store/fitness-store";
+import { muscleNameMap } from "../../features/today-plan";
+import { useFitnessStore } from "../../store/fitness-store";
 
 const trainingLevelLabels: Record<string, string> = {
   beginner: "新手",
@@ -22,80 +22,50 @@ const trainingLevelLabels: Record<string, string> = {
 
 export default function PlanScreen() {
   const router = useRouter();
-  const c = useBentoTheme().colors;
   const profile = useFitnessStore((state) => state.profile);
+  const goal = useFitnessStore((state) => state.goal);
   const preference = useFitnessStore((state) => state.trainingPreference);
+  const todayTrainingPlan = useFitnessStore((state) => state.todayTrainingPlan);
   const selectedDietPlanId = useFitnessStore((state) => state.selectedDietPlanId);
   const selectedDietPlanVariantId = useFitnessStore((state) => state.selectedDietPlanVariantId);
-  const todayTrainingPlan = useFitnessStore((state) => state.todayTrainingPlan);
-  const energyPlan = useCurrentEnergyPlan();
   const selectedDietPlan = getDietPlanById(selectedDietPlanId);
 
   const dietPlanCycleSelection: DietPlanCycleSelection = selectedDietPlanVariantId
     ? { variantId: selectedDietPlanVariantId }
     : {};
-  const resolvedDietDay = resolveDietPlanDay(selectedDietPlanId, new Date(), dietPlanCycleSelection);
-  const dietMacros = calculateDietPlanMacroTargets(selectedDietPlanId, energyPlan, {
-    date: new Date(),
-    dayType: resolvedDietDay.dayType,
-    selection: dietPlanCycleSelection,
-  });
-  const macroTotalCalories = Math.max(1, dietMacros.calories);
-  const macroRatio = {
-    protein: Math.round((dietMacros.proteinG * 4 / macroTotalCalories) * 100),
-    fat: Math.round((dietMacros.fatG * 9 / macroTotalCalories) * 100),
-    carbs: Math.round((dietMacros.carbsG * 4 / macroTotalCalories) * 100),
-  };
-
-  const recommendedTraining = useMemo(() => {
-    const recommendation = resolveTrainingDietRecommendation({
-      planId: selectedDietPlanId,
-      dayType: resolvedDietDay.dayType,
-      exercises,
-      preferredMuscleGroups: preference.preferredMuscleGroups,
-      baseMinutes: preference.minutesPerSession,
-      manualFocus: todayTrainingPlan.focus,
-      manualMinutes: todayTrainingPlan.minutes
-    });
-    return {
-      focus: recommendation.focus,
-      minutes: recommendation.durationMinutes,
-      status: resolvedDietDay.status,
-      intensityLabel: recommendation.intensityLabel,
-      actions: recommendation.exerciseIds
-        .slice(0, 3)
-        .map((exerciseId) => exerciseNameMap[exerciseId] ?? exerciseId),
-    };
-  }, [preference, resolvedDietDay.dayType, resolvedDietDay.status, selectedDietPlanId, todayTrainingPlan.focus, todayTrainingPlan.minutes]);
+  const trainingSchedule = useMemo(() => resolveTrainingSchedule({
+    planId: selectedDietPlanId,
+    dietPlanSelection: dietPlanCycleSelection,
+    exercises,
+    preference,
+    anchorDate: new Date(),
+    manualTodayFocus: todayTrainingPlan.focus,
+    manualTodayMinutes: todayTrainingPlan.minutes,
+  }), [selectedDietPlanId, selectedDietPlanVariantId, preference, todayTrainingPlan.focus, todayTrainingPlan.minutes]);
+  const selectedDietPlanVariant = selectedDietPlan?.cycleVariants?.find((item) => item.id === selectedDietPlanVariantId)?.name ?? null;
+  const goalShape = bodyShapeOptions.find((item) => item.id === goal.targetBodyShapeId)?.label ?? "未设置";
+  const weekTrainingDays = trainingSchedule.filter((item) => item.trainingType !== "rest").length;
 
   return (
     <Screen>
       <ScreenHeader
         kicker="计划"
-        title="今日目标与设置"
-        subtitle="饮食是主线，训练作为每日参考。"
+        title="当前计划总览"
+        subtitle="饮食方案、训练频率、目标周期和 7 日安排集中在这里。"
         badge={{ text: selectedDietPlan ? selectedDietPlan.name : "未选饮食方案", color: selectedDietPlan ? "accent" : "warn" }}
       />
 
-      <View style={{ gap: 12 }}>
-        <TodayDietCard
-          calories={Math.round(dietMacros.calories)}
-          protein={Math.round(dietMacros.proteinG)}
-          fat={Math.round(dietMacros.fatG)}
-          carbs={Math.round(dietMacros.carbsG)}
-          ratio={macroRatio}
-          status={resolvedDietDay.status}
-          onPress={() => router.push("/")}
-        />
-        <TodayTrainingCard
-          focus={muscleNameMap[recommendedTraining.focus as MuscleGroup]}
-          minutes={recommendedTraining.minutes}
-          status={recommendedTraining.status}
-          intensity={recommendedTraining.intensityLabel}
-          actions={recommendedTraining.actions}
-          onPress={() => router.push("/train")}
-        />
-      </View>
+      <CurrentPlanCard
+        selectedDietPlanName={selectedDietPlan?.name ?? null}
+        selectedDietPlanVariant={selectedDietPlanVariant}
+        daysPerWeek={preference.daysPerWeek}
+        weekTrainingDays={weekTrainingDays}
+        targetWeightKg={goal.targetWeightKg}
+        targetDays={goal.targetDays}
+        goalShape={goalShape}
+        schedule={trainingSchedule}
+        onPickDietPlan={() => router.push("/diet-plan")}
+      />
 
       <SectionTitle title="基础设置" />
       <View style={{ gap: 10 }}>
@@ -107,16 +77,16 @@ export default function PlanScreen() {
           onPress={() => router.push("/onboarding/body")}
         />
         <ModernSettingCard
-          icon="训"
-          title="训练偏好"
-          subtitle={`常练 ${preference.preferredMuscleGroups.map((item) => muscleNameMap[item]).join("、")} · 参考 ${preference.minutesPerSession} 分钟`}
-          badge="不固定课表"
+          icon="练"
+          title="训练计划"
+          subtitle={`每周 ${preference.daysPerWeek} 天 · 常练 ${preference.preferredMuscleGroups.map((item) => muscleNameMap[item]).join("、")} · 参考 ${preference.minutesPerSession} 分钟`}
+          badge="动态生成"
           onPress={() => router.push("/onboarding/training-preference")}
         />
         <ModernSettingCard
           icon="食"
           title="饮食方案"
-          subtitle={selectedDietPlan ? `${selectedDietPlan.name} · ${resolvedDietDay.status}` : "选择一个适配健身目标的饮食策略"}
+          subtitle={selectedDietPlan ? selectedDietPlan.name : "选择一个适配健身目标的饮食策略"}
           badge={selectedDietPlan ? "已选择" : "待选择"}
           onPress={() => router.push("/diet-plan")}
         />
@@ -127,81 +97,93 @@ export default function PlanScreen() {
   );
 }
 
-function TodayDietCard({
-  calories,
-  protein,
-  fat,
-  carbs,
-  ratio,
-  status,
-  onPress,
+function CurrentPlanCard({
+  selectedDietPlanName,
+  selectedDietPlanVariant,
+  daysPerWeek,
+  weekTrainingDays,
+  targetWeightKg,
+  targetDays,
+  goalShape,
+  schedule,
+  onPickDietPlan,
 }: {
-  calories: number;
-  protein: number;
-  fat: number;
-  carbs: number;
-  ratio: { protein: number; fat: number; carbs: number };
-  status: string;
-  onPress: () => void;
+  selectedDietPlanName: string | null;
+  selectedDietPlanVariant: string | null;
+  daysPerWeek: number;
+  weekTrainingDays: number;
+  targetWeightKg: number;
+  targetDays: number;
+  goalShape: string;
+  schedule: TrainingScheduleEntry[];
+  onPickDietPlan: () => void;
 }) {
   const c = useBentoTheme().colors;
+  const railItems: WeekDateRailItem[] = schedule.slice(0, 7).map((item) => ({
+    key: item.dateKey,
+    dateLabel: String(item.date.getDate()),
+    weekdayLabel: formatWeekday(item.date),
+    title: item.trainingType === "rest" ? "休息" : (muscleNameMap[item.focus ?? "cardio"] ?? "训练"),
+    subtitle: item.dietLabel,
+    active: item.isToday,
+    tone: item.trainingType === "rest" ? "positive" : item.dietDayType === "high-carb" ? "warn" : "accent",
+  }));
   return (
-    <GlassTile glow="accent" padding={14} style={{ gap: 12 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-        <View style={{ gap: 4, flex: 1 }}>
-          <Label color={c.inkMute} variant="label">今日饮食目标</Label>
-          <View style={{ flexDirection: "row", alignItems: "baseline", gap: 5 }}>
-            <BentoText mono weight="bold" color={c.accent} style={{ fontSize: 32, lineHeight: 34 }}>{calories}</BentoText>
-            <BentoText mono color={c.inkMute} style={{ fontSize: 12 }}>kcal</BentoText>
-          </View>
+    <View style={{ gap: 10, borderRadius: 18, padding: 14, backgroundColor: c.glassRaised, borderWidth: 1, borderColor: selectedDietPlanName ? c.glassBorderBright : c.warn }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+          <BentoText weight="bold" color={c.ink} style={{ fontSize: 18 }}>
+            {selectedDietPlanName ?? "先选择饮食方案"}
+          </BentoText>
+          <BentoText variant="caption" color={c.inkMute}>
+            {selectedDietPlanName
+              ? `${selectedDietPlanVariant ?? "默认周期"} · 每周计划训练 ${daysPerWeek} 天，当前 7 日安排 ${weekTrainingDays} 天`
+              : "饮食方案会影响热量目标和训练日程联动，建议先完成选择。"}
+          </BentoText>
         </View>
-        <Badge color="accent" size="sm">{status}</Badge>
+        <Pressable
+          onPress={onPickDietPlan}
+          style={({ pressed }) => ({
+            borderRadius: 999,
+            paddingHorizontal: 12,
+            paddingVertical: 7,
+            backgroundColor: selectedDietPlanName ? c.glass : c.warn,
+            opacity: pressed ? 0.76 : 1,
+          })}
+        >
+          <BentoText weight="bold" variant="micro" color={selectedDietPlanName ? c.accent : c.bg}>
+            {selectedDietPlanName ? "调整" : "去选择"}
+          </BentoText>
+        </Pressable>
       </View>
+
       <View style={{ flexDirection: "row", gap: 8 }}>
-        <MacroBar label="蛋白" value={protein} target={protein} />
-        <MacroBar label="脂肪" value={fat} target={fat} />
-        <MacroBar label="碳水" value={carbs} target={carbs} />
+        <SummaryPill label="目标体重" value={`${targetWeightKg}kg`} />
+        <SummaryPill label="周期" value={`${targetDays}天`} />
+        <SummaryPill label="体型" value={goalShape} />
       </View>
-      <Button variant="filled" color="accent" size="sm" block onPress={onPress}>去记录饮食</Button>
-    </GlassTile>
+
+      <WeekDateRail items={railItems} />
+    </View>
   );
 }
 
-function TodayTrainingCard({
-  focus,
-  minutes,
-  status,
-  intensity,
-  actions,
-  onPress,
-}: {
-  focus: string;
-  minutes: number;
-  status: string;
-  intensity: string;
-  actions: string[];
-  onPress: () => void;
-}) {
+function SummaryPill({ label, value }: { label: string; value: string }) {
   const c = useBentoTheme().colors;
   return (
-    <GlassTile glow="accent2" padding={14} style={{ gap: 12 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <View style={{ gap: 4 }}>
-          <Label color={c.inkMute} variant="label">今日训练建议</Label>
-          <BentoText weight="bold" color={c.ink} style={{ fontSize: 22 }}>{focus}</BentoText>
-        </View>
-        <Badge color="accent2" size="sm">{minutes} 分钟</Badge>
-      </View>
-      <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-        <Badge color="accent" size="sm">{status}</Badge>
-        <Badge color="positive" size="sm">{intensity}</Badge>
-      </View>
-      <BentoText variant="caption" color={c.inkMute} numberOfLines={2}>
-        参考动作：{actions.length > 0 ? actions.join("、") : "打开动作库选择"}
-      </BentoText>
-      <Button variant="filled" color="accent2" size="sm" block onPress={onPress}>去看训练</Button>
-    </GlassTile>
+    <View style={{ flex: 1, minWidth: 0, borderRadius: 12, padding: 9, backgroundColor: c.glass, borderWidth: 1, borderColor: c.glassBorder }}>
+      <BentoText variant="micro" color={c.inkMute}>{label}</BentoText>
+      <BentoText weight="bold" variant="caption" color={c.ink} numberOfLines={1}>{value}</BentoText>
+    </View>
   );
+}
+
+function formatScheduleDate(date: Date): string {
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+function formatWeekday(date: Date): string {
+  return ["日", "一", "二", "三", "四", "五", "六"][date.getDay()];
 }
 
 function SectionTitle({ title }: { title: string }) {
@@ -252,21 +234,5 @@ function ModernSettingCard({
       <Badge color="accent" size="sm">{badge}</Badge>
       <BentoText color={c.inkFaint} style={{ fontSize: 16 }}>{">"}</BentoText>
     </Pressable>
-  );
-}
-
-function MacroBar({ label, value, target }: { label: string; value: number; target: number }) {
-  const c = useBentoTheme().colors;
-  return (
-    <View style={{ flex: 1, padding: 9, borderRadius: radius.md, backgroundColor: c.glassRaised, borderWidth: 1, borderColor: c.glassBorder }}>
-      <MetricBarWithCursor
-        label={label}
-        actual={value}
-        target={target}
-        unit="g"
-        baseColor="accent"
-        size="compact"
-      />
-    </View>
   );
 }

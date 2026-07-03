@@ -1,12 +1,8 @@
-/**
- * Bento Glass · Badge
- * 玻璃底 + 语义色文字的小徽章
- */
+import type { ReactNode } from "react";
 import { View, type ViewProps, type ViewStyle } from "react-native";
 import { radius, type SemanticColor } from "./tokens";
 import { useBentoTheme } from "./ThemeProvider";
 import { Text } from "./Text";
-import type { ReactNode } from "react";
 
 export type BadgeProps = ViewProps & {
   color?: SemanticColor;
@@ -23,7 +19,7 @@ export function Badge({
 }: BadgeProps) {
   const { colors } = useBentoTheme();
   const accentColor = colors[color];
-  const heights = { sm: 22, md: 28 };
+  const heights = { sm: 22, md: 26 };
   const fontSizes = { sm: 10, md: 11 } as const;
   const pad = { sm: 8, md: 10 } as const;
 
@@ -31,9 +27,9 @@ export function Badge({
     height: heights[size],
     paddingHorizontal: pad[size],
     borderRadius: radius.pill,
-    backgroundColor: `${accentColor}1F`,
+    backgroundColor: `${accentColor}14`,
     borderWidth: 1,
-    borderColor: `${accentColor}44`,
+    borderColor: `${accentColor}28`,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",

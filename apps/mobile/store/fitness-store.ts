@@ -1,4 +1,4 @@
-import { calculateGoalEnergyPlan, generateTrainingQueue, type DailyLogEntry, type DynamicAdjustmentSettings, type Food, type Gender, type MealAdjustmentKey, type MuscleGroup, type NutritionAdjustmentKey, type TrainingAdjustmentKey } from "@fitness-calendar/shared";
+import { calculateGoalEnergyPlan, generateTrainingQueue, type DailyLogEntry, type DynamicAdjustmentSettings, type Food, type Gender, type MealAdjustmentKey, type MealPlannerAdjustments, type MuscleGroup, type NutritionAdjustmentKey, type TrainingAdjustmentKey } from "@fitness-calendar/shared";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import { create } from "zustand";
@@ -80,6 +80,12 @@ export type TrainingPreferenceDraft = {
   cardioRatio: number;
 };
 
+export type DietPreferenceDraft = {
+  enabledMeals: Record<MealAdjustmentKey, boolean>;
+};
+
+export type MealPlanCustomAdjustmentDraft = MealPlannerAdjustments;
+
 export type TodayTrainingPlanDraft = {
   focus: MuscleGroup | null;
   minutes: number | null;
@@ -96,6 +102,12 @@ export type TodayTrainingCustomExercise = {
   minutes: number;
   sets: number;
   reps: string;
+};
+
+export type ExerciseLibraryPreferences = {
+  favoriteExerciseIds: string[];
+  pinnedExerciseIds: string[];
+  bottomExerciseIds: string[];
 };
 
 export type ActualTrainingStatus = "pending" | "done" | "missed" | "changed";
@@ -145,19 +157,44 @@ export type ActualTrainingFeedback = {
   fatigue: number;
 };
 
+export type AiRecognizedMealFood = {
+  key: string;
+  meal: MealAdjustmentKey;
+  foodId: string;
+  foodName: string;
+  grams: number;
+  displayAmount?: string;
+  calories: number;
+  candidateName: string;
+  imageConfidence?: number;
+  source: "baidu-dish-image";
+  createdAt: string;
+};
+
+const emptyAiRecognizedMealFoods = (): Record<MealAdjustmentKey, AiRecognizedMealFood[]> => ({
+  breakfast: [],
+  lunch: [],
+  dinner: [],
+  snack: []
+});
+
 type FitnessState = {
   profile: UserProfile;
   goal: UserGoal;
   trainingPreference: TrainingPreferenceDraft;
+  dietPreference: DietPreferenceDraft;
+  mealPlanCustomAdjustment: MealPlanCustomAdjustmentDraft;
   selectedFoodIds: string[];
   preparedFoodText: string;
   actualFoodText: string;
   actualMealTexts: Record<MealAdjustmentKey, string>;
+  actualMealImageFoods: Record<MealAdjustmentKey, AiRecognizedMealFood[]>;
   actualFoodIds: string[];
   customFoods: Food[];
   menuFoods: Food[];
   actualTraining: ActualTrainingFeedback;
   todayTrainingPlan: TodayTrainingPlanDraft;
+  exerciseLibraryPreferences: ExerciseLibraryPreferences;
   /** 动态调整开关：控制长期计划是否根据每日偏差自动调整。默认开启。 */
   dynamicAdjustmentEnabled: boolean;
   /** 动态调整细分规则：控制哪些数据维度可以参与自动调整。 */
@@ -174,16 +211,23 @@ type FitnessState = {
   setProfile: (profile: UserProfile) => void;
   setGoal: (goal: UserGoal) => void;
   setTrainingPreference: (trainingPreference: TrainingPreferenceDraft) => void;
+  setDietPreference: (dietPreference: DietPreferenceDraft) => void;
+  setMealPlanCustomAdjustment: (adjustment: MealPlanCustomAdjustmentDraft) => void;
   setSelectedFoodIds: (selectedFoodIds: string[]) => void;
   setPreparedFoods: (preparedFoodText: string, selectedFoodIds: string[]) => void;
   setActualFoods: (actualFoodText: string, actualFoodIds: string[]) => void;
   setActualMealText: (meal: MealAdjustmentKey, text: string) => void;
+  addActualMealImageFoods: (meal: MealAdjustmentKey, foods: AiRecognizedMealFood[]) => void;
   addCustomFood: (food: Food) => void;
   removeCustomFood: (foodId: string) => void;
   addMenuFood: (food: Food) => void;
   removeMenuFood: (foodId: string) => void;
   setActualTraining: (actualTraining: ActualTrainingFeedback) => void;
   setTodayTrainingPlan: (todayTrainingPlan: TodayTrainingPlanDraft) => void;
+  setExerciseLibraryPreferences: (preferences: ExerciseLibraryPreferences) => void;
+  toggleFavoriteExercise: (exerciseId: string) => void;
+  pinExerciseToTop: (exerciseId: string) => void;
+  pinExerciseToBottom: (exerciseId: string) => void;
   setDynamicAdjustmentEnabled: (enabled: boolean) => void;
   setDynamicAdjustmentSettings: (settings: DynamicAdjustmentSettings) => void;
   setAppearanceMode: (mode: AppearanceMode) => void;
@@ -199,6 +243,10 @@ type FitnessState = {
   getLogForDate: (date: string) => DailyLogEntry | undefined;
   /** 重置健康数据 */
   resetHealthData: () => void;
+  /** 清空今天的饮食和训练记录，不改长期身体数据和方案设置 */
+  resetTodayRecords: () => void;
+  /** 清理开发测试缓存：示例输入、历史日志、我的菜单、动作库偏好 */
+  resetDevelopmentData: () => void;
   isOnboardingComplete: () => boolean;
 };
 
@@ -327,11 +375,32 @@ const defaultTrainingPreference: TrainingPreferenceDraft = {
   cardioRatio: 0.25
 };
 
+export const defaultDietPreference: DietPreferenceDraft = {
+  enabledMeals: {
+    breakfast: true,
+    lunch: true,
+    dinner: true,
+    snack: true
+  }
+};
+
+export const defaultMealPlanCustomAdjustment: MealPlanCustomAdjustmentDraft = {
+  lockedMeals: {},
+  foodGrams: {},
+  macroTargets: {}
+};
+
 const defaultTodayTrainingPlan: TodayTrainingPlanDraft = {
   focus: null,
   minutes: null,
   nextFocus: null,
   customExercises: []
+};
+
+const defaultExerciseLibraryPreferences: ExerciseLibraryPreferences = {
+  favoriteExerciseIds: [],
+  pinnedExerciseIds: [],
+  bottomExerciseIds: []
 };
 
 export const defaultDynamicAdjustmentSettings: DynamicAdjustmentSettings = {
@@ -370,6 +439,8 @@ export const useFitnessStore = create<FitnessState>()(
       historyLogs: {},
       goal: defaultGoal,
       trainingPreference: defaultTrainingPreference,
+      dietPreference: defaultDietPreference,
+      mealPlanCustomAdjustment: defaultMealPlanCustomAdjustment,
       selectedFoodIds: [],
       preparedFoodText: "",
       actualFoodText: "",
@@ -379,6 +450,7 @@ export const useFitnessStore = create<FitnessState>()(
         dinner: "",
         snack: ""
       },
+      actualMealImageFoods: emptyAiRecognizedMealFoods(),
       actualFoodIds: [],
       customFoods: [],
       menuFoods: [],
@@ -390,6 +462,7 @@ export const useFitnessStore = create<FitnessState>()(
         fatigue: 3
       },
       todayTrainingPlan: defaultTodayTrainingPlan,
+      exerciseLibraryPreferences: defaultExerciseLibraryPreferences,
       dynamicAdjustmentEnabled: true,
       dynamicAdjustmentSettings: defaultDynamicAdjustmentSettings,
       appearanceMode: "dark",
@@ -400,6 +473,8 @@ export const useFitnessStore = create<FitnessState>()(
       setProfile: (profile) => set({ profile }),
       setGoal: (goal) => set({ goal }),
       setTrainingPreference: (trainingPreference) => set({ trainingPreference }),
+      setDietPreference: (dietPreference) => set({ dietPreference: normalizeDietPreference(dietPreference) }),
+      setMealPlanCustomAdjustment: (mealPlanCustomAdjustment) => set({ mealPlanCustomAdjustment: normalizeMealPlanCustomAdjustment(mealPlanCustomAdjustment) }),
       setSelectedFoodIds: (selectedFoodIds) => set({ selectedFoodIds }),
       setPreparedFoods: (preparedFoodText, selectedFoodIds) => set({ preparedFoodText, selectedFoodIds }),
       setActualFoods: (actualFoodText, actualFoodIds) => set({ actualFoodText, actualFoodIds }),
@@ -409,6 +484,15 @@ export const useFitnessStore = create<FitnessState>()(
             ...state.actualMealTexts,
             [meal]: text
           }
+        })),
+      addActualMealImageFoods: (meal, foods) =>
+        set((state) => ({
+          actualMealImageFoods: {
+            ...emptyAiRecognizedMealFoods(),
+            ...state.actualMealImageFoods,
+            [meal]: [...(state.actualMealImageFoods?.[meal] ?? []), ...foods]
+          },
+          actualFoodIds: uniqueStrings([...state.actualFoodIds, ...foods.map((food) => food.foodId)])
         })),
       addCustomFood: (food) =>
         set((state) => ({
@@ -428,6 +512,30 @@ export const useFitnessStore = create<FitnessState>()(
         })),
       setActualTraining: (actualTraining) => set({ actualTraining }),
       setTodayTrainingPlan: (todayTrainingPlan) => set({ todayTrainingPlan }),
+      setExerciseLibraryPreferences: (exerciseLibraryPreferences) => set({ exerciseLibraryPreferences }),
+      toggleFavoriteExercise: (exerciseId) =>
+        set((state) => ({
+          exerciseLibraryPreferences: {
+            ...state.exerciseLibraryPreferences,
+            favoriteExerciseIds: toggleListValue(state.exerciseLibraryPreferences.favoriteExerciseIds, exerciseId)
+          }
+        })),
+      pinExerciseToTop: (exerciseId) =>
+        set((state) => ({
+          exerciseLibraryPreferences: {
+            ...state.exerciseLibraryPreferences,
+            pinnedExerciseIds: addListValueToFront(state.exerciseLibraryPreferences.pinnedExerciseIds, exerciseId),
+            bottomExerciseIds: state.exerciseLibraryPreferences.bottomExerciseIds.filter((id) => id !== exerciseId)
+          }
+        })),
+      pinExerciseToBottom: (exerciseId) =>
+        set((state) => ({
+          exerciseLibraryPreferences: {
+            ...state.exerciseLibraryPreferences,
+            pinnedExerciseIds: state.exerciseLibraryPreferences.pinnedExerciseIds.filter((id) => id !== exerciseId),
+            bottomExerciseIds: addListValueToFront(state.exerciseLibraryPreferences.bottomExerciseIds, exerciseId)
+          }
+        })),
       setDynamicAdjustmentEnabled: (enabled) => set({ dynamicAdjustmentEnabled: enabled }),
       setDynamicAdjustmentSettings: (dynamicAdjustmentSettings) => set({ dynamicAdjustmentSettings }),
       setAppearanceMode: (mode) => set({ appearanceMode: mode }),
@@ -447,6 +555,8 @@ export const useFitnessStore = create<FitnessState>()(
           profile: defaultProfile,
           goal: defaultGoal,
           trainingPreference: defaultTrainingPreference,
+          dietPreference: state.dietPreference,
+          mealPlanCustomAdjustment: defaultMealPlanCustomAdjustment,
           selectedFoodIds: [],
           preparedFoodText: "",
           actualFoodText: "",
@@ -456,6 +566,7 @@ export const useFitnessStore = create<FitnessState>()(
             dinner: "",
             snack: ""
           },
+          actualMealImageFoods: emptyAiRecognizedMealFoods(),
           actualFoodIds: [],
           customFoods: [],
           menuFoods: [],
@@ -467,6 +578,7 @@ export const useFitnessStore = create<FitnessState>()(
             fatigue: 3
           },
           todayTrainingPlan: defaultTodayTrainingPlan,
+          exerciseLibraryPreferences: defaultExerciseLibraryPreferences,
           historyLogs: {},
           selectedDietPlanId: null,
           selectedDietPlanVariantId: null,
@@ -476,6 +588,55 @@ export const useFitnessStore = create<FitnessState>()(
           dynamicAdjustmentEnabled: state.dynamicAdjustmentEnabled,
           dynamicAdjustmentSettings: state.dynamicAdjustmentSettings
         })),
+      resetTodayRecords: () =>
+        set({
+          preparedFoodText: "",
+          selectedFoodIds: [],
+          mealPlanCustomAdjustment: defaultMealPlanCustomAdjustment,
+          actualFoodText: "",
+          actualMealTexts: {
+            breakfast: "",
+            lunch: "",
+            dinner: "",
+            snack: ""
+          },
+          actualMealImageFoods: emptyAiRecognizedMealFoods(),
+          actualFoodIds: [],
+          actualTraining: {
+            status: "pending",
+            text: "",
+            minutes: 0,
+            calories: 0,
+            fatigue: 3
+          }
+        }),
+      resetDevelopmentData: () =>
+        set({
+          selectedFoodIds: [],
+          preparedFoodText: "",
+          mealPlanCustomAdjustment: defaultMealPlanCustomAdjustment,
+          actualFoodText: "",
+          actualMealTexts: {
+            breakfast: "",
+            lunch: "",
+            dinner: "",
+            snack: ""
+          },
+          actualMealImageFoods: emptyAiRecognizedMealFoods(),
+          actualFoodIds: [],
+          customFoods: [],
+          menuFoods: [],
+          actualTraining: {
+            status: "pending",
+            text: "",
+            minutes: 0,
+            calories: 0,
+            fatigue: 3
+          },
+          todayTrainingPlan: defaultTodayTrainingPlan,
+          exerciseLibraryPreferences: defaultExerciseLibraryPreferences,
+          historyLogs: {}
+        }),
       isOnboardingComplete: () => {
         const { profile, goal, trainingPreference } = get();
         return profile.age > 0 && profile.heightCm > 0 && profile.weightKg > 0 && goal.targetDays > 0 && trainingPreference.daysPerWeek > 0;
@@ -498,12 +659,22 @@ export const useFitnessStore = create<FitnessState>()(
             dinner: "",
             snack: ""
           },
+          actualMealImageFoods: state.actualMealImageFoods ?? emptyAiRecognizedMealFoods(),
           todayTrainingPlan: {
             ...defaultTodayTrainingPlan,
             ...state.todayTrainingPlan,
             customExercises: state.todayTrainingPlan?.customExercises ?? []
           },
+          exerciseLibraryPreferences: {
+            ...defaultExerciseLibraryPreferences,
+            ...state.exerciseLibraryPreferences,
+            favoriteExerciseIds: state.exerciseLibraryPreferences?.favoriteExerciseIds ?? [],
+            pinnedExerciseIds: state.exerciseLibraryPreferences?.pinnedExerciseIds ?? [],
+            bottomExerciseIds: state.exerciseLibraryPreferences?.bottomExerciseIds ?? []
+          },
           dynamicAdjustmentSettings: mergeDynamicAdjustmentSettings(state.dynamicAdjustmentSettings),
+          dietPreference: normalizeDietPreference(state.dietPreference),
+          mealPlanCustomAdjustment: normalizeMealPlanCustomAdjustment(state.mealPlanCustomAdjustment),
           fontScale: state.fontScale ?? "normal",
           dashboardStyle: state.dashboardStyle ?? "bullet",
           selectedDietPlanVariantId: state.selectedDietPlanVariantId ?? null
@@ -525,15 +696,19 @@ export const useFitnessStore = create<FitnessState>()(
         profile: state.profile,
         goal: state.goal,
         trainingPreference: state.trainingPreference,
+        dietPreference: state.dietPreference,
+        mealPlanCustomAdjustment: state.mealPlanCustomAdjustment,
         selectedFoodIds: state.selectedFoodIds,
         preparedFoodText: state.preparedFoodText,
         actualFoodText: state.actualFoodText,
         actualMealTexts: state.actualMealTexts,
+        actualMealImageFoods: state.actualMealImageFoods,
         actualFoodIds: state.actualFoodIds,
         customFoods: state.customFoods,
         menuFoods: state.menuFoods,
         actualTraining: state.actualTraining,
         todayTrainingPlan: state.todayTrainingPlan,
+        exerciseLibraryPreferences: state.exerciseLibraryPreferences,
         dynamicAdjustmentEnabled: state.dynamicAdjustmentEnabled,
         dynamicAdjustmentSettings: state.dynamicAdjustmentSettings,
         appearanceMode: state.appearanceMode,
@@ -584,4 +759,50 @@ function mergeDynamicAdjustmentSettings(settings?: Partial<DynamicAdjustmentSett
     training: { ...defaultDynamicAdjustmentSettings.training, ...settings?.training },
     muscles: { ...defaultDynamicAdjustmentSettings.muscles, ...settings?.muscles }
   };
+}
+
+function normalizeDietPreference(preference?: Partial<DietPreferenceDraft>): DietPreferenceDraft {
+  const enabledMeals = {
+    ...defaultDietPreference.enabledMeals,
+    ...preference?.enabledMeals
+  };
+  if (!Object.values(enabledMeals).some(Boolean)) {
+    enabledMeals.lunch = true;
+  }
+  return { enabledMeals };
+}
+
+function normalizeMealPlanCustomAdjustment(adjustment?: Partial<MealPlanCustomAdjustmentDraft>): MealPlanCustomAdjustmentDraft {
+  return {
+    lockedMeals: {
+      ...(adjustment?.lockedMeals ?? {})
+    },
+    foodGrams: Object.fromEntries(
+      Object.entries(adjustment?.foodGrams ?? {})
+        .filter(([, value]) => Number.isFinite(value))
+        .map(([key, value]) => [key, Math.max(0, Number(value))])
+    ),
+    macroTargets: Object.fromEntries(
+      Object.entries(adjustment?.macroTargets ?? {}).map(([meal, targets]) => [
+        meal,
+        Object.fromEntries(
+          Object.entries(targets ?? {})
+            .filter(([, value]) => Number.isFinite(value))
+            .map(([key, value]) => [key, Math.max(0, Number(value))])
+        )
+      ])
+    )
+  };
+}
+
+function toggleListValue(values: string[], value: string): string[] {
+  return values.includes(value) ? values.filter((item) => item !== value) : [value, ...values];
+}
+
+function addListValueToFront(values: string[], value: string): string[] {
+  return [value, ...values.filter((item) => item !== value)];
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values));
 }

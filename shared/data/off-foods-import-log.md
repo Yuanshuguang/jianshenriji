@@ -237,7 +237,7 @@
 - Cornichons (32 kcal/100g) [off-cornichons]
 - Castravete bio (14 kcal/100g) [off-castravete-bio]
 - Gewürzgurken (30 kcal/100g) [off-gew-rzgurken]
-- ??????? ?????? Augurken Cornichons zoetzuur/aigres-doux (33 kcal/100g) [off-augurken-cornichons-zoetzuur-aigres-doux]
+- 甜酸小黄瓜 Augurken Cornichons zoetzuur/aigres-doux (33 kcal/100g) [off-augurken-cornichons-zoetzuur-aigres-doux]
 - Petit Croquants (33 kcal/100g) [off-petit-croquants]
 - Cornichon pikarome (23 kcal/100g) [off-cornichon-pikarome]
 - Cornichons aigres-doux (26 kcal/100g) [off-cornichons-aigres-doux]

@@ -64,7 +64,7 @@ test("核心流程：自拍/视频体脂估算输出可编辑的体脂区间", (
 });
 
 test("核心流程：训练自然语言记录能估算分钟和消耗", () => {
-  const result = parseTrainingText("今天跑步30分钟，卧推5组，最后拉伸10分钟", 0, {
+  const result = parseTrainingText("今天跑步30分钟，卧推3组，最后拉伸10分钟", 0, {
     heightCm: 175,
     weightKg: 70,
   });

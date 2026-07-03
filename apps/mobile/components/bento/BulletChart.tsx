@@ -88,16 +88,18 @@ export function BulletChart({
           />
         </Svg>
         <View
-          style={{
-            position: "absolute",
-            top: -2,
-            left: cursorXPercent,
-            marginLeft: -cursorWidth / 2,
-            width: cursorWidth,
-            height: cursorHeight,
-            zIndex: 2,
-          }}
-          pointerEvents="none"
+          style={[
+            {
+              position: "absolute",
+              top: -2,
+              left: cursorXPercent,
+              marginLeft: -cursorWidth / 2,
+              width: cursorWidth,
+              height: cursorHeight,
+              zIndex: 2,
+            },
+            { pointerEvents: "none" },
+          ]}
         >
           <Svg width={cursorWidth} height={cursorHeight} viewBox={`0 0 ${cursorWidth} ${cursorHeight}`}>
             <Polygon

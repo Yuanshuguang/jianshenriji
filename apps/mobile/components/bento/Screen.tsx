@@ -16,7 +16,7 @@ export type ScreenProps = {
 export function Screen({ children, scroll = true }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const theme = useBentoTheme();
-  const bottomSafeSpace = Math.max(112, insets.bottom + 96);
+  const bottomSafeSpace = Math.max(132, insets.bottom + 108);
   const containerStyle = [screenContainer, { backgroundColor: theme.colors.bg }];
   const content = <View style={{ flex: 1, paddingTop: insets.top + 8, paddingBottom: bottomSafeSpace }}>{children}</View>;
 
@@ -39,6 +39,7 @@ export type ScreenHeaderProps = ViewProps & {
   kicker?: string;
   onKickerPress?: () => void;
   title: string;
+  onTitlePress?: () => void;
   subtitle?: string;
   badge?: { text: string; color: BadgeProps["color"] };
   showBackButton?: boolean;
@@ -48,6 +49,7 @@ export function ScreenHeader({
   kicker,
   onKickerPress,
   title,
+  onTitlePress,
   subtitle,
   badge,
   showBackButton,
@@ -61,7 +63,7 @@ export function ScreenHeader({
   const canGoBack = showBackButton ?? (!isTabRoute && (router.canGoBack?.() ?? false));
 
   return (
-    <View style={[{ gap: 5, marginBottom: bento.tileGap }, style]}>
+    <View style={[{ gap: 8, marginBottom: bento.tileGap }, style]}>
       {kicker ? (
         onKickerPress ? (
           <Pressable onPress={onKickerPress} style={{ alignSelf: "flex-start" }}>
@@ -84,27 +86,43 @@ export function ScreenHeader({
               accessibilityRole="button"
               accessibilityLabel="返回上一页"
               style={({ pressed }) => ({
-                width: 32,
-                height: 32,
-                borderRadius: 16,
+                width: 34,
+                height: 34,
+                borderRadius: 17,
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: c.glass,
+                backgroundColor: c.bg,
                 borderWidth: 1,
-                borderColor: c.glassBorderBright,
+                borderColor: c.glassBorder,
                 opacity: pressed ? 0.76 : 1,
                 flexShrink: 0,
               })}
             >
-              <Text weight="bold" color={c.ink} style={{ fontSize: 22, lineHeight: 22 }}>
+              <Text weight="bold" color={c.ink} style={{ fontSize: 20, lineHeight: 20 }}>
                 {"<"}
               </Text>
             </Pressable>
           ) : null}
           <View style={{ flex: 1, gap: 3, minWidth: 0 }}>
-            <Text variant="h2" weight="bold">
-              {title}
-            </Text>
+            {title ? (
+              onTitlePress ? (
+                <Pressable
+                  onPress={onTitlePress}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${title}，查看日历记录`}
+                  style={{ alignSelf: "flex-start" }}
+                >
+                  <Text variant="h2" weight="bold" style={{ fontSize: 28, lineHeight: 32 }}>
+                    {title}
+                  </Text>
+                </Pressable>
+              ) : (
+                <Text variant="h2" weight="bold" style={{ fontSize: 28, lineHeight: 32 }}>
+                  {title}
+                </Text>
+              )
+            ) : null}
             {subtitle ? (
               <Text variant="caption" color={c.inkMute}>
                 {subtitle}

@@ -1,19 +1,28 @@
 import { Image, Pressable, View } from "react-native";
 import { Text as BentoText, useBentoTheme } from "../../components/bento";
+import { exerciseCardActionA11yLabel } from "../../features/exercise-library-actions";
 import type { LibraryExercise } from "./LibraryBodyPartTab";
 
 export function LibraryExerciseCard({
   item,
   active,
+  favorite = false,
+  pinned = false,
+  bottom = false,
   thumbUri,
   onPress,
-  onLongPress
+  onLongPress,
+  onActionPress,
 }: {
   item: LibraryExercise;
   active: boolean;
+  favorite?: boolean;
+  pinned?: boolean;
+  bottom?: boolean;
   thumbUri?: string;
   onPress: () => void;
   onLongPress: () => void;
+  onActionPress?: () => void;
 }) {
   const c = useBentoTheme().colors;
   return (
@@ -53,6 +62,41 @@ export function LibraryExerciseCard({
           {active ? "已加" : "讲解"}
         </BentoText>
       </View>
+      {(favorite || pinned || bottom) ? (
+        <View style={{ position: "absolute", top: 8, right: onActionPress ? 36 : 8, flexDirection: "row", gap: 4 }}>
+          {favorite ? <StatusDot label="藏" color={c.amber} /> : null}
+          {pinned ? <StatusDot label="顶" color={c.positive} /> : null}
+          {bottom ? <StatusDot label="底" color={c.inkMute} /> : null}
+        </View>
+      ) : null}
+      {onActionPress ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={exerciseCardActionA11yLabel}
+          onPress={(event) => {
+            event.stopPropagation();
+            onActionPress();
+          }}
+          hitSlop={8}
+          style={({ pressed }) => ({
+            position: "absolute",
+            top: 7,
+            right: 7,
+            minWidth: 40,
+            height: 26,
+            paddingHorizontal: 8,
+            borderRadius: 999,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: c.bg,
+            borderWidth: 1,
+            borderColor: c.glassBorderBright,
+            opacity: pressed ? 0.72 : 1,
+          })}
+        >
+          <BentoText weight="bold" color={c.ink} style={{ fontSize: 11, lineHeight: 13 }}>操作</BentoText>
+        </Pressable>
+      ) : null}
       <View
         style={{
           width: 76,
@@ -75,5 +119,25 @@ export function LibraryExerciseCard({
         {item.displayName}
       </BentoText>
     </Pressable>
+  );
+}
+
+function StatusDot({ label, color }: { label: string; color: string }) {
+  const c = useBentoTheme().colors;
+  return (
+    <View
+      style={{
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: color
+      }}
+    >
+      <BentoText weight="bold" color={c.bg} style={{ fontSize: 11, lineHeight: 13 }}>
+        {label}
+      </BentoText>
+    </View>
   );
 }

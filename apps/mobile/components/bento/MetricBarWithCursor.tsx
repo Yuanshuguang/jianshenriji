@@ -96,16 +96,18 @@ export function MetricBarWithCursor({
       </View>
       <View style={{ position: "relative", paddingTop: dim.cursorHeight + 2 }}>
         <View
-          style={{
-            position: "absolute",
-            top: 0,
-            left: cursorPixelX as unknown as number,
-            marginLeft: -dim.cursorWidth / 2,
-            width: dim.cursorWidth,
-            height: dim.cursorHeight,
-            zIndex: 2,
-          }}
-          pointerEvents="none"
+          style={[
+            {
+              position: "absolute",
+              top: 0,
+              left: cursorPixelX as unknown as number,
+              marginLeft: -dim.cursorWidth / 2,
+              width: dim.cursorWidth,
+              height: dim.cursorHeight,
+              zIndex: 2,
+            },
+            { pointerEvents: "none" },
+          ]}
         >
           <Svg width={dim.cursorWidth} height={dim.cursorHeight} viewBox={"0 0 " + dim.cursorWidth + " " + dim.cursorHeight}>
             <Polygon

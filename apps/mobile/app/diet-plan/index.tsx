@@ -25,10 +25,10 @@ const dayTypeLabels: Record<DietDayType, string> = {
 };
 
 const tabItems: TabItem[] = [
-  { key: "index", label: "饮食" },
-  { key: "train", label: "训练" },
-  { key: "plan", label: "计划" },
-  { key: "more", label: "更多" },
+  { key: "index", label: "饮食", icon: "food" },
+  { key: "train", label: "训练", icon: "train" },
+  { key: "plan", label: "计划", icon: "plan" },
+  { key: "more", label: "更多", icon: "more" },
 ];
 
 const tabRoutes = ["/", "/train", "/plan", "/more"] as const;
@@ -98,6 +98,16 @@ export default function DietPlanScreen() {
                           ? `${plan.cycleVariants.length} 种细分方式 · ${plan.tagline}`
                           : `${dayTypeLabels[plan.defaultDayType]} · ${plan.tagline}`}
                       </BentoText>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, paddingTop: 4 }}>
+                        <InfoPill label="适合" value={summarizeSuitableFor(plan.suitableFor)} />
+                        <InfoPill label="难度" value={getPlanDifficulty(plan)} tone={getPlanDifficulty(plan) === "高" ? "warn" : "accent"} />
+                        <InfoPill label="联动" value={plan.cycleVariants?.length ? "按日型调训练" : "按目标控热量"} tone="positive" />
+                      </View>
+                      {isHighRiskPlan(plan.defaultDayType, plan.name) ? (
+                        <BentoText variant="micro" color={c.warn} numberOfLines={2} style={{ lineHeight: 16 }}>
+                          提醒：不建议多数训练者长期默认使用，建议短期执行并观察状态。
+                        </BentoText>
+                      ) : null}
                     </View>
 
                     <BentoText color={c.inkFaint} style={{ fontSize: 18 }}>
@@ -121,4 +131,29 @@ export default function DietPlanScreen() {
       />
     </Screen>
   );
+}
+
+function InfoPill({ label, value, tone = "accent2" }: { label: string; value: string; tone?: "accent" | "accent2" | "positive" | "warn" }) {
+  const c = useBentoTheme().colors;
+  return (
+    <View style={{ borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: `${c[tone]}18`, borderWidth: 1, borderColor: `${c[tone]}44` }}>
+      <BentoText variant="micro" color={c[tone]}>
+        {label}：{value}
+      </BentoText>
+    </View>
+  );
+}
+
+function summarizeSuitableFor(value: string): string {
+  return value.replace(/[，。].*$/, "").slice(0, 12);
+}
+
+function getPlanDifficulty(plan: { defaultDayType: DietDayType; cycleVariants?: unknown[]; name: string }): "低" | "中" | "高" {
+  if (isHighRiskPlan(plan.defaultDayType, plan.name)) return "高";
+  if (plan.cycleVariants?.length) return "中";
+  return "低";
+}
+
+function isHighRiskPlan(defaultDayType: DietDayType, name: string): boolean {
+  return defaultDayType === "very-low-carb" || defaultDayType === "depletion-carb" || name.includes("生酮") || name.includes("极低碳") || name.includes("断碳");
 }

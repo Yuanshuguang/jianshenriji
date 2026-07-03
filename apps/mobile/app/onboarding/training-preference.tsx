@@ -1,4 +1,10 @@
-import { exercises, type MuscleGroup } from "@fitness-calendar/shared";
+import {
+  exercises,
+  resolveTrainingSchedule,
+  type DietDayType,
+  type DietPlanCycleSelection,
+  type MuscleGroup,
+} from "@fitness-calendar/shared";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { View } from "react-native";
@@ -6,7 +12,6 @@ import {
   Button,
   GlassTile,
   Label,
-  LabeledInput,
   Screen,
   ScreenHeader,
   SelectChip,
@@ -14,48 +19,79 @@ import {
   bento,
   colors,
 } from "../../components/bento";
+import { dietDayTypeLabels, getDietPlanById } from "../../features/diet-plans";
 import { muscleNameMap } from "../../features/today-plan";
-import { useFitnessStore } from "../../store/fitness-store";
+import { useFitnessStore, type TrainingPreferenceDraft } from "../../store/fitness-store";
 
 const muscleOptions: MuscleGroup[] = ["chest", "back", "legs", "shoulders", "arms", "core", "cardio"];
+const frequencyOptions = [2, 3, 4, 5, 6];
+const durationOptions = [30, 45, 60, 75, 90];
 
-const equipmentFallbackLabels: Record<string, string> = {
-  "杠铃": "杠铃",
-  "哑铃": "哑铃",
-  "徒手": "徒手",
-  "健身房器械": "健身房器械",
-  "跑步机": "跑步机",
+const equipmentLabels: Record<string, string> = {
+  徒手: "徒手",
+  哑铃: "哑铃",
+  杠铃: "杠铃",
+  健身房: "健身房",
+  健身房器械: "器械",
+  跑步机: "跑步机",
+  单杠: "单杠",
+};
+
+const cardioOptions = [
+  { label: "少量有氧", value: 0.1, note: "力量优先，适合增肌或常规塑形。" },
+  { label: "力量均衡", value: 0.25, note: "力量为主，保留基础心肺。" },
+  { label: "偏有氧", value: 0.4, note: "减脂期更友好，但不牺牲力量训练。" },
+];
+
+const dayTypeTone: Record<DietDayType, "accent" | "accent2" | "positive" | "warn" | "amber"> = {
+  balanced: "positive",
+  "high-carb": "accent",
+  "medium-carb": "accent2",
+  "low-carb": "amber",
+  "very-low-carb": "warn",
+  "depletion-carb": "warn",
+  "fasting-low-calorie": "warn",
+  "normal-eating": "positive",
 };
 
 export default function TrainingPreferenceScreen() {
   const router = useRouter();
   const preference = useFitnessStore((state) => state.trainingPreference);
+  const selectedDietPlanId = useFitnessStore((state) => state.selectedDietPlanId);
+  const selectedDietPlanVariantId = useFitnessStore((state) => state.selectedDietPlanVariantId);
   const setTrainingPreference = useFitnessStore((state) => state.setTrainingPreference);
-  const [draft, setDraft] = useState(preference);
+  const [draft, setDraft] = useState<TrainingPreferenceDraft>(preference);
+
   const equipmentOptions = useMemo(() => {
     const values = Array.from(new Set(exercises.flatMap((exercise) => exercise.equipment)));
     return values.map((value) => ({
       value,
-      label: equipmentFallbackLabels[value] ?? value
+      label: equipmentLabels[value] ?? value,
     }));
   }, []);
+
+  const selectedPlan = getDietPlanById(selectedDietPlanId);
+  const cycleSelection: DietPlanCycleSelection = selectedDietPlanVariantId
+    ? { variantId: selectedDietPlanVariantId }
+    : {};
+  const previewDays = useMemo(
+    () => buildDietTrainingPreview(selectedDietPlanId, cycleSelection, draft),
+    [selectedDietPlanId, selectedDietPlanVariantId, draft]
+  );
+  const currentSplit = getSplitLabel(draft.daysPerWeek);
+  const selectedCardio = cardioOptions.find((item) => item.value === draft.cardioRatio) ?? cardioOptions[1];
 
   return (
     <Screen>
       <ScreenHeader
-        kicker="Onboarding / 2 / 2"
+        kicker="ONBOARDING / 2 / 2"
         title="训练偏好"
-        subtitle="只记录训练方向，不给每天锁死动作、组数和固定课表；今日训练页会按饮食日和部位给参考建议。"
+        subtitle="选择愿意练的部位、可用器材和每周频率。APP 会按饮食计划的高碳/低碳日调整训练强度。"
       />
 
-      <GlassTile glow="accent2" style={{ gap: 10 }}>
-        <Label color={colors.inkMute} variant="label">
-          FOCUS / 常练部位
-        </Label>
-        <BentoText variant="caption" color={colors.inkMute}>
-          选择你愿意轮换训练的部位，APP 只用它来推荐“今天适合练什么”。
-        </BentoText>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+      <GlassTile glow="accent2" style={{ gap: 12 }}>
+        <SectionTitle title="训练部位" subtitle="选择你愿意轮换训练的部位，不选冷门部位也不会强制安排。" />
+        <ChipWrap>
           {muscleOptions.map((value) => (
             <SelectChip
               key={value}
@@ -65,14 +101,12 @@ export default function TrainingPreferenceScreen() {
               onPress={() => setDraft({ ...draft, preferredMuscleGroups: toggleValue(draft.preferredMuscleGroups, value) })}
             />
           ))}
-        </View>
+        </ChipWrap>
       </GlassTile>
 
-      <GlassTile glow="accent" style={{ gap: 10 }}>
-        <Label color={colors.inkMute} variant="label">
-          EQUIPMENT / 可用器材
-        </Label>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+      <GlassTile glow="accent" style={{ gap: 12 }}>
+        <SectionTitle title="可用器材" subtitle="只基于你能用到的器材推荐动作，避免在家训练却推健身房器械。" />
+        <ChipWrap>
           {equipmentOptions.map((item) => (
             <SelectChip
               key={item.value}
@@ -82,34 +116,135 @@ export default function TrainingPreferenceScreen() {
               onPress={() => setDraft({ ...draft, equipment: toggleValue(draft.equipment, item.value) })}
             />
           ))}
-        </View>
+        </ChipWrap>
+      </GlassTile>
+
+      <GlassTile glow="positive" style={{ gap: 12 }}>
+        <SectionTitle title="训练频率" subtitle="选择你一周现实能完成几天：2-3 天偏全身，4 天适合多数用户，5-6 天适合训练习惯稳定的人。" />
+        <ChipWrap>
+          {frequencyOptions.map((value) => (
+            <SelectChip
+              key={value}
+              label={`${value} 天/周`}
+              active={draft.daysPerWeek === value}
+              color="positive"
+              onPress={() => setDraft({ ...draft, daysPerWeek: value })}
+            />
+          ))}
+        </ChipWrap>
+        <GlassTile padding={12} style={{ gap: 4, backgroundColor: `${colors.positive}10` }}>
+          <BentoText weight="semibold" color={colors.ink}>
+            {currentSplit.title}
+          </BentoText>
+          <BentoText variant="caption" color={colors.inkMute}>
+            {currentSplit.description}
+          </BentoText>
+        </GlassTile>
       </GlassTile>
 
       <View style={{ flexDirection: "row", gap: bento.tileGap }}>
-        <View style={{ flex: 1 }}>
-          <LabeledInput
-            label="参考时长"
-            keyboardType="numeric"
-            value={String(draft.minutesPerSession)}
-            onChangeText={(text) => setDraft({ ...draft, minutesPerSession: clampNumber(text, 15, 120) })}
-          />
-        </View>
-        <View style={{ flex: 1 }}>
-          <LabeledInput
-            label="有氧占比 0-1"
-            keyboardType="numeric"
-            value={String(draft.cardioRatio)}
-            onChangeText={(text) => setDraft({ ...draft, cardioRatio: clampDecimal(text, 0, 1) })}
-          />
-        </View>
+        <GlassTile glow="amber" style={{ flex: 1, gap: 10 }}>
+          <Label color={colors.inkMute} variant="label">
+            单次时长
+          </Label>
+          <ChipWrap>
+            {durationOptions.map((value) => (
+              <SelectChip
+                key={value}
+                label={`${value}分`}
+                active={draft.minutesPerSession === value}
+                color="amber"
+                size="sm"
+                onPress={() => setDraft({ ...draft, minutesPerSession: value })}
+              />
+            ))}
+          </ChipWrap>
+        </GlassTile>
+
+        <GlassTile glow="accent2" style={{ flex: 1, gap: 10 }}>
+          <Label color={colors.inkMute} variant="label">
+            有氧比例
+          </Label>
+          <ChipWrap>
+            {cardioOptions.map((item) => (
+              <SelectChip
+                key={item.label}
+                label={item.label}
+                active={draft.cardioRatio === item.value}
+                color="accent2"
+                size="sm"
+                onPress={() => setDraft({ ...draft, cardioRatio: item.value })}
+              />
+            ))}
+          </ChipWrap>
+          <BentoText variant="caption" color={colors.inkMute}>
+            {selectedCardio.note}
+          </BentoText>
+        </GlassTile>
       </View>
+
+      <GlassTile glow="accent" style={{ gap: 12 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+          <View style={{ flex: 1, gap: 4 }}>
+            <BentoText weight="bold" color={colors.ink}>
+              饮食计划联动
+            </BentoText>
+            <BentoText variant="caption" color={colors.inkMute}>
+              {selectedPlan ? `${selectedPlan.name}：按当天碳水日型调节训练强度。` : "未选饮食计划时，默认按均衡训练轮换。"}
+            </BentoText>
+          </View>
+          <Label color={colors.inkMute} variant="label">
+            预览
+          </Label>
+        </View>
+
+        <View style={{ gap: 8 }}>
+          {previewDays.map((item) => (
+            <View
+              key={item.key}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: `${colors[item.tone]}55`,
+                backgroundColor: `${colors[item.tone]}12`,
+                paddingHorizontal: 12,
+                paddingVertical: 9,
+              }}
+            >
+              <View style={{ width: 44 }}>
+                <BentoText weight="bold" color={colors.ink}>
+                  {item.dateLabel}
+                </BentoText>
+                <BentoText variant="caption" color={colors.inkMute}>
+                  {item.weekLabel}
+                </BentoText>
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <BentoText weight="semibold" color={colors.ink}>
+                  {item.dayLabel}
+                </BentoText>
+                <BentoText variant="caption" color={colors.inkMute}>
+                  {item.rule}
+                </BentoText>
+              </View>
+              <BentoText weight="bold" color={colors[item.tone]}>
+                {item.focusLabel}
+              </BentoText>
+            </View>
+          ))}
+        </View>
+      </GlassTile>
 
       <GlassTile style={{ gap: 6 }}>
         <BentoText weight="semibold" color={colors.ink}>
-          训练记录原则
+          生成规则
         </BentoText>
         <BentoText variant="caption" color={colors.inkMute}>
-          不记录固定课表、不要求组数。训练日只关心：今天建议练哪个部位、参考哪些动作、实际练了什么、练了多久。
+          2-3 天优先全身训练，4 天倾向上下肢，5-6 天倾向推拉腿或部位拆分；高碳日优先腿、背、胸等大肌群，低碳日安排核心、小肌群、有氧或恢复。
         </BentoText>
       </GlassTile>
 
@@ -118,12 +253,8 @@ export default function TrainingPreferenceScreen() {
         color="positive"
         block
         onPress={() => {
-          setTrainingPreference({
-            ...draft,
-            daysPerWeek: Math.max(1, draft.daysPerWeek || 4),
-            preferredMuscleGroups: draft.preferredMuscleGroups.length > 0 ? draft.preferredMuscleGroups : ["chest", "back", "legs"],
-          });
-          router.replace("/");
+          setTrainingPreference(normalizePreference(draft));
+          router.replace("/plan");
         }}
       >
         保存训练偏好
@@ -132,18 +263,87 @@ export default function TrainingPreferenceScreen() {
   );
 }
 
+function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <View style={{ gap: 4 }}>
+      <BentoText weight="bold" color={colors.ink}>
+        {title}
+      </BentoText>
+      <BentoText variant="caption" color={colors.inkMute}>
+        {subtitle}
+      </BentoText>
+    </View>
+  );
+}
+
+function ChipWrap({ children }: { children: React.ReactNode }) {
+  return <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>{children}</View>;
+}
+
 function toggleValue<T>(values: T[], value: T): T[] {
   return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
 }
 
-function clampNumber(value: string, min: number, max: number): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return min;
-  return Math.max(min, Math.min(max, Math.round(parsed)));
+function normalizePreference(draft: TrainingPreferenceDraft): TrainingPreferenceDraft {
+  return {
+    ...draft,
+    daysPerWeek: Math.max(2, Math.min(6, draft.daysPerWeek || 4)),
+    minutesPerSession: Math.max(30, Math.min(90, draft.minutesPerSession || 60)),
+    cardioRatio: draft.cardioRatio || 0.25,
+    preferredMuscleGroups: draft.preferredMuscleGroups.length > 0
+      ? draft.preferredMuscleGroups
+      : ["chest", "back", "legs", "shoulders"],
+  };
 }
 
-function clampDecimal(value: string, min: number, max: number): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return min;
-  return Math.max(min, Math.min(max, parsed));
+function getSplitLabel(daysPerWeek: number) {
+  if (daysPerWeek <= 2) {
+    return {
+      title: "全身训练",
+      description: "每次覆盖主要肌群，适合新手、忙碌用户或恢复期。",
+    };
+  }
+  if (daysPerWeek === 3) {
+    return {
+      title: "全身 / 推拉腿轻拆分",
+      description: "一周三练，兼顾学习动作、力量进步和恢复。",
+    };
+  }
+  if (daysPerWeek === 4) {
+    return {
+      title: "上下肢拆分",
+      description: "上肢、下肢交替，适合大多数稳定训练用户。",
+    };
+  }
+  return {
+    title: "推拉腿 / 部位轮换",
+    description: "高频训练需要更细的肌群轮换，并让低碳日承担轻训练。",
+  };
+}
+
+function buildDietTrainingPreview(
+  planId: string | null,
+  selection: DietPlanCycleSelection,
+  preference: TrainingPreferenceDraft
+) {
+  return resolveTrainingSchedule({
+    planId,
+    dietPlanSelection: selection,
+    exercises,
+    preference,
+    pastDays: 0,
+    futureDays: 3,
+  }).map((entry) => ({
+    key: entry.dateKey,
+    dateLabel: `${entry.date.getMonth() + 1}/${entry.date.getDate()}`,
+    weekLabel: getWeekLabel(entry.date),
+    dayLabel: dietDayTypeLabels[entry.dietDayType],
+    tone: dayTypeTone[entry.dietDayType],
+    focusLabel: entry.focus ? muscleNameMap[entry.focus] : "休息",
+    rule: entry.trainingType === "rest" ? entry.intensityLabel : `${entry.intensityLabel} · ${entry.minutes} 分钟`,
+  }));
+}
+
+function getWeekLabel(date: Date): string {
+  return ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getDay()];
 }

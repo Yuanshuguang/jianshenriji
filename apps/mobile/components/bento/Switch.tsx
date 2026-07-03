@@ -78,7 +78,7 @@ export function Switch({
                   shadowOffset: { width: 0, height: 0 },
                   shadowOpacity: 0.5,
                   shadowRadius: 8,
-                  elevation: 4
+                  elevation: 4,
                 }
             : null)
         }}
