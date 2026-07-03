@@ -41,9 +41,12 @@ test("高碳日储备食物分配不能为了热量闭合无限放大土豆导�
     trainingFocus: "legs"
   });
 
-  assert.ok(result.totals.carbsG <= target.carbsG + 8, `carbs ${result.totals.carbsG} should not exceed target ${target.carbsG}`);
-  assert.ok(portionGrams(result.portions, "potato", "lunch") <= 420);
-  assert.ok(portionGrams(result.portions, "potato", "dinner") <= 420);
+  assert.ok(Math.abs(result.totals.carbsG - target.carbsG) <= 5, `carbs ${result.totals.carbsG} should match target ${target.carbsG}`);
+  assert.ok(Math.abs(result.totals.proteinG - target.proteinG) <= 8, `protein ${result.totals.proteinG} should match target ${target.proteinG}`);
+  assert.ok(Math.abs(result.totals.fatG - target.fatG) <= 6, `fat ${result.totals.fatG} should match target ${target.fatG}`);
+  assert.ok(portionGrams(result.portions, "potato", "lunch") <= 610);
+  assert.ok(portionGrams(result.portions, "potato", "dinner") <= 610);
+  assert.ok(portionGrams(result.portions, "cooking-oil") <= 25);
   assert.ok(mealCalories(result.portions, "lunch") >= mealCalories(result.portions, "dinner"));
 });
 

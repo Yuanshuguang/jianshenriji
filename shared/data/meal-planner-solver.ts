@@ -37,6 +37,21 @@ type RoleShares = {
 };
 
 const mealOrder: MealPlannerMeal[] = ["breakfast", "lunch", "dinner", "snack"];
+const cookingOilFood: Food = {
+  id: "cooking-oil",
+  name: "烹调用油",
+  aliases: ["食用油", "炒菜油", "橄榄油"],
+  category: "snack",
+  caloriesPer100g: 900,
+  proteinPer100g: 0,
+  fatPer100g: 100,
+  carbsPer100g: 0,
+  defaultUnitGram: 10,
+  servingUnits: [
+    { name: "勺", grams: 10 },
+    { name: "茶匙", grams: 5 }
+  ]
+};
 
 export function solveMealPlan(input: MealPlannerInput): MealPlannerResult {
   if (input.foods.length === 0) {
@@ -49,11 +64,12 @@ export function solveMealPlan(input: MealPlannerInput): MealPlannerResult {
   }
 
   const activeMeals = resolveActiveMeals(input.enabledMeals);
+  const planningFoods = includePlanningAuxiliaryFoods(input.foods);
   const portions = buildInitialPortions(input.foods, input.target, activeMeals, input);
-  const closedPortions = closePlanMacros(portions, input.foods, input.target, input);
-  const adjustedPortions = applyUserAdjustments(closedPortions, input.foods, activeMeals, input.adjustments);
+  const closedPortions = closePlanMacros(portions, planningFoods, input.target, input);
+  const adjustedPortions = applyUserAdjustments(closedPortions, planningFoods, activeMeals, input.adjustments);
   const totals = sumNutrition(adjustedPortions.map((portion) => portion.totals));
-  const warnings = buildWarnings(adjustedPortions, input.foods, input.target, activeMeals, input);
+  const warnings = buildWarnings(adjustedPortions, planningFoods, input.target, activeMeals, input);
 
   return {
     portions: adjustedPortions,
@@ -305,8 +321,14 @@ function closePlanMacros(portions: FoodPortion[], foods: Food[], target: Nutriti
     next = closeCalories(next, foods, target);
   }
   next = fillCarbsTowardTarget(closeCarbs(next, foods, target), foods, target);
-  next = fillCaloriesWithLowCarbFoods(next, foods, target);
+  next = fillFatTowardTarget(next, foods, target);
+  next = closeCarbs(next, foods, target);
+  next = fillProteinTowardTarget(next, foods, target);
+  next = fillCarbsTowardTarget(closeCarbs(next, foods, target), foods, target);
   next = rebalanceProteinToCarbs(next, foods, target);
+  next = optimizeMacroTargets(next, foods, target);
+  next = addCookingOilTowardFatTarget(next, foods, target);
+  next = optimizeMacroTargets(next, foods, target);
   return closeCarbs(next, foods, target);
 }
 
@@ -451,13 +473,12 @@ function fillCarbsTowardTarget(portions: FoodPortion[], foods: Food[], target: N
   const foodById = new Map(foods.map((item) => [item.id, item]));
   const next = portions.map((portion) => ({ ...portion }));
   const carbTolerance = macroTolerance(target.carbsG);
-  const calorieTolerance = Math.max(35, target.calories * 0.04);
   let totals = sumNutrition(next.map((portion) => portion.totals));
-  if (totals.carbsG >= target.carbsG - carbTolerance || totals.calories >= target.calories - calorieTolerance) return next;
+  if (totals.carbsG >= target.carbsG - carbTolerance) return next;
 
   const candidates = next
     .map((portion, index) => ({ portion, index, food: foodById.get(portion.foodId) }))
-    .filter((item) => item.food && canScaleForMacroClosure(item.food) && item.food.carbsPer100g >= 12 && item.portion.grams < portionMaxGrams(item.food, item.portion.meal ?? "lunch"))
+    .filter((item) => item.food && canScaleForMacroClosure(item.food) && item.food.carbsPer100g >= 12 && item.portion.grams < carbClosureMaxGrams(item.food, item.portion.meal ?? "lunch", target))
     .sort((left, right) => {
       const mealScore = (right.portion.meal === "lunch" ? 2 : right.portion.meal === "breakfast" ? 1 : 0)
         - (left.portion.meal === "lunch" ? 2 : left.portion.meal === "breakfast" ? 1 : 0);
@@ -467,14 +488,72 @@ function fillCarbsTowardTarget(portions: FoodPortion[], foods: Food[], target: N
   for (const item of candidates) {
     totals = sumNutrition(next.map((portion) => portion.totals));
     const carbsGap = target.carbsG - totals.carbsG;
-    const caloriesGap = target.calories - totals.calories;
-    if (carbsGap <= carbTolerance || caloriesGap <= calorieTolerance) break;
+    if (carbsGap <= carbTolerance) break;
     const food = item.food!;
-    const maxGrams = portionMaxGrams(food, item.portion.meal ?? "lunch");
+    const maxGrams = carbClosureMaxGrams(food, item.portion.meal ?? "lunch", target);
     const gramsByCarbs = (carbsGap / Math.max(1, food.carbsPer100g)) * 100;
-    const gramsByCalories = (caloriesGap / Math.max(20, food.caloriesPer100g)) * 100;
     const grams = clamp(
-      Math.round((item.portion.grams + Math.min(gramsByCarbs, gramsByCalories)) / 5) * 5,
+      Math.round((item.portion.grams + gramsByCarbs) / 5) * 5,
+      item.portion.grams,
+      maxGrams
+    );
+    next[item.index] = {
+      ...item.portion,
+      grams,
+      totals: calculateTotals(food, grams)
+    };
+  }
+
+  addMissingCarbPortions(next, foods, target);
+  return next;
+}
+
+function addMissingCarbPortions(portions: FoodPortion[], foods: Food[], target: NutritionTotals): void {
+  const carbTolerance = macroTolerance(target.carbsG);
+  const activeMeals = Array.from(new Set(portions.map((portion) => portion.meal ?? "lunch")));
+  const meals = activeMeals.length > 0 ? activeMeals : mealOrder;
+  const carbFoods = foods
+    .filter((food) => canScaleForMacroClosure(food) && food.carbsPer100g >= 12)
+    .sort((left, right) => right.carbsPer100g - left.carbsPer100g);
+
+  for (const meal of meals) {
+    let totals = sumNutrition(portions.map((portion) => portion.totals));
+    const carbsGap = target.carbsG - totals.carbsG;
+    if (carbsGap <= carbTolerance) break;
+    const food = carbFoods.find((item) => !portions.some((portion) => portion.meal === meal && portion.foodId === item.id));
+    if (!food) continue;
+    const maxGrams = carbClosureMaxGrams(food, meal, target);
+    const gramsByCarbs = (carbsGap / Math.max(1, food.carbsPer100g)) * 100;
+    const grams = clamp(Math.round(gramsByCarbs / 5) * 5, portionMinGrams(food), maxGrams);
+    portions.push(buildPortion(food, grams, meal));
+  }
+}
+
+function fillProteinTowardTarget(portions: FoodPortion[], foods: Food[], target: NutritionTotals): FoodPortion[] {
+  const foodById = new Map(foods.map((item) => [item.id, item]));
+  const next = portions.map((portion) => ({ ...portion }));
+  const proteinTolerance = macroTolerance(target.proteinG);
+  let totals = sumNutrition(next.map((portion) => portion.totals));
+  if (totals.proteinG >= target.proteinG - proteinTolerance) return next;
+
+  const candidates = next
+    .map((portion, index) => ({ portion, index, food: foodById.get(portion.foodId) }))
+    .filter((item) => item.food && canScaleForMacroClosure(item.food) && item.food.proteinPer100g >= 12 && item.portion.grams < planningMaxGrams(item.food, item.portion.meal ?? "lunch"))
+    .sort((left, right) => {
+      const leftCarbLoad = left.food!.carbsPer100g / Math.max(1, left.food!.proteinPer100g);
+      const rightCarbLoad = right.food!.carbsPer100g / Math.max(1, right.food!.proteinPer100g);
+      return leftCarbLoad - rightCarbLoad || right.food!.proteinPer100g - left.food!.proteinPer100g;
+    });
+
+  for (const item of candidates) {
+    totals = sumNutrition(next.map((portion) => portion.totals));
+    const proteinGap = target.proteinG - totals.proteinG;
+    if (proteinGap <= proteinTolerance) break;
+    const food = item.food!;
+    const maxGrams = planningMaxGrams(food, item.portion.meal ?? "lunch");
+    const gramsByProtein = (proteinGap / Math.max(1, food.proteinPer100g)) * 100;
+    const grams = clamp(
+      Math.round((item.portion.grams + gramsByProtein) / 5) * 5,
       item.portion.grams,
       maxGrams
     );
@@ -486,6 +565,101 @@ function fillCarbsTowardTarget(portions: FoodPortion[], foods: Food[], target: N
   }
 
   return next;
+}
+
+function fillFatTowardTarget(portions: FoodPortion[], foods: Food[], target: NutritionTotals): FoodPortion[] {
+  const foodById = new Map(foods.map((item) => [item.id, item]));
+  const next = portions.map((portion) => ({ ...portion }));
+  const fatTolerance = Math.max(3, target.fatG * 0.08);
+  let totals = sumNutrition(next.map((portion) => portion.totals));
+  if (totals.fatG >= target.fatG - fatTolerance) return next;
+
+  const candidates = next
+    .map((portion, index) => ({ portion, index, food: foodById.get(portion.foodId) }))
+    .filter((item) => item.food && canUseForFatClosure(item.food) && item.portion.grams < fatClosureMaxGrams(item.food, item.portion.meal ?? "lunch"))
+    .sort((left, right) => {
+      const fatDensity = right.food!.fatPer100g - left.food!.fatPer100g;
+      const mealScore = (right.portion.meal === "breakfast" ? 1 : right.portion.meal === "snack" ? 0.5 : 0)
+        - (left.portion.meal === "breakfast" ? 1 : left.portion.meal === "snack" ? 0.5 : 0);
+      return fatDensity || mealScore;
+    });
+
+  for (const item of candidates) {
+    totals = sumNutrition(next.map((portion) => portion.totals));
+    const fatGap = target.fatG - totals.fatG;
+    if (fatGap <= fatTolerance) break;
+    const food = item.food!;
+    const maxGrams = fatClosureMaxGrams(food, item.portion.meal ?? "lunch");
+    const gramsByFat = (fatGap / Math.max(0.5, food.fatPer100g)) * 100;
+    const grams = clamp(
+      Math.round((item.portion.grams + gramsByFat) / 5) * 5,
+      item.portion.grams,
+      maxGrams
+    );
+    next[item.index] = {
+      ...item.portion,
+      grams,
+      totals: calculateTotals(food, grams)
+    };
+  }
+
+  return next;
+}
+
+function optimizeMacroTargets(portions: FoodPortion[], foods: Food[], target: NutritionTotals): FoodPortion[] {
+  const foodById = new Map(foods.map((item) => [item.id, item]));
+  let next = portions.map((portion) => ({ ...portion }));
+  let bestScore = macroTargetScore(sumNutrition(next.map((portion) => portion.totals)), target);
+
+  for (let step = 0; step < 80; step += 1) {
+    let bestCandidate: FoodPortion[] | null = null;
+    let candidateScore = bestScore;
+
+    next.forEach((portion, index) => {
+      const food = foodById.get(portion.foodId);
+      if (!food || !canScaleForMacroClosure(food)) return;
+      const minGrams = portionMinGrams(food);
+      const maxGrams = macroOptimizeMaxGrams(food, portion.meal ?? "lunch", target);
+
+      [-10, -5, 5, 10].forEach((delta) => {
+        const grams = clamp(portion.grams + delta, minGrams, maxGrams);
+        if (grams === portion.grams) return;
+        const candidate = next.map((item) => ({ ...item }));
+        candidate[index] = rebuildPortion(portion, food, grams);
+        const score = macroTargetScore(sumNutrition(candidate.map((item) => item.totals)), target);
+        if (score + 0.0001 < candidateScore) {
+          candidateScore = score;
+          bestCandidate = candidate;
+        }
+      });
+    });
+
+    if (!bestCandidate) break;
+    next = bestCandidate;
+    bestScore = candidateScore;
+  }
+
+  return next;
+}
+
+function addCookingOilTowardFatTarget(portions: FoodPortion[], foods: Food[], target: NutritionTotals): FoodPortion[] {
+  if (hasDedicatedFatSource(foods)) return portions;
+  const totals = sumNutrition(portions.map((portion) => portion.totals));
+  const fatGap = target.fatG - totals.fatG;
+  const tolerance = Math.max(3, target.fatG * 0.08);
+  if (fatGap <= tolerance) return portions;
+
+  const grams = clamp(Math.round(fatGap / 5) * 5, 5, 35);
+  return mergePortions([...portions, buildPortion(cookingOilFood, grams, "lunch")], foods);
+}
+
+function macroTargetScore(totals: NutritionTotals, target: NutritionTotals): number {
+  return (
+    Math.abs(totals.carbsG - target.carbsG) / Math.max(1, target.carbsG) * 1.25
+    + Math.abs(totals.proteinG - target.proteinG) / Math.max(1, target.proteinG) * 1.1
+    + Math.abs(totals.fatG - target.fatG) / Math.max(1, target.fatG) * 1
+    + Math.abs(totals.calories - target.calories) / Math.max(1, target.calories) * 0.15
+  );
 }
 
 function rebalanceProteinToCarbs(portions: FoodPortion[], foods: Food[], target: NutritionTotals): FoodPortion[] {
@@ -529,7 +703,7 @@ function rebalanceProteinToCarbs(portions: FoodPortion[], foods: Food[], target:
 }
 
 function macroTolerance(targetValue: number): number {
-  return Math.max(8, targetValue * 0.05);
+  return Math.max(5, targetValue * 0.03);
 }
 
 function macroClosureScore(food: Food, target: NutritionTotals, totals: NutritionTotals, needsCalories: number): number {
@@ -748,8 +922,15 @@ function canSplitForMealPlanning(food: Food): boolean {
 
 function canScaleForMacroClosure(food: Food): boolean {
   if (!canSplitForMealPlanning(food)) return false;
-  if (food.category === "vegetable" || food.category === "fruit" || food.category === "snack" || food.category === "drink") return false;
+  if (food.category === "vegetable" || food.category === "fruit" || food.category === "drink") return false;
+  if (food.category === "snack") return food.fatPer100g >= 12 || food.carbsPer100g >= 30;
   return food.category === "protein" || food.category === "staple" || food.category === "supplement" || food.proteinPer100g >= 12 || food.carbsPer100g >= 16;
+}
+
+function canUseForFatClosure(food: Food): boolean {
+  if (food.fatPer100g < 3) return false;
+  if (canScaleForMacroClosure(food)) return true;
+  return food.category === "protein" && food.defaultUnitGram <= 80;
 }
 
 function portionMinGrams(food: Food): number {
@@ -777,6 +958,36 @@ function planningMaxGrams(food: Food, meal: MealPlannerMeal): number {
     return Math.round(base * 2.2);
   }
   return base;
+}
+
+function carbClosureMaxGrams(food: Food, meal: MealPlannerMeal, target: NutritionTotals): number {
+  const base = portionMaxGrams(food, meal);
+  if (target.carbsG >= 220 && food.category === "staple" && food.carbsPer100g >= 12) {
+    return Math.round(base * 1.45);
+  }
+  return base;
+}
+
+function fatClosureMaxGrams(food: Food, meal: MealPlannerMeal): number {
+  const base = planningMaxGrams(food, meal);
+  if (food.category === "protein" && food.defaultUnitGram <= 80 && food.fatPer100g >= 6) {
+    return Math.min(base, food.defaultUnitGram * 3);
+  }
+  return base;
+}
+
+function macroOptimizeMaxGrams(food: Food, meal: MealPlannerMeal, target: NutritionTotals): number {
+  if (food.category === "staple" && food.carbsPer100g >= 12) return carbClosureMaxGrams(food, meal, target);
+  if (food.fatPer100g >= 3) return fatClosureMaxGrams(food, meal);
+  return planningMaxGrams(food, meal);
+}
+
+function includePlanningAuxiliaryFoods(foods: Food[]): Food[] {
+  return foods.some((item) => item.id === cookingOilFood.id) ? foods : [...foods, cookingOilFood];
+}
+
+function hasDedicatedFatSource(foods: Food[]): boolean {
+  return foods.some((item) => item.id !== cookingOilFood.id && item.fatPer100g >= 18 && (item.category === "snack" || item.category === "fruit" || item.category === "protein"));
 }
 
 function foodDescriptorText(food: Food): string {
