@@ -752,7 +752,10 @@ function buildWarnings(portions: FoodPortion[], foods: Food[], target: Nutrition
   }
   if (!foods.some((item) => item.fatPer100g >= 8 || item.id === cookingOilFood.id)) {
     warnings.push("储备食物缺少可控脂肪来源，长期执行可能影响饱腹感和基础脂肪摄入。");
+  }  if (!foods.some((item) => item.category === "vegetable")) {
+    warnings.push("?????????????????????????????????????????");
   }
+
   if (totals.proteinG < target.proteinG * 0.75) {
     warnings.push("当前搭配蛋白质明显不足，建议补充鸡蛋、鱼虾、瘦肉、豆制品或蛋白补剂。");
   }

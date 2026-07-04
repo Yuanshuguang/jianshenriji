@@ -1,0 +1,34 @@
+[
+  {
+    "name": "09-food-detail-after-chip-click",
+    "path": "C:/Users/Administrator/Documents/健身日历/audit-screenshots/app-full-flow-2026-07-02/09-food-detail-after-chip-click.png",
+    "info": {
+      "text": "今日饮食 估算 · 动态调整 周一 29 周二 30 周三 1 周四 2 周五 3 周六 4 周日 5 已超出 60 kcal 摄入 1773 / 1713kcal 超出 60kcal 蛋白 78 / 135g 还差 57g 脂肪 91 / 49g 超出 42g 碳水 176 / 183g 还差 7g 查看日历记录 饮食记录 收起 计划 实际 今日已记录 下方餐次会同步显示已识别食物，点击标签可继续校准细分类型和重量。 早餐 午餐 晚餐 加餐 AI 识别菜品 饮食记录 AI 识别菜品 计划 实际 收起 热量 1773 kcal 蛋白质 78 g 脂肪 91 g 碳水 176 g 早餐 暂无记录 午餐 宫保鸡丁 300g 黄瓜 150g 西红柿炒鸡蛋 250g +3 晚餐 暂无记录 加餐 暂无记录 我的菜单 菜单项 1 展开 饮食 训练 计划 更多",
+      "url": "http://localhost:8081/"
+    }
+  },
+  {
+    "name": "10-exercise-action-menu",
+    "path": "C:/Users/Administrator/Documents/健身日历/audit-screenshots/app-full-flow-2026-07-02/10-exercise-action-menu.png",
+    "info": {
+      "text": "动作库 浏览动作 单击动作看讲解，点卡片右上角或长按可收藏、置顶、加入今日参考。 889 项 动作讲解 杠铃卧推 杠铃 / 胸 长按加入 1. Lie flat on a bench with your feet flat on the ground and your back pressed against the bench. 2. Grasp the barbell with an overhand grip slightly wider than shoulder-width apart. 3. Lift the barbell off the rack and hold it directly above your chest with your arms fully extended. 4. Lower the barbell slowly towards your chest, keeping your elbows tucked in. 动作操作 杠铃卧推 × 收藏 置顶 置底 加入今日参考 置顶 杠铃 哑铃 壶铃 绳索 器械 徒手 辅助 弹力带 药球 健身球 绳索 上肢功率车 负重 半圆平衡球 滚轴 锤 健腹轮 动感单车 轮胎 六角杠 收藏 胸 背 上臂 前臂 肩 核心 大腿 小腿 有氧 颈部 胸动作 121/1324 项 杠铃 讲解 操作 杠铃卧推 讲解 操作 下斜杠铃卧推 讲解 操作 下斜杠铃屈臂上拉 讲解 操作 下斜宽握杠铃推举 讲解 操作 杠铃屈臂上拉 讲解 操作 上斜杠铃卧推 讲解 操作 上斜杠铃肩部平举 讲解 操作 下斜反向杠铃卧推 讲解 操作 上斜反向杠铃卧推 讲解 操作 反向杠铃卧推 绳索 讲解 操作 绳索卧推 讲解 操作 绳索夹胸 讲解 操作 下斜绳索飞鸟 讲解 操作 下斜单臂绳索推举 讲解 操作 下斜绳索推举 讲解 操作 上斜绳索卧推 讲解 操作 上斜绳索飞鸟 器械 讲解 操作 辅助双杠臂屈伸 讲解 操作 宽握辅助双杠臂屈伸 徒手 讲解 操作 俯卧撑 辅助 讲解 操作 坐姿健身球辅助拉伸 讲解 操作 胸部拉伸 弹力带 讲解 操作 弹力带卧推 讲解 操作 单臂弹力带胸部推举 显示更多本地动作 返回训练页",
+      "url": "http://localhost:8081/exercise-library/"
+    }
+  },
+  {
+    "name": "11-diet-plan-detail-click",
+    "path": "C:/Users/Administrator/Documents/健身日历/audit-screenshots/app-full-flow-2026-07-02/11-diet-plan-detail-click.png",
+    "info": {
+      "text": "< 碳循环饮食法 当前使用 训练日高碳、休息日低碳，按周期调节训练表现和热量缺口 当前体重 75 kg 目标体重 66 kg 手动录入每天克数 关闭时由系统按体重、目标和公式自动计算；打开后后续可分别编辑各日型克数。 细分执行方式 已选择 经典三段式：三高两中两低 7 天循环，高碳配大肌群或高强度力量训练，中碳配普通训练，低碳配休息日。 3 高碳日 · 2 中碳日 · 2 低碳日 新手减脂 力量训练保肌 塑形 经典三段式：两高三中两低 更温和的 7 天循环，适合训练频率较低、平台期恢复或女性塑形。 2 高碳日 · 3 中碳日 · 2 低碳日 温和减脂 上班族塑形 平台期过渡 两段式：训练高碳 / 休息低碳 只有高碳和低碳，计算简单，适合固定训练日和不想管理中碳日的人。 3 高碳日 · 4 低碳日 上班族 极简执行 固定训练日 反向碳循环：周初低碳 / 周末高碳 先低后高，周末安排高碳恢复训练状态、代谢和心理压力。 3 低碳日 · 2 中碳日 · 2 高碳日 代谢偏低 女生塑形 减脂平台期 轮动碳水循环：10 天周期 拉长周期，适合大体重或长期减脂阶段，减少一周内波动。 5 低碳日 · 3 中碳日 · 2 高碳日 大体重长期减脂 长期执行 降低周内波动 周期性断碳循环：每 2 周 1 次断碳日 常规碳循环基础上加入极低断碳日，用于短期突破平台。 4 高碳日 · 4 中碳日 · 5 低碳日 · 1 断碳日 短期平台突破 执行力强的人 日型目标设置 中碳日 热量闭合 大卡 1713 kcal 碳水 183 g 脂肪 49 g 蛋白 135 g 建议放在中等强度训练、有氧或普通工作日。 高碳日 热量闭合 大卡 1713 kcal 碳水 237 g 脂肪 25 g 蛋白 135 g 建议放在腿部、背部或高消耗力量训练日。 低碳日 热量闭合 大卡 1713 kcal 碳水 104 g 脂肪 81 g 蛋白 142 g 建议放在休息日、低强度训练日或控脂日。 断碳日 热量闭合 大卡 1456 kcal 碳水 33 g 脂肪 84 g 蛋白 142 g 突破平台用，频率要低，并同步降低训练强度。 饮食法介绍与适用 展开 返回列表 已在使用",
+      "url": "http://localhost:8081/diet-plan/carb-cycling"
+    }
+  },
+  {
+    "name": "12-danger-confirm-dialog",
+    "path": "C:/Users/Administrator/Documents/健身日历/audit-screenshots/app-full-flow-2026-07-02/12-danger-confirm-dialog.png",
+    "info": {
+      "text": "设置 外观与显示 📊 仪表盘可视化 子弹图 › 🌓 外观模式 日间 夜间 🔤 字体大小 放大 › 计划引擎 ⚡ 动态调整 ⚙️ 高级规则 › 健康数据 ⇩ 导出健康数据 导出个人档案、饮食、训练、日志与当前计划 > 危险操作 ↺ 清空今日记录 只清空今天饮食、餐次和训练记录 > 🧹 清理开发测试数据 清空示例输入、历史日志、我的菜单和动作库缓存 > ✕ 清除健康数据 重置饮食/训练记录与饮食计划选择 > 饮食 训练 计划 更多",
+      "url": "http://localhost:8081/more"
+    }
+  }
+]
