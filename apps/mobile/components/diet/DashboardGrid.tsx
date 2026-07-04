@@ -98,7 +98,7 @@ function BulletCell({ cell, flex }: { cell: DashboardCell; flex: number }) {
             borderColor: display.state === "over" ? c.warn : c.glassBorder,
           }}
         >
-          <BentoText variant="micro" color={statusColor} style={{ fontSize: 9, lineHeight: 11 }} numberOfLines={1}>
+          <BentoText variant="micro" color={statusColor} numberOfLines={1}>
             {display.subtitle}
           </BentoText>
         </View>
@@ -107,14 +107,14 @@ function BulletCell({ cell, flex }: { cell: DashboardCell; flex: number }) {
         <BentoText mono weight="bold" color={valueColor} style={{ fontSize: 24, lineHeight: 26 }}>
           {Math.round(cell.actual)}
         </BentoText>
-        <BentoText mono color={c.inkMute} style={{ fontSize: 10 }}>{cell.unit}</BentoText>
+        <BentoText mono color={c.inkMute} variant="micro">{cell.unit}</BentoText>
       </View>
       <View style={{ gap: 5 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-          <BentoText variant="micro" color={c.inkMute} style={{ fontSize: 10 }} numberOfLines={1}>
+          <BentoText variant="micro" color={c.inkMute} numberOfLines={1}>
             {targetLabel}
           </BentoText>
-          <BentoText mono color={c.inkFaint} style={{ fontSize: 9 }}>
+          <BentoText mono color={c.inkFaint} variant="micro">
             {Math.round(display.ratio * 100)}%
           </BentoText>
         </View>
@@ -198,9 +198,9 @@ function KpiCard({ cell, flex }: { cell: DashboardCell; flex: number }) {
       <Label color={c.inkMute} variant="label">{cell.label}</Label>
       <BentoText mono weight="bold" color={c[chartColor]} style={{ fontSize: 24, lineHeight: 26 }}>
         {Math.round(cell.actual)}
-        <BentoText mono color={c.inkMute} style={{ fontSize: 10 }}> {cell.unit}</BentoText>
+        <BentoText mono color={c.inkMute} variant="micro"> {cell.unit}</BentoText>
       </BentoText>
-      <BentoText variant="micro" color={c.inkMute} style={{ fontSize: 10 }}>
+      <BentoText variant="micro" color={c.inkMute}>
         目标 {Math.round(cell.target)}{cell.unit}
       </BentoText>
       <MetricBarWithCursor
@@ -212,7 +212,7 @@ function KpiCard({ cell, flex }: { cell: DashboardCell; flex: number }) {
         size="compact"
         showSubtitle={false}
       />
-      <BentoText variant="micro" color={(c as Record<string, string>)[display.subtitleTone]} style={{ fontSize: 10 }}>
+      <BentoText variant="micro" color={(c as Record<string, string>)[display.subtitleTone]}>
         {display.subtitle}
       </BentoText>
     </GlassTile>
@@ -266,7 +266,7 @@ function RingCard({ cell, flex }: { cell: DashboardCell; flex: number }) {
           <BentoText mono weight="bold" color={c.accent} style={{ fontSize: 24, lineHeight: 26 }}>
             {Math.round(cell.actual)}
           </BentoText>
-          <BentoText mono color={c.inkMute} style={{ fontSize: 10 }}>{cell.unit}</BentoText>
+          <BentoText mono color={c.inkMute} variant="micro">{cell.unit}</BentoText>
         </View>
       </View>
       <MetricCompareBar actual={cell.actual} target={cell.target} height={7} />

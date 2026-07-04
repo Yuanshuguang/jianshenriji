@@ -455,7 +455,6 @@ function SectionHeader({ children }: { children: ReactNode }) {
 }
 
 function SettingsRow({
-  icon,
   iconName,
   iconColor,
   label,
@@ -464,7 +463,6 @@ function SettingsRow({
   onPress,
   dangerous = false,
 }: {
-  icon?: string;
   iconName?: AppIconName;
   iconColor?: SemanticColor;
   label: string;
@@ -490,7 +488,7 @@ function SettingsRow({
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
-        {iconNode ?? (icon ? <BentoText style={{ fontSize: 18, lineHeight: 22 }}>{icon}</BentoText> : null)}
+        {iconNode ?? null}
         <View style={{ flex: 1, gap: 2 }}>
           <BentoText variant="body" weight="semibold" color={dangerous ? c.warn : "#F7FAFF"}>{label}</BentoText>
           {subtitle ? (
@@ -501,7 +499,7 @@ function SettingsRow({
         </View>
       </View>
       {children}
-      {onPress ? <BentoText style={{ fontSize: 16, color: c.inkFaint, marginLeft: 8 }}>{">"}</BentoText> : null}
+      {onPress ? <AppIcon name="chevronRight" size={16} color={c.inkFaint} /> : null}
     </View>
   );
 
@@ -667,9 +665,7 @@ function DangerConfirmSheet({ action, onClose }: DangerConfirmSheetProps) {
                 justifyContent: "center",
               }}
             >
-              <BentoText weight="bold" color={c.warn} style={{ fontSize: 16 }}>
-                !
-              </BentoText>
+              <AppIcon name="warn" size={16} color="warn" strokeWidth={2} />
             </View>
             <BentoText variant="h3" weight="bold" color={c.warn}>
               {action.title}

@@ -8,7 +8,7 @@ import {
 import { useRouter } from "expo-router";
 import { useMemo } from "react";
 import { Pressable, View } from "react-native";
-import { Badge, Screen, ScreenHeader, Text as BentoText, useBentoTheme } from "../../components/bento";
+import { Badge, Screen, ScreenHeader, AppIcon, type AppIconName, Text as BentoText, useBentoTheme } from "../../components/bento";
 import { WeekDateRail, type WeekDateRailItem } from "../../components/shared";
 import { getDietPlanById } from "../../features/diet-plans";
 import { muscleNameMap } from "../../features/today-plan";
@@ -70,21 +70,21 @@ export default function PlanScreen() {
       <SectionTitle title="基础设置" />
       <View style={{ gap: 10 }}>
         <ModernSettingCard
-          icon="身"
+          iconName="body"
           title="身体数据"
           subtitle={`${profile.weightKg} kg · ${profile.heightCm} cm · ${profile.age} 岁`}
           badge={trainingLevelLabels[profile.trainingLevel] ?? profile.trainingLevel}
           onPress={() => router.push("/onboarding/body")}
         />
         <ModernSettingCard
-          icon="练"
+          iconName="train"
           title="训练计划"
           subtitle={`每周 ${preference.daysPerWeek} 天 · 常练 ${preference.preferredMuscleGroups.map((item) => muscleNameMap[item]).join("、")} · 参考 ${preference.minutesPerSession} 分钟`}
           badge="动态生成"
           onPress={() => router.push("/onboarding/training-preference")}
         />
         <ModernSettingCard
-          icon="食"
+          iconName="food"
           title="饮食方案"
           subtitle={selectedDietPlan ? selectedDietPlan.name : "选择一个适配健身目标的饮食策略"}
           badge={selectedDietPlan ? "已选择" : "待选择"}
@@ -196,13 +196,13 @@ function SectionTitle({ title }: { title: string }) {
 }
 
 function ModernSettingCard({
-  icon,
+  iconName,
   title,
   subtitle,
   badge,
   onPress,
 }: {
-  icon: string;
+  iconName: AppIconName;
   title: string;
   subtitle: string;
   badge: string;
@@ -225,14 +225,14 @@ function ModernSettingCard({
       })}
     >
       <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${c.accent}18`, alignItems: "center", justifyContent: "center" }}>
-        <BentoText weight="bold" color={c.accent}>{icon}</BentoText>
+        <AppIcon name={iconName} size={20} color="accent" />
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
         <BentoText weight="semibold" color={c.ink} style={{ fontSize: 15 }}>{title}</BentoText>
         <BentoText variant="micro" color={c.inkMute} numberOfLines={1}>{subtitle}</BentoText>
       </View>
       <Badge color="accent" size="sm">{badge}</Badge>
-      <BentoText color={c.inkFaint} style={{ fontSize: 16 }}>{">"}</BentoText>
+      <AppIcon name="chevronRight" size={16} color={c.inkFaint} />
     </Pressable>
   );
 }

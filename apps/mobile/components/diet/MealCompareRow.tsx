@@ -95,7 +95,7 @@ export function MealRecordCard({
         </View>
 
         <View style={{ width: 86, gap: 4 }}>
-          <BentoText weight="medium" color={c.ink} style={{ fontSize: 16, lineHeight: 18 }}>
+          <BentoText weight="medium" color={c.ink} style={{ fontSize: 15, lineHeight: 18 }}>
             {name}
           </BentoText>
         </View>
@@ -195,11 +195,11 @@ function MealFoodChip({
         maxWidth: 168,
       }}
     >
-      <BentoText weight="medium" color={c.ink} style={{ fontSize: 12, lineHeight: 14 }} numberOfLines={1}>
+      <BentoText weight="medium" color={c.ink} variant="caption" numberOfLines={1}>
         {label}
       </BentoText>
       {amountLabel ? (
-        <BentoText variant="micro" color={c.inkMute} style={{ fontSize: 10, lineHeight: 12 }} numberOfLines={1}>
+        <BentoText variant="micro" color={c.inkMute} numberOfLines={1}>
           {amountLabel}
         </BentoText>
       ) : null}

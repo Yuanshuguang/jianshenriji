@@ -71,6 +71,7 @@ export function CalendarHistoryPanel() {
     const entry: DailyLogEntry = {
       date: selectedDate,
       targetCalories: energyPlan.calories,
+      targetMacros: energyPlan,
       actualIntake: {
         calories: sum("calories"),
         proteinG: sum("proteinG"),
@@ -96,6 +97,7 @@ export function CalendarHistoryPanel() {
     const entry: DailyLogEntry = {
       date: selectedDate,
       targetCalories: energyPlan.calories,
+      targetMacros: energyPlan,
       actualIntake: existing?.actualIntake ?? { calories: 0, proteinG: 0, fatG: 0, carbsG: 0 },
       actualFoodText: existing?.actualFoodText ?? "",
       actualMealTexts: existing?.actualMealTexts ?? { breakfast: "", lunch: "", dinner: "", snack: "" },

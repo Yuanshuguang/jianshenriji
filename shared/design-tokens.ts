@@ -80,18 +80,18 @@ export const typography = {
   // 字体族（在 RN 端通过 expo-font 加载后映射；未加载时回退系统字体）
   fontSans: "Barlow",
   fontMono: "Barlow Condensed",
-  fontCJK: "Barlow",
+  fontCJK: "System",  // 系统回退策略：iOS=PingFang SC / Android=厂商字体，零包体积
 
   sizes: {
-    display: 48,
-    h1: 28,
-    h2: 22,
-    h3: 17,
-    body: 14,
-    bodyStrong: 14,
-    caption: 12,
-    label: 11,
-    micro: 10,
+    display: 40,       // 关键数字（圆环中心 / 大数字）
+    h1: 24,            // 页面标题 "今日饮食"
+    h2: 18,            // 卡片标题 / 区块标题
+    h3: 15,            // 子标题 / 列表项标题
+    body: 14,          // 正文
+    bodyStrong: 14,    // 正文强调（同字号不同 weight）
+    caption: 12,       // 次要说明 / 辅助文字
+    label: 11,         // 标签 / 小分类名
+    micro: 11,         // 最小可读文字（与 label 合并，11pt 强制下限）
   },
 
   weights: {

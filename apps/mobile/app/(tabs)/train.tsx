@@ -8,6 +8,7 @@ import {
 } from "@fitness-calendar/shared";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
+import { StaggerView } from "../../components/shared/StaggerView";
 import { Image, Pressable, View } from "react-native";
 import {
   Badge,
@@ -18,6 +19,7 @@ import {
   Screen,
   SelectChip,
   Text as BentoText,
+  AppIcon,
   radius,
   type SemanticColor,
   useBentoTheme,
@@ -50,7 +52,9 @@ const statusOptions: Array<{ value: ActualTrainingStatus; label: string; color: 
 
 export default function TrainScreen() {
   const router = useRouter();
-  const c = useBentoTheme().colors;
+  const _theme = useBentoTheme();
+  const c = _theme.colors;
+  const fontScale = _theme.fontScale;
   const [referenceCollapsed, setReferenceCollapsed] = useState(true);
   const [libraryItems, setLibraryItems] = useState<LibraryExercise[]>([]);
   const [supplementalLibraryItems, setSupplementalLibraryItems] = useState<LibraryExercise[]>([]);
@@ -153,9 +157,9 @@ export default function TrainScreen() {
     borderRadius: radius.md,
     paddingHorizontal: 12,
     color: c.ink,
-    fontSize: 14,
+    fontSize: Math.round(14 * fontScale),
     height: 44
-  } as const;
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -217,8 +221,10 @@ export default function TrainScreen() {
             {customTrainingExercises.length > 0 ? (
               <View style={{ gap: 8 }}>
                 <BentoText variant="caption" color={c.inkMute}>你从动作库加入的参考动作</BentoText>
-                {customTrainingExercises.map((item) => (
-                  <CustomTrainingExerciseRow key={item.id} item={item} />
+                {customTrainingExercises.map((item, i) => (
+                  <StaggerView key={item.id} index={i}>
+                    <CustomTrainingExerciseRow item={item} />
+                  </StaggerView>
                 ))}
               </View>
             ) : null}
@@ -227,11 +233,12 @@ export default function TrainScreen() {
               <BentoText variant="caption" color={c.inkMute}>APP 推荐参考动作</BentoText>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                 {suggestedLibraryExercises.map((item, index) => (
-                  <ReferenceExerciseCard
-                    key={`${item.exerciseId}-${index}`}
-                    item={item}
-                    onPress={() => router.push("/exercise-library")}
-                  />
+                  <StaggerView key={`${item.exerciseId}-${index}`} index={index} entering="fadeInDown" staggerMs={60}>
+                    <ReferenceExerciseCard
+                      item={item}
+                      onPress={() => router.push("/exercise-library")}
+                    />
+                  </StaggerView>
                 ))}
               </View>
             </View>
@@ -286,9 +293,21 @@ export default function TrainScreen() {
             onWeightLevelChange={(weightLevel) => updateActualTraining({ fatigue: weightLevelToFatigue(weightLevel) })}
           />
         ) : (
-          <BentoText variant="caption" color={c.warn}>
-            今天按恢复日处理。饮食联动会把实际训练消耗按 0 处理；如有散步、拉伸或临时训练，可切换为“已记录训练”后补充。
-          </BentoText>
+          <View style={{
+            flexDirection: "row",
+            gap: 10,
+            alignItems: "flex-start",
+            backgroundColor: `${c.amber}14`,
+            borderRadius: 12,
+            padding: 12,
+            borderWidth: 1,
+            borderColor: `${c.amber}28`,
+          }}>
+            <AppIcon name="warn" size={18} color={c.amber} strokeWidth={2} />
+            <BentoText variant="caption" color={c.ink}>
+              今天按恢复日处理。饮食联动会把实际训练消耗按 0 处理；如有散步、拉伸或临时训练，可切换为"已记录训练"后补充。
+            </BentoText>
+          </View>
         )}
       </GlassTile>
     </Screen>
@@ -401,7 +420,7 @@ function EnergyMetric({
         <BentoText mono weight="bold" color={c.accent} style={{ fontSize: 22, lineHeight: 24 }}>
           {Math.round(value)}
         </BentoText>
-        <BentoText mono color={c.inkMute} style={{ fontSize: 10 }}>{unit}</BentoText>
+        <BentoText mono color={c.inkMute} variant="micro">{unit}</BentoText>
       </View>
       <MetricCompareBar actual={value} target={target} height={6} />
       <BentoText variant="micro" color={c.inkFaint}>

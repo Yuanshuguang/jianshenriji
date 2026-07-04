@@ -47,7 +47,12 @@ type FoodVariantFamily =
   | "noodle-style"
   | "sauce-type"
   | "cake-dessert-type"
-  | "sausage-processing";
+  | "sausage-processing"
+  | "rice-cooking-method"
+  | "hotpot-broth-type"
+  | "stir-fry-oil-level"
+  | "porridge-type"
+  | "chinese-pickle-type";
 
 type FoodForVariant = Pick<Food, "id" | "name" | "aliases" | "category">;
 
@@ -99,6 +104,11 @@ const foodVariantFamilyLabels: Record<FoodVariantFamily, string> = {
   "sauce-type": "酱料类型",
   "cake-dessert-type": "甜品类型",
   "sausage-processing": "肠类加工类型",
+  "rice-cooking-method": "米饭做法",
+  "hotpot-broth-type": "火锅锅底类型",
+  "stir-fry-oil-level": "炒菜油量",
+  "porridge-type": "粥品类型",
+  "chinese-pickle-type": "腌制食品类型",
 };
 
 const foodVariantFamilies: Record<FoodVariantFamily, FoodVariantOption[]> = {
@@ -116,8 +126,8 @@ const foodVariantFamilies: Record<FoodVariantFamily, FoodVariantOption[]> = {
     variant("辣卤豆腐脑", "flavor", "咸卤基础上加入辣油或调味料，脂肪更高", { caloriesPer100g: 78, proteinPer100g: 2.8, fatPer100g: 4.2, carbsPer100g: 6 }),
   ],
   "tofu-product": [
-    variant("嫩豆腐", "processing", "包含内酯豆腐、绢豆腐等含水量高的嫩豆腐，适合凉拌、蒸或汤菜估算", { caloriesPer100g: 50, proteinPer100g: 4.2, fatPer100g: 2.5, carbsPer100g: 2.8 }),
-    variant("老豆腐", "processing", "包含北豆腐、卤水豆腐等质地更紧实的豆腐，蛋白和热量略高", { caloriesPer100g: 82, proteinPer100g: 8, fatPer100g: 4.8, carbsPer100g: 3.4 }),
+    variant("嫩豆腐", "processing", "包含内酯豆腐、绢豆腐等含水量高的嫩豆腐，适合凉拌、蒸或汤菜估算", { caloriesPer100g: 50, proteinPer100g: 5.0, fatPer100g: 1.9, carbsPer100g: 3.3 }),
+    variant("老豆腐", "processing", "包含北豆腐、卤水豆腐等质地更紧实的豆腐，蛋白和热量略高", { caloriesPer100g: 98, proteinPer100g: 12.2, fatPer100g: 4.8, carbsPer100g: 1.5 }),
     variant("豆腐干", "processing", "也叫香干或豆干，脱水后单位重量蛋白和热量更高", { caloriesPer100g: 160, proteinPer100g: 17, fatPer100g: 9, carbsPer100g: 4 }),
     variant("油豆腐", "processing", "也叫豆泡，油炸豆制品，脂肪明显高于普通豆腐", { caloriesPer100g: 245, proteinPer100g: 17, fatPer100g: 17, carbsPer100g: 5 }),
     variant("豆腐皮", "processing", "也叫千张、百叶或干豆腐，薄片豆制品，蛋白密度高", { caloriesPer100g: 260, proteinPer100g: 24, fatPer100g: 15, carbsPer100g: 6 }),
@@ -295,6 +305,42 @@ const foodVariantFamilies: Record<FoodVariantFamily, FoodVariantOption[]> = {
     variant("烤肠/香肠", "processing", "油脂更高，街边烤肠按高脂估算", { caloriesPer100g: 260, proteinPer100g: 12, fatPer100g: 20, carbsPer100g: 8 }),
     variant("低脂高蛋白肠", "processing", "蛋白更高、脂肪较低，但仍需看包装配方", { caloriesPer100g: 130, proteinPer100g: 20, fatPer100g: 4, carbsPer100g: 4 }),
   ],
+  "rice-cooking-method": [
+    variant("白米饭", "cooking", "标准蒸白米饭，不加调料", { caloriesPer100g: 116, proteinPer100g: 2.6, fatPer100g: 0.3, carbsPer100g: 25.9 }),
+    variant("蛋炒饭", "cooking", "含鸡蛋和油脂，热量和脂肪升高", { caloriesPer100g: 163, proteinPer100g: 5.5, fatPer100g: 5.0, carbsPer100g: 24.0 }),
+    variant("酱油炒饭", "cooking", "酱油调味，油脂含量适中", { caloriesPer100g: 155, proteinPer100g: 4.0, fatPer100g: 4.5, carbsPer100g: 24.5 }),
+    variant("咖喱饭", "cooking", "含咖喱酱汁，脂肪和碳水升高", { caloriesPer100g: 145, proteinPer100g: 4.5, fatPer100g: 4.0, carbsPer100g: 22.5 }),
+    variant("拌饭/盖浇饭", "cooking", "带浇头和酱汁，热量取决于浇头", { caloriesPer100g: 155, proteinPer100g: 5.0, fatPer100g: 4.5, carbsPer100g: 23.0 }),
+    variant("焖饭/煲仔饭", "cooking", "底部有锅巴，油脂偏多", { caloriesPer100g: 168, proteinPer100g: 5.5, fatPer100g: 6.0, carbsPer100g: 23.5 }),
+  ],
+  "hotpot-broth-type": [
+    variant("牛油麻辣锅", "flavor", "牛油底料脂肪极高，100g底料约450kcal", { caloriesPer100g: 145, proteinPer100g: 1.5, fatPer100g: 12.0, carbsPer100g: 6.0 }),
+    variant("清油麻辣锅", "flavor", "植物油底料，比牛油略低", { caloriesPer100g: 120, proteinPer100g: 1.5, fatPer100g: 8.0, carbsPer100g: 8.0 }),
+    variant("番茄锅", "flavor", "番茄底料，低脂低热量", { caloriesPer100g: 48, proteinPer100g: 1.2, fatPer100g: 0.8, carbsPer100g: 9.0 }),
+    variant("菌汤锅", "flavor", "菌菇底料，清淡低热量", { caloriesPer100g: 42, proteinPer100g: 1.8, fatPer100g: 0.5, carbsPer100g: 7.5 }),
+    variant("清汤锅", "flavor", "骨汤或清水底，热量最低", { caloriesPer100g: 35, proteinPer100g: 1.5, fatPer100g: 1.0, carbsPer100g: 5.0 }),
+    variant("咖喱锅", "flavor", "咖喱椰浆底料，脂肪和碳水较高", { caloriesPer100g: 85, proteinPer100g: 2.5, fatPer100g: 3.5, carbsPer100g: 11.0 }),
+    variant("椰子鸡锅", "flavor", "椰子水底，清甜低脂", { caloriesPer100g: 55, proteinPer100g: 2.0, fatPer100g: 1.5, carbsPer100g: 8.5 }),
+  ],
+  "stir-fry-oil-level": [
+    variant("少油版", "fatLevel", "家庭少油炒法，油脂减半", { caloriesPer100g: 0, proteinPer100g: 0, fatPer100g: -5, carbsPer100g: 0 }),
+    variant("正常油量", "fatLevel", "标准餐厅炒菜油量，约10-15g/100g", { caloriesPer100g: 0, proteinPer100g: 0, fatPer100g: 0, carbsPer100g: 0 }),
+    variant("多油版", "fatLevel", "油量偏多，脂肪增加约50%", { caloriesPer100g: 0, proteinPer100g: 0, fatPer100g: 7, carbsPer100g: 0 }),
+    variant("重油版", "fatLevel", "油量大，如水煮类浇热油，脂肪翻倍", { caloriesPer100g: 0, proteinPer100g: 0, fatPer100g: 15, carbsPer100g: 0 }),
+  ],
+  "porridge-type": [
+    variant("白粥", "flavor", "纯大米粥，热量密度低", { caloriesPer100g: 46, proteinPer100g: 1.1, fatPer100g: 0.1, carbsPer100g: 10.0 }),
+    variant("肉粥", "flavor", "含肉末或肉丝，蛋白和热量升高", { caloriesPer100g: 68, proteinPer100g: 3.5, fatPer100g: 1.5, carbsPer100g: 9.5 }),
+    variant("甜粥", "flavor", "加糖或红枣/红豆，碳水升高", { caloriesPer100g: 65, proteinPer100g: 1.2, fatPer100g: 0.2, carbsPer100g: 14.5 }),
+    variant("杂粮粥", "flavor", "多种谷物混合，纤维丰富", { caloriesPer100g: 58, proteinPer100g: 1.8, fatPer100g: 0.5, carbsPer100g: 12.0 }),
+    variant("海鲜粥", "flavor", "含虾/蟹/鱼，蛋白较高", { caloriesPer100g: 62, proteinPer100g: 4.0, fatPer100g: 0.8, carbsPer100g: 9.5 }),
+  ],
+  "chinese-pickle-type": [
+    variant("泡菜/酸菜", "processing", "发酵腌制，低热量高钠", { caloriesPer100g: 22, proteinPer100g: 1.2, fatPer100g: 0.3, carbsPer100g: 4.0 }),
+    variant("酱菜/咸菜", "processing", "酱料腌制，钠含量高", { caloriesPer100g: 35, proteinPer100g: 2.0, fatPer100g: 0.5, carbsPer100g: 6.5 }),
+    variant("榨菜", "processing", "茎用芥菜腌制，含辣椒油", { caloriesPer100g: 33, proteinPer100g: 2.1, fatPer100g: 0.8, carbsPer100g: 5.4 }),
+    variant("糖蒜/腊八蒜", "processing", "糖醋腌制，含糖量较高", { caloriesPer100g: 68, proteinPer100g: 1.5, fatPer100g: 0.2, carbsPer100g: 15.0 }),
+  ],
 };
 
 const familyRules: FamilyRule[] = [
@@ -431,6 +477,32 @@ const familyRules: FamilyRule[] = [
     terms: ["鸡胸", "鸡胸肉", "鸡腿", "鸡肉", "牛肉", "瘦牛肉", "猪肉", "瘦肉", "鱼肉", "鱼片", "虾", "虾仁", "三文鱼", "鳕鱼", "鱿鱼", "蛤蜊", "生蚝", "扇贝", "螃蟹"],
     categories: ["protein"],
     exclude: ["卤牛肉", "酱牛肉", "炸鸡", "烤鸭", "白切鸡", "红烧", "清蒸", "水煮鱼", "酸菜鱼", "糖醋鱼", "鱼香肉丝", "宫保鸡丁", "黄焖鸡", "鸡肉肠", "即食鸡胸肉", "牛肉干", "猪肉脯", "鱼豆腐"],
+  },
+  {
+    family: "rice-cooking-method",
+    terms: ["米饭", "炒饭", "蛋炒饭", "盖浇饭", "拌饭", "焖饭", "煲仔饭", "咖喱饭", "饭"],
+    exclude: ["饭团", "糯米饭", "抓饭", "手抓饭", "石锅拌饭"],
+    requireContextTerm: true,
+  },
+  {
+    family: "hotpot-broth-type",
+    terms: ["火锅锅底", "火锅底料", "牛油火锅", "清油火锅", "番茄锅", "菌汤锅", "清汤火锅", "咖喱锅", "椰子鸡"],
+    exclude: ["火锅食材", "火锅丸子"],
+  },
+  {
+    family: "stir-fry-oil-level",
+    terms: ["少油", "多油", "重油", "油大", "少油版", "多油版"],
+    requireContextTerm: true,
+  },
+  {
+    family: "porridge-type",
+    terms: ["白粥", "肉粥", "甜粥", "杂粮粥", "海鲜粥", "红薯粥", "绿豆粥", "南瓜粥", "腊八粥"],
+    exclude: ["粥底火锅"],
+  },
+  {
+    family: "chinese-pickle-type",
+    terms: ["泡菜", "酸菜", "酱菜", "咸菜", "榨菜", "糖蒜", "腊八蒜", "腌萝卜", "腌黄瓜"],
+    exclude: ["泡菜饼", "酸菜鱼", "榨菜肉丝"],
   },
 ];
 
@@ -621,6 +693,42 @@ const explicitVariantTerms: Partial<Record<FoodVariantFamily, Array<{ label: str
     { label: "火腿肠", terms: ["火腿肠"] },
     { label: "烤肠/香肠", terms: ["烤肠", "香肠", "热狗肠"] },
     { label: "低脂高蛋白肠", terms: ["低脂", "高蛋白"] },
+  ],
+  "rice-cooking-method": [
+    { label: "白米饭", terms: ["白米饭", "白饭"] },
+    { label: "蛋炒饭", terms: ["蛋炒饭", "鸡蛋炒饭"] },
+    { label: "酱油炒饭", terms: ["酱油炒饭", "老干妈炒饭"] },
+    { label: "咖喱饭", terms: ["咖喱饭", "咖喱鸡肉饭"] },
+    { label: "拌饭/盖浇饭", terms: ["拌饭", "盖浇饭", "浇头饭"] },
+    { label: "焖饭/煲仔饭", terms: ["焖饭", "煲仔饭", "石锅饭"] },
+  ],
+  "hotpot-broth-type": [
+    { label: "牛油麻辣锅", terms: ["牛油", "麻辣锅底"] },
+    { label: "清油麻辣锅", terms: ["清油", "植物油锅底"] },
+    { label: "番茄锅", terms: ["番茄锅", "番茄底料"] },
+    { label: "菌汤锅", terms: ["菌汤", "菌菇锅"] },
+    { label: "清汤锅", terms: ["清汤锅", "骨汤锅"] },
+    { label: "咖喱锅", terms: ["咖喱锅", "咖喱底料"] },
+    { label: "椰子鸡锅", terms: ["椰子鸡", "椰子水锅"] },
+  ],
+  "stir-fry-oil-level": [
+    { label: "少油版", terms: ["少油", "低油", "减油"] },
+    { label: "正常油量", terms: ["正常", "标准"] },
+    { label: "多油版", terms: ["多油", "油大", "油多"] },
+    { label: "重油版", terms: ["重油", "大油", "宽油"] },
+  ],
+  "porridge-type": [
+    { label: "白粥", terms: ["白粥", "清粥"] },
+    { label: "肉粥", terms: ["肉粥", "瘦肉粥", "皮蛋瘦肉粥"] },
+    { label: "甜粥", terms: ["甜粥", "红枣粥", "红豆粥"] },
+    { label: "杂粮粥", terms: ["杂粮粥", "八宝粥", "腊八粥"] },
+    { label: "海鲜粥", terms: ["海鲜粥", "虾粥"] },
+  ],
+  "chinese-pickle-type": [
+    { label: "泡菜/酸菜", terms: ["泡菜", "酸菜", "辣白菜"] },
+    { label: "酱菜/咸菜", terms: ["酱菜", "咸菜", "腌菜"] },
+    { label: "榨菜", terms: ["榨菜", "涪陵榨菜"] },
+    { label: "糖蒜/腊八蒜", terms: ["糖蒜", "腊八蒜"] },
   ],
 };
 
@@ -863,6 +971,17 @@ export function resolveFoodByVariant(food: Food, variantLabel?: string): Food {
   const option = familyOptions.find((item) => item.label === variantLabel)
     ?? getFoodVariantOptions(food).find((item) => item.label === variantLabel);
   if (!option?.profile) return food;
+
+  // 油量变体使用增量叠加（而非覆盖），因为不同炒菜的基准油量不同
+  if (family === "stir-fry-oil-level") {
+    const oilDelta = option.profile.fatPer100g ?? 0;
+    const oilCalorieDelta = oilDelta * 9; // 脂肪 9kcal/g
+    return {
+      ...food,
+      caloriesPer100g: Math.max(0, food.caloriesPer100g + oilCalorieDelta),
+      fatPer100g: Math.max(0, Math.round((food.fatPer100g + oilDelta) * 10) / 10),
+    };
+  }
 
   return {
     ...food,

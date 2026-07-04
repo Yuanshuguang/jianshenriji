@@ -49,10 +49,10 @@
         {
           "android": {
             "enableProguardInReleaseBuilds": false,
-            "newArchEnabled": false,
+            "newArchEnabled": true,
             "extraMavenRepos": [],
             "buildProperties": {
-              "reactNativeWorklets.newArchEnabled": "false"
+              "reactNativeWorklets.newArchEnabled": "true"
             },
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,

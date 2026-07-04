@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Pressable, View } from "react-native";
-import { colors, GlassTile, Text as BentoText, type SemanticColor } from "./bento";
+import { AppIcon, colors, GlassTile, Text as BentoText, type SemanticColor } from "./bento";
 import type { DailyLogEntry } from "@fitness-calendar/shared";
 
 function formatDateStr(d: Date): string {
@@ -40,7 +40,7 @@ export function CalendarGrid({
       <View style={{ flexDirection: "row" }}>
         {weekHeaders.map((weekDay, index) => (
           <View key={`${weekDay}-${index}`} style={{ flex: 1, alignItems: "center", paddingVertical: 4 }}>
-            <BentoText variant="micro" color={colors.inkMute} style={{ fontSize: 11 }}>{weekDay}</BentoText>
+            <BentoText variant="micro" color={colors.inkMute}>{weekDay}</BentoText>
           </View>
         ))}
       </View>
@@ -114,9 +114,9 @@ export function MonthNavigator({ year, month, onPrev, onNext }: {
   const label = year + "年" + month + "月";
   return (
     <View style={{flexDirection:"row",alignItems:"center",justifyContent:"space-between"}}>
-      <Pressable onPress={onPrev} style={{paddingHorizontal:12,paddingVertical:6}}><BentoText color={colors.accent} weight="bold" style={{fontSize:16}}>{String.fromCharCode(8249)}</BentoText></Pressable>
+      <Pressable onPress={onPrev} style={{paddingHorizontal:12,paddingVertical:6}}><View style={{transform:[{rotate:"180deg"}]}}><AppIcon name="chevronRight" size={20} color={colors.accent} /></View></Pressable>
       <BentoText weight="bold" color={colors.ink} style={{fontSize:16}}>{label}</BentoText>
-      <Pressable onPress={onNext} style={{paddingHorizontal:12,paddingVertical:6}}><BentoText color={colors.accent} weight="bold" style={{fontSize:16}}>{String.fromCharCode(8250)}</BentoText></Pressable>
+      <Pressable onPress={onNext} style={{paddingHorizontal:12,paddingVertical:6}}><AppIcon name="chevronRight" size={20} color={colors.accent} /></Pressable>
     </View>
   );
 }

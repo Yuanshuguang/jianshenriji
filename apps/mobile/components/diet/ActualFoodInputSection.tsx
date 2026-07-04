@@ -34,7 +34,8 @@ export function ActualFoodInputSection({
   foodTagEdits: Record<string, { hidden?: boolean; label?: string; calories?: number }>;
   onEditTag: (key: string, label: string, calories: string) => void;
 }) {
-  const c = useBentoTheme().colors;
+  const _theme = useBentoTheme();
+  const c = _theme.colors;
   return (
     <View style={{ gap: 8 }}>
       <TextInput
@@ -43,7 +44,7 @@ export function ActualFoodInputSection({
         onChangeText={onTextChange}
         placeholder="一碗面 两棵拳头大的西红柿"
         placeholderTextColor={c.inkFaint}
-        style={getRecordInputStyle(c)}
+        style={getRecordInputStyle(c, _theme.fontScale)}
       />
       {matched.length > 0 ? (
         <View style={{ gap: 6, paddingTop: 4, borderTopWidth: 1, borderTopColor: c.glassBorder }}>
@@ -63,7 +64,7 @@ export function ActualFoodInputSection({
                   <Badge color="accent" size="sm">
                     {`${label} ${calories} kcal`}
                     {needsDetails ? (
-                      <BentoText weight="bold" color={c.warn} style={{ fontSize: 10 }}>
+                      <BentoText weight="bold" color={c.warn} style={{ fontSize: 11 }}>
                         {" ?"}
                       </BentoText>
                     ) : null}
@@ -92,6 +93,7 @@ export function FoodTagEditorModal({
   onDelete: (key: string) => void;
 }) {
   const c = useBentoTheme().colors;
+  const fs = useBentoTheme().fontScale;
   const [label, setLabel] = useState(edit?.label ?? "");
   const [calories, setCalories] = useState(edit?.calories ?? "");
 
@@ -108,8 +110,8 @@ export function FoodTagEditorModal({
       <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: c.scrim, justifyContent: "center", padding: 20 }}>
         <Pressable onPress={(e) => e.stopPropagation()} style={{ borderRadius: 18, backgroundColor: c.bg, borderWidth: 1, borderColor: c.glassBorderBright, padding: 16, gap: 10 }}>
           <BentoText weight="bold" variant="caption" color={c.ink}>编辑识别标签</BentoText>
-          <TextInput value={label} onChangeText={setLabel} placeholder="标签文本" placeholderTextColor={c.inkFaint} style={getInputStyle(c)} />
-          <TextInput value={calories} onChangeText={setCalories} keyboardType="numeric" placeholder="热量 kcal" placeholderTextColor={c.inkFaint} style={getInputStyle(c)} />
+          <TextInput value={label} onChangeText={setLabel} placeholder="标签文本" placeholderTextColor={c.inkFaint} style={getInputStyle(c, fs)} />
+          <TextInput value={calories} onChangeText={setCalories} keyboardType="numeric" placeholder="热量 kcal" placeholderTextColor={c.inkFaint} style={getInputStyle(c, fs)} />
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Button variant="glass" color="warn" block onPress={() => onDelete(edit.key)}>删除标签</Button>
             <Button variant="filled" color="accent" block onPress={() => onSave({ key: edit.key, label, calories })}>保存更正</Button>

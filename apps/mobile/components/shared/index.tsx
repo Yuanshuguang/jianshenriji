@@ -4,7 +4,7 @@
  */
 import { Children, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
-import { Text as BentoText, radius, useBentoTheme } from "../bento";
+import { AppIcon, type AppIconName, Text as BentoText, radius, useBentoTheme } from "../bento";
 
 /* ── SectionHeader ─────────────────────────────────────────── */
 
@@ -49,7 +49,8 @@ export function SettingsGroup({ children }: { children: ReactNode }) {
 /* ── SettingsRow ───────────────────────────────────────────── */
 
 export function SettingsRow({
-  icon,
+  iconName,
+  iconNode,
   label,
   subtitle,
   trailing,
@@ -57,7 +58,10 @@ export function SettingsRow({
   showArrow = true,
   dangerous = false,
 }: {
-  icon?: string;
+  /** Lucide 图标名 — 唯一合法的图标传入方式 */
+  iconName?: AppIconName;
+  /** 自定义图标 ReactNode — 如带颜色的 AppIcon 组合 */
+  iconNode?: ReactNode;
   label: string;
   subtitle?: string;
   trailing?: ReactNode;
@@ -67,6 +71,9 @@ export function SettingsRow({
 }) {
   const c = useBentoTheme().colors;
   const isPressable = !!onPress;
+  const iconColor = dangerous ? c.warn : c.accent;
+
+  const resolvedIcon = iconNode ?? (iconName ? <AppIcon name={iconName} size={18} color={iconColor} /> : null);
 
   const content = (
     <View
@@ -79,15 +86,11 @@ export function SettingsRow({
         minHeight: 52,
       }}
     >
-      {icon ? (
-        typeof icon === "string" ? (
-          <BentoText style={{ fontSize: 22, width: 28, textAlign: "center" }}>{icon}</BentoText>
-        ) : (
-          <View style={{ width: 28, alignItems: "center", justifyContent: "center" }}>{icon}</View>
-        )
+      {resolvedIcon ? (
+        <View style={{ width: 28, alignItems: "center", justifyContent: "center" }}>{resolvedIcon}</View>
       ) : null}
       <View style={{ flex: 1, gap: 2 }}>
-        <BentoText weight="medium" variant="body" color={dangerous ? c.warn : "#F7FAFF"} style={{ fontSize: 15 }}>
+        <BentoText weight="medium" variant="body" color={dangerous ? c.warn : "#F7FAFF"}>
           {label}
         </BentoText>
         {subtitle ? (
@@ -98,9 +101,7 @@ export function SettingsRow({
       </View>
       {trailing}
       {showArrow && onPress ? (
-        <BentoText style={{ fontSize: 16, color: c.inkFaint, width: 16, textAlign: "center" }}>
-          {">"}
-        </BentoText>
+        <AppIcon name="chevronRight" size={16} color={c.inkFaint} />
       ) : null}
     </View>
   );
@@ -148,14 +149,12 @@ export function ExpandableRow({
         })}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <BentoText style={{ fontSize: 18, lineHeight: 22 }}>{icon}</BentoText>
+          {icon}
           <BentoText variant="body" weight="semibold" color="#F7FAFF">{label}</BentoText>
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           {value ? <BentoText variant="caption" color={c.inkMute}>{value}</BentoText> : null}
-          <BentoText variant="caption" color={c.inkFaint} style={{ fontSize: 16 }}>
-            {expanded ? "⌄" : "›"}
-          </BentoText>
+          <AppIcon name={expanded ? "chevronDown" : "chevronRight"} size={16} color={c.inkFaint} strokeWidth={2} />
         </View>
       </Pressable>
       {expanded && children ? (

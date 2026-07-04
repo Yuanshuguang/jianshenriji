@@ -28,7 +28,7 @@ export function CompactTrainingMetric({ label, value, unit, color }: {
         {label}
       </BentoText>
       <BentoText mono weight="bold" color={color} style={{ fontSize: 13 }} numberOfLines={1}>
-        {value}{unit ? <BentoText mono color={color} style={{ fontSize: 9 }}> {unit}</BentoText> : null}
+        {value}{unit ? <BentoText mono color={color} variant="micro"> {unit}</BentoText> : null}
       </BentoText>
     </View>
   );

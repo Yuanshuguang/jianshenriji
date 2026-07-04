@@ -1,4 +1,4 @@
-import { calculateGoalEnergyPlan, generateTrainingQueue, type DailyLogEntry, type DynamicAdjustmentSettings, type Food, type Gender, type MealAdjustmentKey, type MealPlannerAdjustments, type MuscleGroup, type NutritionAdjustmentKey, type TrainingAdjustmentKey } from "@fitness-calendar/shared";
+import { calculateGoalEnergyPlan, generateTrainingQueue, type AtonementPreference, type DailyLogEntry, type DynamicAdjustmentSettings, type Food, type Gender, type MealAdjustmentKey, type MealPlannerAdjustments, type MuscleGroup, type NutritionAdjustmentKey, type TrainingAdjustmentKey } from "@fitness-calendar/shared";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import { create } from "zustand";
@@ -199,6 +199,8 @@ type FitnessState = {
   dynamicAdjustmentEnabled: boolean;
   /** 动态调整细分规则：控制哪些数据维度可以参与自动调整。 */
   dynamicAdjustmentSettings: DynamicAdjustmentSettings;
+  /** 赎罪机制：控制热量差额按天偿还、顺延目标或混合处理。 */
+  dynamicAtonementPreference: AtonementPreference;
   /** 外观模式：日间或夜间。 */
   appearanceMode: AppearanceMode;
   /** 字体缩放档位：紧凑/标准/放大/超大，默认标准。 */
@@ -230,6 +232,7 @@ type FitnessState = {
   pinExerciseToBottom: (exerciseId: string) => void;
   setDynamicAdjustmentEnabled: (enabled: boolean) => void;
   setDynamicAdjustmentSettings: (settings: DynamicAdjustmentSettings) => void;
+  setDynamicAtonementPreference: (preference: AtonementPreference) => void;
   setAppearanceMode: (mode: AppearanceMode) => void;
   setFontScale: (level: FontScaleLevel) => void;
   setDashboardStyle: (style: DashboardStyle) => void;
@@ -432,6 +435,11 @@ export const defaultDynamicAdjustmentSettings: DynamicAdjustmentSettings = {
   }
 };
 
+export const defaultDynamicAtonementPreference: AtonementPreference = {
+  adjustmentMode: "hybrid",
+  repayDays: 5
+};
+
 export const useFitnessStore = create<FitnessState>()(
   persist(
     (set, get) => ({
@@ -465,6 +473,7 @@ export const useFitnessStore = create<FitnessState>()(
       exerciseLibraryPreferences: defaultExerciseLibraryPreferences,
       dynamicAdjustmentEnabled: true,
       dynamicAdjustmentSettings: defaultDynamicAdjustmentSettings,
+      dynamicAtonementPreference: defaultDynamicAtonementPreference,
       appearanceMode: "dark",
       fontScale: "normal",
       dashboardStyle: "bullet",
@@ -538,6 +547,7 @@ export const useFitnessStore = create<FitnessState>()(
         })),
       setDynamicAdjustmentEnabled: (enabled) => set({ dynamicAdjustmentEnabled: enabled }),
       setDynamicAdjustmentSettings: (dynamicAdjustmentSettings) => set({ dynamicAdjustmentSettings }),
+      setDynamicAtonementPreference: (dynamicAtonementPreference) => set({ dynamicAtonementPreference: normalizeDynamicAtonementPreference(dynamicAtonementPreference) }),
       setAppearanceMode: (mode) => set({ appearanceMode: mode }),
       setFontScale: (fontScale) => set({ fontScale }),
       setDashboardStyle: (dashboardStyle) => set({ dashboardStyle }),
@@ -586,7 +596,8 @@ export const useFitnessStore = create<FitnessState>()(
           fontScale: state.fontScale,
           dashboardStyle: state.dashboardStyle,
           dynamicAdjustmentEnabled: state.dynamicAdjustmentEnabled,
-          dynamicAdjustmentSettings: state.dynamicAdjustmentSettings
+          dynamicAdjustmentSettings: state.dynamicAdjustmentSettings,
+          dynamicAtonementPreference: state.dynamicAtonementPreference
         })),
       resetTodayRecords: () =>
         set({
@@ -673,6 +684,7 @@ export const useFitnessStore = create<FitnessState>()(
             bottomExerciseIds: state.exerciseLibraryPreferences?.bottomExerciseIds ?? []
           },
           dynamicAdjustmentSettings: mergeDynamicAdjustmentSettings(state.dynamicAdjustmentSettings),
+          dynamicAtonementPreference: normalizeDynamicAtonementPreference(state.dynamicAtonementPreference),
           dietPreference: normalizeDietPreference(state.dietPreference),
           mealPlanCustomAdjustment: normalizeMealPlanCustomAdjustment(state.mealPlanCustomAdjustment),
           fontScale: state.fontScale ?? "normal",
@@ -711,6 +723,7 @@ export const useFitnessStore = create<FitnessState>()(
         exerciseLibraryPreferences: state.exerciseLibraryPreferences,
         dynamicAdjustmentEnabled: state.dynamicAdjustmentEnabled,
         dynamicAdjustmentSettings: state.dynamicAdjustmentSettings,
+        dynamicAtonementPreference: state.dynamicAtonementPreference,
         appearanceMode: state.appearanceMode,
         fontScale: state.fontScale,
         dashboardStyle: state.dashboardStyle,
@@ -759,6 +772,16 @@ function mergeDynamicAdjustmentSettings(settings?: Partial<DynamicAdjustmentSett
     training: { ...defaultDynamicAdjustmentSettings.training, ...settings?.training },
     muscles: { ...defaultDynamicAdjustmentSettings.muscles, ...settings?.muscles }
   };
+}
+
+function normalizeDynamicAtonementPreference(preference?: Partial<AtonementPreference>): AtonementPreference {
+  const adjustmentMode = preference?.adjustmentMode === "repay-by-days" || preference?.adjustmentMode === "extend-deadline" || preference?.adjustmentMode === "hybrid"
+    ? preference.adjustmentMode
+    : defaultDynamicAtonementPreference.adjustmentMode;
+  const repayDays = Number.isFinite(preference?.repayDays)
+    ? Math.max(1, Math.min(30, Math.round(Number(preference?.repayDays))))
+    : defaultDynamicAtonementPreference.repayDays;
+  return { adjustmentMode, repayDays };
 }
 
 function normalizeDietPreference(preference?: Partial<DietPreferenceDraft>): DietPreferenceDraft {

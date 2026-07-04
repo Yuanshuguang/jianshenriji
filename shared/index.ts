@@ -1,11 +1,14 @@
 ﻿export * from "./design-tokens";
+export * from "./calorie-debt-ledger";
 export * from "./dynamic-plan-engine";
+export * from "./calorie-debt-ledger";
 export * from "./data/diet-plan-database";
 export * from "./data/meal-planner-solver";
 export * from "./data/training-diet-rules";
 export * from "./data/training-schedule-resolver";
 import { categoryFallbackFoods } from "./data/category-fallback-foods";
 import { csvGeneratedFoods } from "./data/curated-foods";
+import { chineseSupplementFoods } from "./data/chinese-foods-supplement";
 import { solveMealPlan } from "./data/meal-planner-solver";
 
 export type Gender = "male" | "female";
@@ -48,7 +51,27 @@ export type Food = {
   servingUnits?: ServingUnit[];
   source?: "builtin" | "custom" | "online";
   confidenceLevel?: "high" | "reference" | "estimate";
+  /** 典型烹饪用油量(g/100g)，用于炒菜/煎炸类食物。CFC熟食条目的热量已含此油量，此字段供"少油/多油"变体计算参考 */
+  cookingOilPer100g?: number;
+  /** 烹饪方式标记：raw/steamed/boiled/stir-fried/deep-fried/pan-fried/roasted/braised/stewed/smoked */
+  cookingMethod?: CookingMethod;
+  /** 食物粒度层级，供本体论分类使用 */
+  foodGranularity?: "generic" | "ingredient" | "specific-food" | "prepared-dish" | "packaged-sku";
 };
+
+export type CookingMethod =
+  | "raw"
+  | "steamed"
+  | "boiled"
+  | "stir-fried"
+  | "deep-fried"
+  | "pan-fried"
+  | "roasted"
+  | "braised"
+  | "stewed"
+  | "smoked"
+  | "pickled"
+  | "cold-mixed";
 
 export type FoodConfidenceLevel = "high" | "reference" | "estimate";
 
@@ -66,9 +89,28 @@ export type EnergyPlan = NutritionTotals & {
   dailyDeficit: number;
 };
 
+export type CalorieDebtSourceKey = "breakfast" | "lunch" | "dinner" | "snack" | "training" | "other";
+export type CalorieDebtSourceStat = {
+  key: CalorieDebtSourceKey;
+  label: string;
+  calories: number;
+};
+
+export type CalorieDebtSnapshot = {
+  foodDelta: number;
+  trainingDelta: number;
+  netDelta: number;
+  openingBalance?: number;
+  closingBalance?: number;
+  repaidCalories?: number;
+  sourceBreakdown: CalorieDebtSourceStat[];
+  note?: string;
+};
+
 export type DailyLogEntry = {
   date: string;
   targetCalories: number;
+  targetMacros?: NutritionTotals;
   actualIntake: NutritionTotals;
   actualFoodText: string;
   actualMealTexts: {
@@ -85,6 +127,7 @@ export type DailyLogEntry = {
     fatigue: number;
   };
   isComplete: boolean;
+  debtSnapshot?: CalorieDebtSnapshot;
 };
 
 export type Exercise = {
@@ -130,7 +173,7 @@ export const foods: Food[] = [
   food("sweet-potato", "红薯", ["地瓜", "番薯"], "staple", 86, 1.6, 0.1, 20, 150, [["个", 150], ["根", 150]]),
   food("corn", "玉米", ["玉米棒"], "staple", 112, 4, 1.2, 22, 180, [["根", 180]]),
   food("egg", "鸡蛋", ["蛋", "水煮蛋", "煎蛋"], "protein", 144, 13.3, 8.8, 2.8, 55, [["个", 55], ["颗", 55], ["只", 55]]),
-  food("chicken-breast", "鸡胸肉", ["鸡胸", "鸡肉"], "protein", 133, 24, 2.5, 0, 120, [["块", 120]]),
+  food("chicken-breast", "鸡胸肉", ["鸡胸", "鸡肉"], "protein", 133, 19.4, 5.0, 2.5, 120, [["块", 120]]),
   food("beef", "牛肉", ["卤牛肉", "酱牛肉"], "protein", 125, 20, 4.2, 1, 120, [["块", 120], ["份", 120]]),
   food("lean-beef", "瘦牛肉", ["牛里脊", "牛臀肉", "低脂牛肉"], "protein", 125, 20, 4.2, 1, 120, [["块", 120], ["份", 120]]),
   food("pork-lean", "瘦猪肉", ["瘦肉", "猪肉"], "protein", 143, 20, 6.2, 1.5, 100, [["块", 100]]),
@@ -138,7 +181,7 @@ export const foods: Food[] = [
   food("shrimp", "虾", ["虾仁", "大虾"], "protein", 99, 20, 1.5, 1, 120, [["只", 20]]),
   food("tofu", "豆腐", ["嫩豆腐", "老豆腐"], "protein", 82, 8, 4.8, 3.4, 150, [["块", 150]]),
   food("tofu-pudding", "豆腐脑", ["豆腐花", "豆花", "咸豆腐脑", "甜豆腐脑", "咸豆花", "甜豆花"], "dish", 48, 2.6, 1.8, 5.4, 250, [["碗", 250], ["份", 250]]),
-  food("milk", "牛奶", ["纯牛奶"], "drink", 54, 3.2, 3.2, 3.4, 250, [["杯", 250], ["盒", 250]]),
+  food("milk", "牛奶", ["纯牛奶"], "drink", 54, 3.0, 3.2, 3.4, 250, [["杯", 250], ["盒", 250]]),
   food("yogurt", "酸奶", ["无糖酸奶", "希腊酸奶"], "drink", 72, 3.5, 2.7, 8.5, 180, [["杯", 180], ["盒", 180]]),
   food("protein-powder", "蛋白粉", ["乳清蛋白", "蛋白饮"], "supplement", 390, 75, 6, 8, 30, [["勺", 30]]),
   food("tomato", "西红柿", ["番茄"], "vegetable", 15, 0.9, 0.2, 3.3, 180, [["个", 180], ["颗", 180], ["拳头", 160]]),
@@ -153,10 +196,10 @@ export const foods: Food[] = [
   food("apple", "苹果", ["红苹果"], "fruit", 53, 0.3, 0.2, 14, 180, [["个", 180]]),
   food("orange", "橙子", ["橙", "橘子"], "fruit", 48, 0.8, 0.2, 11, 180, [["个", 180]]),
   food("grape", "葡萄", ["提子"], "fruit", 45, 0.4, 0.2, 10.3, 150, [["串", 150]]),
-  food("watermelon", "西瓜", ["瓜"], "fruit", 31, 0.6, 0.1, 7.9, 300, [["块", 300]]),
+  food("watermelon", "西瓜", ["瓜", "麒麟瓜", "甘美西瓜", "黑美人西瓜"], "fruit", 31, 0.6, 0.1, 7.9, 300, [["块", 300]]),
   food("tomato-egg", "西红柿炒鸡蛋", ["番茄炒蛋", "番茄炒鸡蛋"], "dish", 95, 5.6, 6.2, 4.3, 250, [["盘", 300], ["份", 250]]),
-  food("dumplings", "水饺", ["饺子", "家常水饺"], "dish", 210, 8, 7, 28, 250, [["个", 25], ["个", 25], ["碗", 250], ["份", 250], ["盘", 250]]),
-  food("pork-scallion-dumplings", "猪肉大葱水饺", ["猪肉大葱馅水饺", "猪肉大葱馅儿水饺", "猪肉大葱饺子", "猪肉大葱馅饺子", "水饺", "饺子"], "dish", 220, 8, 8, 28, 250, [["个", 25], ["只", 25], ["盘", 250], ["份", 250]]),
+  food("dumplings", "水饺", ["饺子", "家常水饺"], "dish", 210, 8, 7, 28, 250, [["个", 25], ["颗", 25], ["只", 25], ["碗", 250], ["份", 250], ["盘", 250]]),
+  food("pork-scallion-dumplings", "猪肉大葱水饺", ["猪肉大葱馅水饺", "猪肉大葱馅儿水饺", "猪肉大葱饺子", "猪肉大葱馅饺子", "水饺", "饺子"], "dish", 220, 8, 8, 28, 250, [["个", 25], ["颗", 25], ["只", 25], ["盘", 250], ["份", 250]]),
   food("preserved-egg-pork-congee", "皮蛋瘦肉粥", ["皮蛋粥", "瘦肉粥"], "dish", 65, 3.5, 2.2, 8, 300, [["碗", 300], ["份", 300]]),
   food("huangmenji", "黄焖鸡", ["黄焖鸡米饭"], "fastfood", 168, 11, 8.5, 12, 350, [["份", 450]]),
   food("fried-rice", "蛋炒饭", ["炒饭"], "fastfood", 188, 6, 7, 26, 350, [["份", 400], ["碗", 300]]),
@@ -176,7 +219,7 @@ export const foods: Food[] = [
   food("chocolate", "巧克力", ["黑巧", "牛奶巧克力"], "snack", 546, 5, 31, 61, 30, [["块", 30]]),
   food("cashew", "腰果", ["腰果仁"], "snack", 560, 17, 44, 30, 25, [["把", 25], ["包", 30], ["袋", 80]]),
   food("almond", "巴旦木", ["杏仁", "扁桃仁"], "snack", 580, 21, 50, 22, 25, [["把", 25], ["包", 30], ["袋", 80]]),
-  food("walnut", "核桃", ["核桃仁"], "snack", 646, 15, 65, 14, 25, [["把", 25], ["包", 30], ["个", 8]]),
+  food("walnut", "核桃", ["核桃仁"], "snack", 646, 14.9, 58.8, 19.1, 25, [["把", 25], ["包", 30], ["个", 8]]),
   food("pistachio", "开心果", ["开心果仁"], "snack", 560, 20, 45, 28, 25, [["把", 25], ["包", 30], ["袋", 80]]),
   food("chestnut", "板栗", ["栗子", "熟板栗", "烤板栗", "糖炒栗子"], "snack", 214, 4.8, 1.5, 46, 10, [["个", 10], ["颗", 10], ["把", 50]]),
   food("nuts", "坚果", ["混合坚果", "每日坚果"], "snack", 600, 18, 50, 22, 25, [["把", 25], ["包", 30]]),
@@ -205,21 +248,19 @@ export const foods: Food[] = [
   food("mooncake", "月饼", ["五仁月饼", "蛋黄莲蓉月饼", "豆沙月饼"], "snack", 430, 6, 22, 60, 100, [["个", 100], ["块", 100]]),
   food("huangzhuang-mooncake", "黄庄月饼", ["黄庄小月饼", "迷你月饼"], "snack", 400, 6, 20, 55, 45, [["个", 45], ["块", 45]]),
   food("egg-yolk-pastry-light", "低脂蛋黄酥", ["蛋黄酥", "轻蛋黄酥"], "snack", 333, 7, 18, 36, 45, [["个", 45], ["个", 45]]),
-  food("hunan-chili-fried-pork", "辣椒炒肉", ["湖南辣椒炒肉", "农家辣椒炒肉", "小炒肉"], "dish", 185, 12, 13, 5, 300, [["份", 300], ["盘", 300]]),
+  food("hunan-chili-fried-pork", "辣椒炒肉", ["湖南辣椒炒肉", "农家辣椒炒肉", "小炒肉", "青椒炒肉"], "dish", 185, 12, 13, 5, 300, [["份", 300], ["盘", 300]]),
   food("chicken-oat-onigiri", "鸡胸燕麦饭团", ["鸡胸饭团", "燕麦鸡肉饭团", "鸡肉燕麦饭团"], "staple", 185, 9, 4, 28, 110, [["个", 110], ["个", 110]]),
   food("spicy-peanuts", "麻辣花生", ["香辣花生", "酒鬼花生", "辣味花生"], "snack", 590, 24, 46, 22, 30, [["把", 25], ["包", 80], ["袋", 80]]),
   food("peanuts", "花生", ["花生仁", "花生米", "落花生"], "snack", 567, 25.8, 49.2, 16.1, 30, [["把", 30], ["份", 30]]),
   food("boiled-peanuts", "水煮花生", ["煮花生", "盐水花生"], "snack", 313, 12, 25.4, 13, 30, [["把", 30], ["份", 30]]),
   food("fried-peanuts", "油炸花生", ["炒花生", "炸花生"], "snack", 583, 22.2, 47.1, 26.2, 30, [["把", 30], ["份", 30]]),
   food("garlic-bread-crisps", "蒜香面包脆片", ["蒜香面包干", "蒜香吐司脆", "面包脆片", "蒜香脆片"], "snack", 400, 9, 12, 66, 30, [["袋", 30], ["包", 30], ["片", 30], ["个", 10]]),
-  food("rice-ball", "饭团", ["米饭团", "三角饭团", "金枪鱼饭团", "便利店饭团", "便利店金枪鱼饭团"], "staple", 180, 5, 4, 30, 110, [["个", 110], ["个", 110]]),
+  food("rice-ball", "饭团", ["米饭团", "三角饭团", "金枪鱼饭团", "便利店饭团", "便利店金枪鱼饭团"], "staple", 180, 5, 4, 30, 110, [["个", 110]]),
   food("qiaoguo", "巧克力曲奇", ["巧克力饼干", "趣多多", "趣多多的曲奇"], "snack", 510, 6, 25, 65, 100, [["包", 100], ["袋", 100], ["块", 12]]),
   food("oreo", "奥利奥", ["奥利奥饼干", "夹心饼干", "黑白配"], "snack", 480, 5, 20, 70, 100, [["包", 100], ["袋", 100], ["块", 12]]),
   food("spicy-strips", "辣条", ["辣片", "大辣片", "卫龙辣条", "麻辣条"], "snack", 430, 5, 17, 65, 100, [["包", 100], ["袋", 100]]),
   food("tea-egg", "茶叶蛋", ["茶蛋", "卤蛋"], "protein", 155, 13, 11, 2, 60, [["个", 60], ["只", 60]]),
-  food("mangguo", "芒果", ["小台农", "凯特芒", "贵妃芒"], "fruit", 60, 0.8, 0.4, 15, 200, [["个", 200]]),
   food("caomei", "草莓", ["奶油草莓", "丹东草莓", "99草莓"], "fruit", 32, 1, 0.3, 7, 200, [["颗", 20], ["盒", 200], ["份", 200]]),
-  food("xigua", "西瓜", ["麒麟瓜", "甘美西瓜", "黑美人西瓜"], "fruit", 31, 0.6, 0.1, 7.9, 300, [["块", 300]]),
   food("white-cut-chicken", "白切鸡", ["白斩鸡", "湛江白切鸡", "广东白切鸡"], "dish", 200, 20, 11, 1, 300, [["份", 300], ["只", 600], ["盘", 300]]),
   food("roast-duck", "烤鸭", ["北京烤鸭", "广式烧鸭", "片皮鸭", "烧鸭饭"], "dish", 240, 19, 19, 0, 300, [["份", 300], ["只", 1500], ["盘", 300]]),
   food("salted-duck", "盐水鸭", ["咸鸭", "盐鸭"], "dish", 210, 20, 14, 1, 300, [["份", 300], ["只", 1200], ["个", 1200], ["块", 600], ["半只", 600]]),
@@ -234,7 +275,6 @@ export const foods: Food[] = [
   food("rice-noodle", "米线", ["过桥米线", "云南米线", "小锅米线", "米线一碗"], "staple", 95, 2, 1, 20, 200, [["碗", 400], ["份", 400]]),
   food("liangpi", "凉皮", ["陕西凉皮", "麻酱凉皮", "擀面皮"], "staple", 130, 2.5, 2, 27, 200, [["碗", 300], ["份", 300]]),
   food("cold-noodles", "冷面", ["延吉冷面", "韩式冷面", "朝鲜冷面"], "staple", 130, 3, 1, 27, 300, [["碗", 400], ["份", 400]]),
-  food("hongshao-rou", "红烧肉", ["红烧肉饭", "红烧肉盖饭", "毛氏红烧肉"], "dish", 380, 18, 30, 8, 300, [["份", 350], ["块", 50]]),
   food("tomato-beef", "西红柿牛腩", ["番茄牛腩", "番茄炖牛腩", "西红柿炖牛腩", "牛腩汤"], "dish", 120, 9, 6, 8, 300, [["碗", 300], ["份", 300]]),
   food("eggplant-garlic", "鱼香茄子", ["蒜泥茄子", "红烧茄子", "地三鲜"], "dish", 110, 2, 7, 12, 300, [["份", 300], ["盘", 300]]),
   food("sushi", "寿司", ["加州卷", "三文鱼寿司", "鳗鱼寿司", "饭团"], "staple", 150, 4, 2, 30, 200, [["个", 30], ["份", 200], ["盘", 200]]),
@@ -306,7 +346,7 @@ export const foods: Food[] = [
   food("mangosteen-mangosteen", "芒果饭", ["泰式芒果饭", "芒果糯米饭"], "dish", 180, 3, 5, 32, 200, [["份", 200]]),
   food("mangosteen", "山竹", ["泰国山竹"], "fruit", 69, 0.4, 0.2, 18, 100, [["个", 100]]),
   food("lychee", "荔枝", ["妃子笑", "糯米糍荔枝"], "fruit", 66, 0.8, 0.2, 17, 100, [["个", 20]]),
-  food("mango", "芒果", ["台农芒果", "凯特芒"], "fruit", 60, 0.8, 0.4, 15, 200, [["个", 200]]),
+  food("mango", "芒果", ["台农芒果", "凯特芒", "小台农", "贵妃芒"], "fruit", 60, 0.8, 0.4, 15, 200, [["个", 200]]),
   food("pear", "梨", ["雪梨", "鸭梨", "香梨", "皇冠梨"], "fruit", 44, 0.4, 0.2, 11, 200, [["个", 200]]),
   food("peach", "桃子", ["水蜜桃", "蟠桃", "黄桃"], "fruit", 48, 0.9, 0.3, 11, 200, [["个", 200]]),
   food("cherry", "樱桃", ["车厘子", "大樱桃", "美早樱桃"], "fruit", 46, 1, 0.2, 10, 100, [["颗", 8], ["盒", 200]]),
@@ -316,7 +356,7 @@ export const foods: Food[] = [
   food("beef-belly-skewer", "肥牛", ["肥牛卷", "雪花肥牛", "和牛肉眼"], "protein", 250, 17, 19, 0, 200, [["片", 30], ["份", 200]]),
   food("fried-dough-strips", "油条豆浆", ["油条配豆浆", "豆浆油条", "一份油条豆浆"], "staple", 220, 6, 14, 22, 250, [["份", 250]]),
   food("boiled-fish", "水煮鱼", ["水煮鱼片", "水煮鱼块", "川香水煮鱼"], "dish", 125, 15, 6, 3, 400, [["份", 400], ["盘", 600]]),
-  food("braised-pork", "红烧肉", ["红烧五花肉", "红烧肉饭", "毛氏红烧肉"], "dish", 380, 18, 30, 8, 300, [["份", 350], ["块", 50]]),
+  food("braised-pork", "红烧肉", ["红烧五花肉", "红烧肉饭", "红烧肉盖饭", "毛氏红烧肉"], "dish", 380, 18, 30, 8, 300, [["份", 350], ["块", 50]]),
   food("salad", "沙拉", ["轻食沙拉", "蔬菜沙拉", "鸡胸肉沙拉", "水果沙拉"], "dish", 95, 5, 5, 8, 300, [["份", 300], ["碗", 300], ["盒", 300]]),
   food("pomelo", "柚子", ["西柚", "葡萄柚", "文旦柚", "蜜柚"], "fruit", 42, 0.8, 0.1, 10, 250, [["个", 1000], ["瓣", 80], ["份", 200]]),
   food("beer", "啤酒", ["冰啤", "生啤", "精酿啤酒", "酒"], "drink", 43, 0.5, 0, 3.5, 330, [["瓶", 500], ["罐", 330], ["杯", 250], ["瓶", 1000]]),
@@ -324,14 +364,13 @@ export const foods: Food[] = [
   food("iced-tea", "冰红茶", ["冰茶", "茶饮料"], "drink", 42, 0, 0, 10, 500, [["瓶", 500], ["杯", 300]]),
   food("oolong-tea", "乌龙茶", ["铁观音", "大红袍", "单枞", "岩茶"], "drink", 1, 0, 0, 0, 250, [["杯", 250]]),
   food("sausage", "香肠", ["火腿肠", "肉肠"], "protein", 280, 12, 21, 8, 50, [["根", 50], ["根", 50], ["根", 80]]),
-  food("bacon", "培根", ["烟熏培根", "五花培根"], "protein", 541, 12, 42, 1, 30, [["片", 15], ["片", 30], ["片", 30]]),
+  food("bacon", "培根", ["烟熏培根", "五花培根"], "protein", 541, 37, 41.8, 1.4, 30, [["片", 15], ["片", 30]]),
   food("scrambled-egg", "炒蛋", ["西式炒蛋", "黄油炒蛋", "滑蛋"], "dish", 190, 13, 14, 2, 100, [["份", 100]]),
   food("toast", "吐司", ["吐司面包", "吐司片"], "staple", 270, 9, 4, 49, 30, [["片", 30], ["片", 80], ["片", 50]]),
   food("purple-sweet-potato", "紫薯", ["紫红薯", "黑薯"], "staple", 82, 1.5, 0.1, 19, 150, [["个", 150], ["根", 150]]),
   food("eggs-benedict", "班尼迪克蛋", ["班尼迪克早餐蛋", "水波蛋", "eggs benedict"], "dish", 245, 12, 18, 12, 200, [["份", 200]]),
   food("croissant", "可颂", ["牛角面包", "羊角面包"], "staple", 310, 8, 17, 34, 60, [["个", 60], ["个", 60]]),
   food("bagel", "贝果", ["全麦贝果", "bagel"], "staple", 250, 10, 3, 46, 90, [["个", 90], ["个", 90]]),
-  food("rice-ball", "饭团", ["米饭团", "三角饭团"], "staple", 180, 5, 4, 30, 110, [["个", 110], ["个", 110], ["个", 110]]),
   food("popcorn", "爆米花", ["奶油爆米花", "焦糖爆米花"], "snack", 430, 6, 18, 62, 100, [["杯", 250], ["杯", 100], ["杯", 100]]),
   food("fried-cold-noodles", "炒冷面", ["韩式炒冷面", "街头炒冷面", "铁板冷面", "烤冷面", "东北烤冷面"], "dish", 180, 5, 9, 22, 250, [["份", 250], ["碗", 250]]),
   food("fried-skewer", "炸串", ["油炸串串", "炸里脊串", "炸鱿鱼串"], "fastfood", 280, 10, 20, 15, 100, [["串", 25], ["份", 100]]),
@@ -345,7 +384,6 @@ export const foods: Food[] = [
   food("tomato-beef-rice", "番茄牛腩饭", ["番茄牛腩盖饭", "西红柿牛腩饭"], "dish", 150, 8, 5, 18, 400, [["份", 400], ["碗", 400]]),
   food("beef-brisket-braise", "红烧牛腩", ["红烧牛肉", "牛腩炖", "红烧牛腩饭"], "dish", 185, 15, 10, 9, 300, [["份", 350], ["碗", 350]]),
   food("beef-stew", "土豆炖牛肉", ["炖牛肉", "萝卜炖牛肉", "家常炖牛肉"], "dish", 155, 14, 7, 8, 350, [["份", 400], ["碗", 400]]),
-  food("pepper-pork", "辣椒炒肉", ["湖南辣椒炒肉", "小炒肉", "青椒炒肉"], "dish", 185, 12, 13, 5, 300, [["份", 300], ["盘", 300]]),
 
 
 ];
@@ -387,7 +425,7 @@ export function calculateGoalEnergyPlan(input: {
   const dailyDeficitRaw = ((input.currentWeightKg - input.targetWeightKg) * 7700) / Math.max(1, input.days);
   const dailyDeficit = Math.round(Math.max(-300, Math.min(750, dailyDeficitRaw)));
   const calories = Math.max(1200, Math.round(tdee - dailyDeficit));
-  const proteinG = Math.round(input.currentWeightKg * 1.8);
+  const proteinG = Math.round(resolveProteinReferenceWeight(input.currentWeightKg, input.heightCm) * 1.8);
   const fatG = Math.round(Math.max(40, (calories * 0.25) / 9));
   const carbsG = Math.round(Math.max(80, (calories - proteinG * 4 - fatG * 9) / 4));
 
@@ -400,7 +438,7 @@ export function getFoodByIdFromCatalog(id: string, customFoods: Food[] = []): Fo
 
 export function getFoodCatalog(customFoods: Food[] = []): Food[] {
   const seen = new Set<string>();
-  return [...customFoods, ...foods, ...categoryFallbackFoods, ...csvGeneratedFoods].filter((item) => {
+  return [...customFoods, ...foods, ...chineseSupplementFoods, ...categoryFallbackFoods, ...csvGeneratedFoods].filter((item) => {
     if (seen.has(item.id)) return false;
     seen.add(item.id);
     return true;
@@ -525,7 +563,13 @@ function food(
   fatPer100g: number,
   carbsPer100g: number,
   defaultUnitGram: number,
-  units: Array<[string, number]> = []
+  units: Array<[string, number]> = [],
+  options?: {
+    cookingOilPer100g?: number;
+    cookingMethod?: CookingMethod;
+    foodGranularity?: "generic" | "ingredient" | "specific-food" | "prepared-dish" | "packaged-sku";
+    confidenceLevel?: "high" | "reference" | "estimate";
+  }
 ): Food {
   return {
     id,
@@ -539,7 +583,10 @@ function food(
     defaultUnitGram,
     servingUnits: units.map(([unitName, grams]) => ({ name: unitName, grams })),
     source: "builtin",
-    confidenceLevel: "high"
+    confidenceLevel: options?.confidenceLevel ?? "high",
+    cookingOilPer100g: options?.cookingOilPer100g,
+    cookingMethod: options?.cookingMethod,
+    foodGranularity: options?.foodGranularity,
   };
 }
 
@@ -814,3 +861,12 @@ function clamp(value: number, min: number, max: number): number {
 
 
 
+
+
+
+function resolveProteinReferenceWeight(weightKg: number, heightCm: number): number {
+  const bmi = weightKg / ((heightCm / 100) ** 2);
+  if (bmi >= 30) { return 24 * ((heightCm / 100) ** 2); }
+  if (bmi >= 25) { const idealWeight = 24 * ((heightCm / 100) ** 2); return (weightKg + idealWeight) / 2; }
+  return weightKg;
+}

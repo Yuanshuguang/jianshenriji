@@ -17,6 +17,7 @@ const checks: Array<[string, string, RegExp]> = [
   ],
   ["计划页", "app/(tabs)/plan.tsx", /export default function \w+Screen/],
   ["训练页", "app/(tabs)/train.tsx", /export default function \w+Screen/],
+  ["赎罪页", "app/(tabs)/atonement.tsx", /export default function \w+Screen/],
   ["更多页", "app/(tabs)/more.tsx", /export default function \w+Screen/],
   ["动作库", "app/exercise-library/index.tsx", /export default function \w+Screen/],
   ["饮食计划列表", "app/diet-plan/index.tsx", /export default function \w+Screen/],

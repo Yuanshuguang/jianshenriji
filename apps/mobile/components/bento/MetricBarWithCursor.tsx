@@ -87,7 +87,6 @@ export function MetricBarWithCursor({
           <Text
             variant="micro"
             color={colors[display.subtitleTone]}
-            style={{ fontSize: 11, lineHeight: 13 }}
           >
             {label}
           </Text>

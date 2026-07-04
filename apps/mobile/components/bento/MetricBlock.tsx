@@ -43,7 +43,7 @@ export function MetricBlock({
           {value}
         </Text>
         {unit ? (
-          <Text mono color={colors.inkMute} style={{ fontSize: 11 }}>
+          <Text mono color={colors.inkMute} variant="micro">
             {unit}
           </Text>
         ) : null}

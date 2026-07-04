@@ -88,14 +88,16 @@ export function WeekDateRail({ items }: { items: WeekDateRailItem[] }) {
                   </BentoText>
                 </View>
 
-                <View
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 999,
-                    backgroundColor: active ? c.accent : `${c.inkMute}60`,
-                  }}
-                />
+                {item.title || item.subtitle ? (
+                  <BentoText
+                    weight={active ? "bold" : "semibold"}
+                    color={active ? c[tone] : c.inkMute}
+                    numberOfLines={1}
+                    style={{ fontSize: active ? 11 : 10, lineHeight: 12, textAlign: "center" }}
+                  >
+                    {item.title ?? item.subtitle}
+                  </BentoText>
+                ) : null}
               </View>
             );
             return item.onPress ? (
@@ -108,48 +110,10 @@ export function WeekDateRail({ items }: { items: WeekDateRailItem[] }) {
                 })}
               >
                 {content}
-                {item.title || item.subtitle ? (
-                  <View style={{ alignItems: "center", gap: 2, paddingTop: 6 }}>
-                    {item.title ? (
-                      <BentoText
-                        weight={active ? "bold" : "semibold"}
-                        color={active ? c.accent : c.ink}
-                        numberOfLines={1}
-                        style={{ fontSize: active ? 13 : 11, lineHeight: 15, textAlign: "center" }}
-                      >
-                        {item.title}
-                      </BentoText>
-                    ) : null}
-                    {item.subtitle ? (
-                      <BentoText variant="micro" color={active ? c.inkMute : c.inkFaint} numberOfLines={1} style={{ fontSize: 9, lineHeight: 11, textAlign: "center" }}>
-                        {item.subtitle}
-                      </BentoText>
-                    ) : null}
-                  </View>
-                ) : null}
               </Pressable>
             ) : (
               <View key={item.key} style={{ width: itemWidth }}>
                 {content}
-                {item.title || item.subtitle ? (
-                  <View style={{ alignItems: "center", gap: 2, paddingTop: 6 }}>
-                    {item.title ? (
-                      <BentoText
-                        weight={active ? "bold" : "semibold"}
-                        color={active ? c.accent : c.ink}
-                        numberOfLines={1}
-                        style={{ fontSize: active ? 13 : 11, lineHeight: 15, textAlign: "center" }}
-                      >
-                        {item.title}
-                      </BentoText>
-                    ) : null}
-                    {item.subtitle ? (
-                      <BentoText variant="micro" color={active ? c.inkMute : c.inkFaint} numberOfLines={1} style={{ fontSize: 9, lineHeight: 11, textAlign: "center" }}>
-                        {item.subtitle}
-                      </BentoText>
-                    ) : null}
-                  </View>
-                ) : null}
               </View>
             );
           })}

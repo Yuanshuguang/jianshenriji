@@ -50,10 +50,10 @@ export function BulletChart({
   return (
     <View style={[{ gap: 4 }, style]}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
-        <Text variant="micro" color={colors.inkMute} style={{ fontSize: 11 }} numberOfLines={1}>
+        <Text variant="micro" color={colors.inkMute} numberOfLines={1}>
           {label}
         </Text>
-        <Text variant="micro" color={colors[display.subtitleTone]} numberOfLines={1} style={{ fontSize: 11 }}>
+        <Text variant="micro" color={colors[display.subtitleTone]} numberOfLines={1}>
           {display.subtitle}
         </Text>
       </View>

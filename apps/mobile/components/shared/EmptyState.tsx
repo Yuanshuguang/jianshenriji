@@ -1,14 +1,37 @@
 import { View, type DimensionValue } from "react-native";
-import { Text as BentoText, useBentoTheme } from "../bento";
+import Animated, { FadeIn, ZoomIn, useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from "react-native-reanimated";
+import { AppIcon, Text as BentoText, useBentoTheme } from "../bento";
+
+const SPIN_DURATION = 800; // 1.25 rev/s
+
+/** 旋转动画 Loader 图标 — 在任何位置复用 */
+function SpinningLoader({ size = 16, color }: { size?: number; color: string }) {
+  const rotation = useSharedValue(0);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }), [rotation]);
+
+  rotation.value = withRepeat(
+    withTiming(360, { duration: SPIN_DURATION, easing: Easing.linear }),
+    -1,
+    false,
+  );
+
+  return (
+    <Animated.View entering={FadeIn.duration(300)} style={[animatedStyle, { width: size, height: size, alignItems: "center", justifyContent: "center" }]}>
+      <AppIcon name="loader" size={size} color={color} />
+    </Animated.View>
+  );
+}
 
 export function EmptyState({
-  icon = "📭",
+  iconName = "inbox",
   title,
   subtitle,
   actionLabel,
   onAction,
 }: {
-  icon?: string;
+  iconName?: string;
   title: string;
   subtitle?: string;
   actionLabel?: string;
@@ -17,7 +40,7 @@ export function EmptyState({
   const c = useBentoTheme().colors;
   return (
     <View style={{ alignItems: "center", gap: 8, paddingVertical: 32, paddingHorizontal: 20 }}>
-      <BentoText style={{ fontSize: 36, lineHeight: 40 }}>{icon}</BentoText>
+      <AppIcon name={iconName as any} size={36} color={c.inkMute} strokeWidth={1.5} />
       <BentoText weight="semibold" variant="caption" color={c.ink} style={{ textAlign: "center" }}>
         {title}
       </BentoText>
@@ -44,21 +67,20 @@ export function LoadingState({ label = "加载中..." }: { label?: string }) {
   const c = useBentoTheme().colors;
   return (
     <View style={{ alignItems: "center", gap: 10, paddingVertical: 28 }}>
-      <View
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 14,
-          borderWidth: 2.5,
-          borderColor: c.glassBorderBright,
-          borderTopColor: c.accent,
-        }}
-      />
+      <SpinningLoader size={28} color={c.accent} />
       <BentoText variant="caption" color={c.inkMute}>{label}</BentoText>
     </View>
   );
 }
 
+/**
+ * AsyncStatusBanner — 异步操作状态横条（带动画）
+ *
+ * loading: 旋转 Loader 图标 + "处理中 · message"
+ * success: 对勾 ZoomIn spring 入场 + "已完成 · message"
+ * error:   静态文字 + "需要处理 · message"
+ * idle:    不渲染
+ */
 export function AsyncStatusBanner({
   status,
   message,
@@ -70,8 +92,10 @@ export function AsyncStatusBanner({
   if (status === "idle" || !message) return null;
 
   const color = status === "error" ? c.warn : status === "success" ? c.positive : c.accent;
+
   return (
-    <View
+    <Animated.View
+      entering={FadeIn.duration(200)}
       style={{
         borderRadius: 12,
         paddingHorizontal: 10,
@@ -79,13 +103,26 @@ export function AsyncStatusBanner({
         borderWidth: 1,
         borderColor: `${color}55`,
         backgroundColor: `${color}12`,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
       }}
     >
+      {status === "loading" ? (
+        <SpinningLoader size={16} color={color} />
+      ) : status === "success" ? (
+        <Animated.View
+          entering={ZoomIn.duration(300).springify().damping(10)}
+          style={{ width: 16, height: 16, alignItems: "center", justifyContent: "center" }}
+        >
+          <AppIcon name="check" size={16} color={c.positive} />
+        </Animated.View>
+      ) : null}
       <BentoText variant="micro" color={color} style={{ lineHeight: 16 }}>
         {status === "loading" ? "处理中 · " : status === "success" ? "已完成 · " : "需要处理 · "}
         {message}
       </BentoText>
-    </View>
+    </Animated.View>
   );
 }
 

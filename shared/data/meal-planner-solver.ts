@@ -212,12 +212,14 @@ function applyMacroTarget(
   if (!candidate?.food) return next;
   const addValue = Math.abs(diff);
   const addGrams = (addValue / Math.max(1, macroPer100g(candidate.food, macro))) * 100;
+  const currentGrams = candidate.portion.grams;
   const grams = clamp(
-    Math.round((candidate.portion.grams + addGrams) / 5) * 5,
-    candidate.portion.grams,
+    Math.round((currentGrams + addGrams) / 5) * 5,
+    currentGrams,
     planningMaxGrams(candidate.food, meal)
   );
   next[candidate.index] = rebuildPortion(candidate.portion, candidate.food, grams);
+  next = redistributeFoodGrams(next, candidate.food, currentGrams - grams, meal, activeMeals, lockedMeals, foodOverrides);
   return next;
 }
 
@@ -236,17 +238,26 @@ function redistributeFoodGrams(
   const next = portions.map((portion) => ({ ...portion }));
 
   if (deltaGrams > 0) {
-    const gramsPerMeal = Math.round((deltaGrams / receivers.length) / 5) * 5;
     let remaining = deltaGrams;
-    receivers.forEach((meal, receiverIndex) => {
-      const add = receiverIndex === receivers.length - 1 ? remaining : Math.min(remaining, gramsPerMeal);
+    const receiverTargets = receivers
+      .map((meal) => {
+        const existingIndex = next.findIndex((portion) => portion.meal === meal && portion.foodId === food.id);
+        const existing = existingIndex >= 0 ? next[existingIndex] : undefined;
+        const maxGrams = planningMaxGrams(food, meal);
+        const capacity = Math.max(0, maxGrams - (existing?.grams ?? 0));
+        return { meal, existingIndex, existing, capacity };
+      })
+      .filter((receiver) => receiver.capacity > 0);
+    if (receiverTargets.length === 0) return next;
+
+    receiverTargets.forEach((receiver, receiverIndex) => {
+      const remainingSlots = receiverTargets.length - receiverIndex;
+      const add = Math.min(receiver.capacity, receiverIndex === receiverTargets.length - 1 ? remaining : Math.round((remaining / remainingSlots) / 5) * 5);
       if (add <= 0) return;
-      const existingIndex = next.findIndex((portion) => portion.meal === meal && portion.foodId === food.id);
-      if (existingIndex >= 0) {
-        const existing = next[existingIndex];
-        next[existingIndex] = rebuildPortion(existing, food, existing.grams + add);
+      if (receiver.existingIndex >= 0 && receiver.existing) {
+        next[receiver.existingIndex] = rebuildPortion(receiver.existing, food, receiver.existing.grams + add);
       } else {
-        next.push(buildPortion(food, add, meal));
+        next.push(buildPortion(food, add, receiver.meal));
       }
       remaining -= add;
     });
@@ -739,6 +750,21 @@ function buildWarnings(portions: FoodPortion[], foods: Food[], target: Nutrition
   if (!foods.some((item) => item.category === "staple" || item.carbsPer100g >= 16)) {
     warnings.push("储备食物缺少主食，训练日碳水分配可能不足。");
   }
+  if (!foods.some((item) => item.fatPer100g >= 8 || item.id === cookingOilFood.id)) {
+    warnings.push("储备食物缺少可控脂肪来源，长期执行可能影响饱腹感和基础脂肪摄入。");
+  }
+  if (totals.proteinG < target.proteinG * 0.75) {
+    warnings.push("当前搭配蛋白质明显不足，建议补充鸡蛋、鱼虾、瘦肉、豆制品或蛋白补剂。");
+  }
+  if (totals.fatG < 35) {
+    warnings.push("当前搭配脂肪过低，不建议长期按此执行。");
+  }
+  if (totals.fatG > Math.max(target.fatG * 1.45, target.fatG + 30)) {
+    warnings.push("当前搭配脂肪明显偏高，快餐、坚果、薯片或甜品应减少。");
+  }
+  if (!isLowCarbDay(options.dayType) && totals.carbsG < Math.max(60, target.carbsG * 0.45)) {
+    warnings.push("当前搭配碳水明显不足，训练表现和恢复可能受影响。");
+  }
   portions.forEach((portion) => {
     const food = foodById.get(portion.foodId);
     if (!food) return;
@@ -748,9 +774,21 @@ function buildWarnings(portions: FoodPortion[], foods: Food[], target: Nutrition
     if (!canScaleForMacroClosure(food) && portion.grams > wholeServingGrams(food) * 1.5) {
       warnings.push(`${portion.name} 份量超过常见单份范围。`);
     }
+    if (isExtremePortion(food, portion)) {
+      warnings.push(`${portion.name} 当前建议为 ${portion.grams}g，份量不适合作为默认健身餐。`);
+    }
   });
 
   return Array.from(new Set(warnings));
+}
+
+function isExtremePortion(food: Food, portion: FoodPortion): boolean {
+  if (portion.grams > 600) return true;
+  if (food.category === "supplement" && portion.grams > 60) return true;
+  if ((food.category === "snack" || food.category === "drink") && portion.grams > 200) return true;
+  if (food.category === "protein" && portion.grams > planningMaxGrams(food, portion.meal ?? "lunch")) return true;
+  if (food.category === "staple" && portion.grams > portionMaxGrams(food, portion.meal ?? "lunch") * 1.45) return true;
+  return false;
 }
 
 function scorePlan(portions: FoodPortion[], totals: NutritionTotals, target: NutritionTotals, activeMeals: MealPlannerMeal[], warnings: string[]): number {

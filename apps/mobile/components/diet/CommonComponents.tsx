@@ -1,6 +1,8 @@
-import { type ReactNode, useRef } from "react";
-import { Animated, Pressable, View, TextInput } from "react-native";
+import { type ReactNode } from "react";
+import { Pressable, View, TextInput } from "react-native";
+import RAnimated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import {
+  AppIcon,
   Label,
   Text as BentoText,
   radius,
@@ -9,7 +11,10 @@ import {
   type SemanticColor,
 } from "../bento";
 
-export function getInputStyle(c: BentoThemeColors) {
+const PILL_SPRING = { damping: 12, stiffness: 150, mass: 0.5 };
+const PILL_PRESS_SCALE = 0.92;
+
+export function getInputStyle(c: BentoThemeColors, fontScale = 1) {
   return {
     minHeight: 56,
     backgroundColor: c.glass,
@@ -19,21 +24,22 @@ export function getInputStyle(c: BentoThemeColors) {
     paddingHorizontal: 12,
     paddingVertical: 12,
     color: c.ink,
-    fontSize: 14,
-  } as const;
+    fontSize: Math.round(14 * fontScale),
+  };
 }
 
-export function getRecordInputStyle(c: BentoThemeColors) {
+export function getRecordInputStyle(c: BentoThemeColors, fontScale = 1) {
   return {
-    minHeight: 28,
-    backgroundColor: "transparent",
-    borderWidth: 0,
-    borderRadius: 0,
-    paddingHorizontal: 0,
-    paddingVertical: 0,
+    minHeight: 56,
+    backgroundColor: c.glass,
+    borderWidth: 1,
+    borderColor: c.glassBorder,
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     color: c.ink,
-    fontSize: 15,
-  } as const;
+    fontSize: Math.round(14 * fontScale)
+  };
 }
 
 export function CardHeader({
@@ -48,14 +54,6 @@ export function CardHeader({
   trailing?: ReactNode;
 }) {
   const c = useBentoTheme().colors;
-  const rotateAnim = useRef(new Animated.Value(collapsed ? 0 : 1)).current;
-  const chevronRef = useRef<Animated.Value>(rotateAnim);
-
-  Animated.timing(rotateAnim, {
-    toValue: collapsed ? 0 : 1,
-    duration: 200,
-    useNativeDriver: true,
-  }).start();
 
   return (
     <View style={{ width: "100%", flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -69,24 +67,18 @@ export function CardHeader({
 
 export function PillButton({ label, color, onPress }: { label: string; color: SemanticColor; onPress: () => void }) {
   const c = useBentoTheme().colors;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }), [scale]);
 
   const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.92,
-      useNativeDriver: true,
-      speed: 50,
-      bounciness: 8,
-    }).start();
+    scale.value = withSpring(PILL_PRESS_SCALE, PILL_SPRING);
   };
 
   const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-      speed: 50,
-      bounciness: 8,
-    }).start();
+    scale.value = withSpring(1, PILL_SPRING);
   };
 
   return (
@@ -96,8 +88,8 @@ export function PillButton({ label, color, onPress }: { label: string; color: Se
       onPressOut={handlePressOut}
       hitSlop={{ top: 9, bottom: 9, left: 4, right: 4 }}
     >
-      <Animated.View
-        style={{
+      <RAnimated.View
+        style={[animatedStyle, {
           height: 26,
           paddingHorizontal: 10,
           borderRadius: 999,
@@ -106,21 +98,21 @@ export function PillButton({ label, color, onPress }: { label: string; color: Se
           backgroundColor: c.glass,
           borderWidth: 1,
           borderColor: c.glassBorderBright,
-          transform: [{ scale: scaleAnim }],
-        }}
+        }]}
       >
         <BentoText weight="semibold" color={c[color]} style={{ fontSize: 11 }}>{label}</BentoText>
-      </Animated.View>
+      </RAnimated.View>
     </Pressable>
   );
 }
 
 export function SmallInput({ label, value, onChangeText }: { label: string; value: string; onChangeText: (text: string) => void }) {
-  const c = useBentoTheme().colors;
+  const theme = useBentoTheme();
+  const c = theme.colors;
   return (
     <View style={{ flex: 1, minWidth: 86, gap: 4 }}>
       <BentoText variant="micro" color={c.inkMute}>{label}</BentoText>
-      <TextInput keyboardType="numeric" value={value} onChangeText={onChangeText} placeholder="0" placeholderTextColor={c.inkFaint} style={[getInputStyle(c), { minHeight: 42, paddingVertical: 8 }]} />
+      <TextInput keyboardType="numeric" value={value} onChangeText={onChangeText} placeholder="0" placeholderTextColor={c.inkFaint} style={[getInputStyle(c, theme.fontScale), { minHeight: 42, paddingVertical: 8 }]} />
     </View>
   );
 }

@@ -110,3 +110,78 @@ test("锁定早餐后，午餐减少的鸡胸肉不会分配到早餐", () => {
   assert.equal(portionGrams(adjusted.portions, "chicken-breast", "breakfast"), portionGrams(base.portions, "chicken-breast", "breakfast"));
   assert.ok(portionGrams(adjusted.portions, "chicken-breast", "dinner") + portionGrams(adjusted.portions, "chicken-breast", "snack") > portionGrams(base.portions, "chicken-breast", "dinner") + portionGrams(base.portions, "chicken-breast", "snack"));
 });
+
+test("用户把午餐蛋白滑到 0 后，蛋白食物会转移到其他未锁定餐次", () => {
+  const target: NutritionTotals = {
+    calories: 1713,
+    proteinG: 135,
+    fatG: 48,
+    carbsG: 237
+  };
+  const base = solveMealPlan({
+    foods: [food("egg"), food("chicken-breast"), food("potato"), food("broccoli")],
+    target,
+    dayType: "high-carb",
+    trainingFocus: "legs"
+  });
+  const adjusted = solveMealPlan({
+    foods: [food("egg"), food("chicken-breast"), food("potato"), food("broccoli")],
+    target,
+    dayType: "high-carb",
+    trainingFocus: "legs",
+    adjustments: {
+      macroTargets: {
+        lunch: { proteinG: 0 }
+      }
+    }
+  });
+
+  const lunchProtein = adjusted.portions
+    .filter((portion) => portion.meal === "lunch")
+    .reduce((sum, portion) => sum + portion.totals.proteinG, 0);
+  const otherProtein = adjusted.portions
+    .filter((portion) => portion.meal !== "lunch")
+    .reduce((sum, portion) => sum + portion.totals.proteinG, 0);
+  const baseOtherProtein = base.portions
+    .filter((portion) => portion.meal !== "lunch")
+    .reduce((sum, portion) => sum + portion.totals.proteinG, 0);
+
+  assert.ok(lunchProtein <= 6, `lunch protein ${lunchProtein} should be close to 0`);
+  assert.ok(otherProtein > baseOtherProtein, "other meals should receive moved protein");
+});
+
+test("锁定早餐后，午餐减少的蛋白不会转移到早餐", () => {
+  const target: NutritionTotals = {
+    calories: 1713,
+    proteinG: 135,
+    fatG: 48,
+    carbsG: 237
+  };
+  const base = solveMealPlan({
+    foods: [food("egg"), food("chicken-breast"), food("potato"), food("broccoli")],
+    target,
+    dayType: "high-carb",
+    trainingFocus: "legs"
+  });
+  const adjusted = solveMealPlan({
+    foods: [food("egg"), food("chicken-breast"), food("potato"), food("broccoli")],
+    target,
+    dayType: "high-carb",
+    trainingFocus: "legs",
+    adjustments: {
+      lockedMeals: { breakfast: true },
+      macroTargets: {
+        lunch: { proteinG: 0 }
+      }
+    }
+  });
+
+  const breakfastProtein = adjusted.portions
+    .filter((portion) => portion.meal === "breakfast")
+    .reduce((sum, portion) => sum + portion.totals.proteinG, 0);
+  const baseBreakfastProtein = base.portions
+    .filter((portion) => portion.meal === "breakfast")
+    .reduce((sum, portion) => sum + portion.totals.proteinG, 0);
+
+  assert.equal(Math.round(breakfastProtein), Math.round(baseBreakfastProtein));
+});

@@ -21,11 +21,23 @@ export { glows, spacingTokens as spacing, radiusTokens as radius, bentoTokens as
 /** 语义色名 */
 export type SemanticColor = "accent" | "accent2" | "positive" | "warn" | "amber";
 
-/** 字体族（回退系统字体） */
+/** 字体族（回退系统字体；CJK 使用平台系统字体——零体积、最高用户熟悉度）
+ *
+ * 策略 3：系统回退 + Barlow
+ * - 拉丁/数字 → Barlow / Barlow Condensed（打包，品牌辨识度）
+ * - 中文 → 系统字体（PingFang SC on iOS / 厂商字体 on Android），零包体积
+ * - 中国用户每天在微信/支付宝/抖音看到的正是这些系统字体
+ */
+import { Platform } from "react-native";
+
 export const fontFamilies = {
   sans: "Barlow",
   mono: "Barlow Condensed",
-  cjk: "Barlow",
+  cjk: Platform.select({
+    ios: "PingFang SC",
+    android: "System",  // Android 会自动使用厂商系统字体（华为=HarmonyOS Sans / 小米=MiSans / OPPO=OPPO Sans）
+    default: "System",
+  }) ?? "System",
 } as const;
 
 /** 玻璃格样式工厂 */
@@ -73,12 +85,19 @@ export function textStyle(opts?: {
   weight?: keyof typeof typoTokens.weights;
   color?: string;
   mono?: boolean;
+  cjk?: boolean;
   tracking?: number;
   lineHeight?: number;
 }): TextStyle {
+  const fontFamily = opts?.cjk
+    ? fontFamilies.cjk
+    : opts?.mono
+      ? fontFamilies.mono
+      : fontFamilies.sans;
   return {
-    fontFamily: opts?.mono ? fontFamilies.mono : fontFamilies.sans,
+    fontFamily,
     fontSize: opts?.size ?? typoTokens.sizes.body,
+    fontVariant: ["tabular-nums"],
     fontWeight: opts?.weight ?? typoTokens.weights.regular,
     color: opts?.color ?? colorTokens.ink,
     lineHeight: Math.round((opts?.size ?? typoTokens.sizes.body) * (opts?.lineHeight ?? typoTokens.lineHeights.body)),

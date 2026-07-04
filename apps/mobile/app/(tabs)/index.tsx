@@ -53,7 +53,7 @@ import {
   type MealPlan,
 } from "../../features/today-plan";
 import { getFoodRecordStateCopy, resolveFoodRecordState } from "../../features/food-record-state";
-import { buildDailyAdjustmentSummary } from "../../features/adjustments";
+import { buildDailyAdjustmentSummary, buildDebtSnapshot } from "../../features/adjustments";
 import { getDietPlanById, type DietPlan } from "../../features/diet-plans";
 import { getFoodVariantGroupLabel, getFoodVariantOptions, inferDefaultFoodVariant, resolveFoodByVariant } from "../../features/food-variant-options";
 import { searchOnlineFood } from "../../features/food-online-search";
@@ -82,6 +82,16 @@ type DashboardDetailSource = {
   value: string;
 };
 
+type DashboardDetailValueMode = "actual" | "target" | "diff";
+type DashboardDetailBreakdownMode = "food" | "meal";
+
+type DashboardDetailSourceGroups = {
+  foodActual: DashboardDetailSource[];
+  mealActual: DashboardDetailSource[];
+  mealTarget: DashboardDetailSource[];
+  mealDiff: DashboardDetailSource[];
+};
+
 type DashboardCell = {
   key: string;
   label: string;
@@ -96,9 +106,12 @@ type DashboardMetricDetail = {
   targetLine: string;
   targetReason: string;
   actualLine: string;
+  diffLine: string;
+  diffTone: SemanticColor;
   sourceTitle: string;
   emptySourceLabel: string;
   sources: DashboardDetailSource[];
+  sourceGroups: DashboardDetailSourceGroups;
 };
 
 type FoodTagEdit = {
@@ -190,8 +203,8 @@ export default function TodayScreen() {
   const dietPreference = useFitnessStore((state) => state.dietPreference);
   const mealPlanCustomAdjustment = useFitnessStore((state) => state.mealPlanCustomAdjustment);
   const todayTrainingPlan = useFitnessStore((state) => state.todayTrainingPlan);
-  const dynamicAdjustmentEnabled = useFitnessStore((state) => state.dynamicAdjustmentEnabled);
   const dynamicAdjustmentSettings = useFitnessStore((state) => state.dynamicAdjustmentSettings);
+  const dynamicAtonementPreference = useFitnessStore((state) => state.dynamicAtonementPreference);
   const selectedDietPlanId = useFitnessStore((state) => state.selectedDietPlanId);
   const selectedDietPlanVariantId = useFitnessStore((state) => state.selectedDietPlanVariantId);
   const setPreparedFoods = useFitnessStore((state) => state.setPreparedFoods);
@@ -233,6 +246,7 @@ export default function TodayScreen() {
   const [onlineFoodLookup, setOnlineFoodLookup] = useState<Record<string, { loading?: boolean; message?: string }>>({});
   const dishImageInputRef = useRef<HTMLInputElement | null>(null);
   const nutritionLabelInputRef = useRef<HTMLInputElement | null>(null);
+  const lastSavedDailyLogSignatureRef = useRef("");
 
   const today = new Date();
   const todayKey = formatDateKey(today);
@@ -366,6 +380,7 @@ export default function TodayScreen() {
   const dashboardDetails = dashboardCells.map((cell) => buildDashboardMetricDetail({
     cell,
     portions: adjustedActualPortions,
+    meals: actualMealPlan,
     energyPlan,
     dietTarget,
     dietPlanSummary,
@@ -403,27 +418,35 @@ export default function TodayScreen() {
       userProfile: profile,
       goalPlan: goal,
       fatigue: actualTraining.fatigue,
-      settings: dynamicAdjustmentSettings
+      settings: dynamicAdjustmentSettings,
+      atonementPreference: dynamicAtonementPreference
     }),
-    [actualTotals, actualTraining.calories, actualTraining.fatigue, dietTarget, dynamicAdjustmentSettings, goal, mealDeltas, plannedTrainingCalories, plannedTrainingFocus, profile]
+    [actualTotals, actualTraining.calories, actualTraining.fatigue, dietTarget, dynamicAdjustmentSettings, dynamicAtonementPreference, goal, mealDeltas, plannedTrainingCalories, plannedTrainingFocus, profile]
   );
-
-  useEffect(() => {
-    const hasFoodRecord = actualFoodText.trim().length > 0 || actualIntake > 0;
-    const hasTrainingRecord = actualTraining.status !== "pending";
-    if (!hasFoodRecord && !hasTrainingRecord) return;
-
-    const entry: DailyLogEntry = {
+  const hasFoodRecord = actualFoodText.trim().length > 0 || actualIntake > 0;
+  const hasTrainingRecordToday = actualTraining.status !== "pending";
+  const currentDebtPreview = useMemo<DailyLogEntry | null>(() => {
+    if (!hasFoodRecord && !hasTrainingRecordToday) return null;
+    return {
       date: todayKey,
       targetCalories: dietTarget.calories,
+      targetMacros: dietTarget,
       actualIntake: actualTotals,
       actualFoodText,
       actualMealTexts,
       training: actualTraining,
-      isComplete: hasFoodRecord && hasTrainingRecord
+      isComplete: hasFoodRecord && hasTrainingRecordToday,
+      debtSnapshot: buildDebtSnapshot(adjustmentSummary)
     };
-    saveDailyLog(todayKey, entry);
-  }, [actualFoodText, actualIntake, actualMealTexts, actualTotals, actualTraining, dietTarget.calories, saveDailyLog, todayKey]);
+  }, [actualFoodText, actualMealTexts, actualTotals, actualTraining, adjustmentSummary, dietTarget, hasFoodRecord, hasTrainingRecordToday, todayKey]);
+
+  useEffect(() => {
+    if (!currentDebtPreview) return;
+    const signature = JSON.stringify(currentDebtPreview);
+    if (signature === lastSavedDailyLogSignatureRef.current) return;
+    lastSavedDailyLogSignatureRef.current = signature;
+    saveDailyLog(todayKey, currentDebtPreview);
+  }, [currentDebtPreview, saveDailyLog, todayKey]);
 
   function updateActualFoods(text: string, extraFoods: Food[] = []) {
     const mergedCustomFoods = extraFoods.length > 0
@@ -664,15 +687,29 @@ export default function TodayScreen() {
 
             <View style={{ flex: 1, gap: 10, justifyContent: "center" }}>
               {dashboardCells.map((cell) => {
+                const displayLabel = getDashboardMetricLabel(cell);
                 const over = cell.actual > cell.target;
                 const barColor: SemanticColor =
                   cell.key === "fat" ? "accent2" : cell.key === "carbs" ? "positive" : "accent";
                 return (
-                  <View key={cell.key} style={{ gap: 5 }}>
+                  <Pressable
+                    key={cell.key}
+                    onPress={() => setDashboardDetailKey(cell.key)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`查看${displayLabel}来源详情`}
+                    style={({ pressed }) => ({
+                      gap: 5,
+                      borderRadius: 12,
+                      paddingVertical: 3,
+                      paddingHorizontal: 4,
+                      opacity: pressed ? 0.78 : 1,
+                      backgroundColor: pressed ? c.glass : "transparent",
+                    })}
+                  >
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                         <View style={{ width: 9, height: 9, borderRadius: 999, backgroundColor: c[barColor] }} />
-                        <BentoText weight="semibold" color={c.ink}>{cell.label}</BentoText>
+                        <BentoText weight="semibold" color={c.ink}>{displayLabel}</BentoText>
                       </View>
                       <BentoText mono weight="bold" color={c.ink} style={{ fontSize: 15 }}>
                         {Math.round(cell.actual)} / {Math.round(cell.target)}{cell.unit}
@@ -688,7 +725,7 @@ export default function TodayScreen() {
                         还差 {Math.round(cell.target - cell.actual)}{cell.unit}
                       </BentoText>
                     )}
-                  </View>
+                  </Pressable>
                 );
               })}
             </View>
@@ -1032,9 +1069,67 @@ function getRecordInputStyle(c: BentoThemeColors) {
   } as const;
 }
 
+function getDashboardMetricLabel(cell: DashboardCell): string {
+  if (cell.key === "intake") return "热量";
+  return cell.label;
+}
+
+function getMetricValue(totals: NutritionTotals, metricKey: string): number {
+  if (metricKey === "protein") return totals.proteinG;
+  if (metricKey === "fat") return totals.fatG;
+  if (metricKey === "carbs") return totals.carbsG;
+  return totals.calories;
+}
+
+function buildDashboardSourceGroups({
+  cell,
+  portions,
+  meals,
+  dietTarget,
+}: {
+  cell: DashboardCell;
+  portions: FoodPortion[];
+  meals: MealPlan[];
+  dietTarget: NutritionTotals;
+}): DashboardDetailSourceGroups {
+  return {
+    foodActual: buildFoodContributionSources(portions, cell.key, cell.unit),
+    mealActual: buildMealContributionSources({ cell, meals, dietTarget, mode: "actual" }),
+    mealTarget: buildMealContributionSources({ cell, meals, dietTarget, mode: "target" }),
+    mealDiff: buildMealContributionSources({ cell, meals, dietTarget, mode: "diff" }),
+  };
+}
+
+function buildMealContributionSources({
+  cell,
+  meals,
+  dietTarget,
+  mode,
+}: {
+  cell: DashboardCell;
+  meals: MealPlan[];
+  dietTarget: NutritionTotals;
+  mode: DashboardDetailValueMode;
+}): DashboardDetailSource[] {
+  const mealBudgets = calculateDefaultMealBudgets(dietTarget.calories);
+  return meals.map((meal) => {
+    const actual = getMetricValue(meal.totals, cell.key);
+    const calorieTarget = mealBudgets[meal.id];
+    const calorieRatio = dietTarget.calories > 0 ? calorieTarget / dietTarget.calories : 0;
+    const target = cell.key === "intake" ? calorieTarget : Math.round(cell.target * calorieRatio);
+    const value = mode === "target" ? target : mode === "diff" ? actual - target : actual;
+    return {
+      name: meal.name,
+      detail: mode === "actual" ? `${meal.foods.length} 项食物` : "按今日餐次预算分配",
+      value: `${value > 0 && mode === "diff" ? "+" : ""}${formatDetailNumber(value)}${cell.unit}`,
+    };
+  });
+}
+
 function buildDashboardMetricDetail({
   cell,
   portions,
+  meals,
   energyPlan,
   dietTarget,
   dietPlanSummary,
@@ -1047,6 +1142,7 @@ function buildDashboardMetricDetail({
 }: {
   cell: DashboardCell;
   portions: FoodPortion[];
+  meals: MealPlan[];
   energyPlan: EnergyPlan;
   dietTarget: EnergyPlan;
   dietPlanSummary: DietPlanSummary;
@@ -1057,19 +1153,29 @@ function buildDashboardMetricDetail({
   plannedTrainingCalories: number;
   actualIntake: number;
 }): DashboardMetricDetail {
+  const label = getDashboardMetricLabel(cell);
   const targetLine = `目标 ${Math.round(cell.target)}${cell.unit}`;
   const actualLine = `实际 ${Math.round(cell.actual)}${cell.unit}`;
+  const diff = Math.round(cell.actual - cell.target);
+  const diffLine = diff > 0
+    ? `超出 ${Math.abs(diff)}${cell.unit}`
+    : `还差 ${Math.abs(diff)}${cell.unit}`;
+  const diffTone: SemanticColor = diff > 0 ? "warn" : "positive";
   const foodSources = buildFoodContributionSources(portions, cell.key, cell.unit);
+  const sourceGroups = buildDashboardSourceGroups({ cell, portions, meals, dietTarget });
 
   if (cell.key === "deficit") {
     return {
       key: cell.key,
-      label: cell.label,
+      label,
       targetLine,
       actualLine,
+      diffLine,
+      diffTone,
       targetReason: `目标热量来自当前身体数据、目标周期和执行天数。系统先把脂肪能量换算成每日缺口，再对极端值做安全收敛。`,
       sourceTitle: "赤字计算",
       emptySourceLabel: "暂无饮食或训练记录。",
+      sourceGroups,
       sources: [
         { name: "总消耗", detail: `基础消耗 ${Math.round(energyPlan.tdee)}kcal + 实际训练 ${Math.round(actualTrainingCalories)}kcal`, value: `+${Math.round(energyPlan.tdee + actualTrainingCalories)}kcal` },
         { name: "实际摄入", detail: "今日已识别并保留的食物标签", value: `-${Math.round(actualIntake)}kcal` },
@@ -1080,12 +1186,15 @@ function buildDashboardMetricDetail({
   if (cell.key === "burn") {
     return {
       key: cell.key,
-      label: cell.label,
+      label,
       targetLine,
       actualLine,
+      diffLine,
+      diffTone,
       targetReason: `消耗目标来自当前身体数据估算出的 TDEE。体重 ${profileWeightKg}kg 会影响基础代谢和运动消耗。`,
       sourceTitle: "消耗来源",
       emptySourceLabel: "暂无训练反馈。",
+      sourceGroups,
       sources: [
         { name: "基础消耗", detail: "根据身体数据和活动水平估算", value: `${Math.round(energyPlan.tdee)}kcal` },
         { name: "今日训练", detail: `计划约 ${Math.round(plannedTrainingCalories)}kcal，实际反馈 ${Math.round(actualTrainingCalories)}kcal`, value: `${Math.round(actualTrainingCalories)}kcal` },
@@ -1096,13 +1205,16 @@ function buildDashboardMetricDetail({
   if (cell.key === "intake") {
     return {
       key: cell.key,
-      label: cell.label,
+      label,
       targetLine,
       actualLine,
+      diffLine,
+      diffTone,
       targetReason: `摄入目标来自身体数据、目标周期和已选饮食计划。系统先确定总热量，再拆分蛋白、脂肪和碳水。`,
-      sourceTitle: "摄入来源",
+      sourceTitle: `${label}来源`,
       emptySourceLabel: "暂无识别到实际餐食。",
       sources: foodSources,
+      sourceGroups,
     };
   }
 
@@ -1114,17 +1226,26 @@ function buildDashboardMetricDetail({
 
   return {
     key: cell.key,
-    label: cell.label,
+    label,
     targetLine,
     actualLine,
+    diffLine,
+    diffTone,
     targetReason: macroReason[cell.key] ?? dietPlanSummary.logic,
-    sourceTitle: "摄入来源",
+    sourceTitle: `${label}来源`,
     emptySourceLabel: "暂无识别到实际餐食。",
     sources: foodSources,
+    sourceGroups,
   };
 }
 
 function buildFoodContributionSources(portions: FoodPortion[], metricKey: string, unit: string): DashboardDetailSource[] {
+  const mealLabels: Record<NonNullable<FoodPortion["meal"]>, string> = {
+    breakfast: "早餐",
+    lunch: "午餐",
+    dinner: "晚餐",
+    snack: "加餐",
+  };
   return portions
     .map((portion) => {
       const totals = portion.totals;
@@ -1136,9 +1257,10 @@ function buildFoodContributionSources(portions: FoodPortion[], metricKey: string
             ? totals.carbsG
             : totals.calories;
       const displayAmount = (portion as FoodPortion & { displayAmount?: string }).displayAmount ?? `${Math.round(Math.abs(portion.grams))}g`;
+      const mealLabel = portion.meal ? mealLabels[portion.meal] : "未分餐";
       return {
-        name: portion.name,
-        detail: `${displayAmount} · ${Math.round(totals.calories)}kcal`,
+        name: `${mealLabel} · ${portion.name}`,
+        detail: displayAmount,
         rawValue: value,
         value: `${formatDetailNumber(value)}${unit}`,
       };
@@ -1162,7 +1284,24 @@ function DashboardMetricDetailModal({
   onClose: () => void;
 }) {
   const c = useBentoTheme().colors;
+  const [valueMode, setValueMode] = useState<DashboardDetailValueMode>("actual");
+  const [breakdownMode, setBreakdownMode] = useState<DashboardDetailBreakdownMode>("food");
   if (!detail) return null;
+  const effectiveBreakdownMode = valueMode === "actual" ? breakdownMode : "meal";
+  const activeSources = valueMode === "actual"
+    ? (effectiveBreakdownMode === "food" ? detail.sourceGroups.foodActual : detail.sourceGroups.mealActual)
+    : valueMode === "target"
+      ? detail.sourceGroups.mealTarget
+      : detail.sourceGroups.mealDiff;
+  const valueModeOptions: Array<{ value: DashboardDetailValueMode; label: string }> = [
+    { value: "actual", label: "实际" },
+    { value: "target", label: "目标" },
+    { value: "diff", label: "差额" },
+  ];
+  const breakdownModeOptions: Array<{ value: DashboardDetailBreakdownMode; label: string }> = [
+    { value: "food", label: "按食物" },
+    { value: "meal", label: "按餐次" },
+  ];
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -1186,7 +1325,7 @@ function DashboardMetricDetailModal({
         >
           <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }} style={{ width: "100%" }}>
             <View style={{ gap: 4 }}>
-              <Label color={c.inkFaint} variant="micro">Metric details</Label>
+              <Label color={c.inkFaint} variant="micro">营养来源详情</Label>
               <BentoText weight="bold" color={c.ink} style={{ fontSize: 20, lineHeight: 24 }}>
                 {detail.label}
               </BentoText>
@@ -1195,10 +1334,68 @@ function DashboardMetricDetailModal({
             <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
               <Badge color="accent" size="sm">{detail.actualLine}</Badge>
               <Badge color="positive" size="sm">{detail.targetLine}</Badge>
+              <Badge color={detail.diffTone} size="sm">{detail.diffLine}</Badge>
+            </View>
+
+            <View style={{ gap: 8 }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                {valueModeOptions.map((option) => {
+                  const active = option.value === valueMode;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      onPress={() => setValueMode(option.value)}
+                      style={({ pressed }) => ({
+                        minHeight: 30,
+                        paddingHorizontal: 10,
+                        borderRadius: 999,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: active ? c.accent : c.glass,
+                        borderWidth: 1,
+                        borderColor: active ? c.accent : c.glassBorder,
+                        opacity: pressed ? 0.8 : 1,
+                      })}
+                    >
+                      <BentoText weight="semibold" variant="micro" color={active ? c.bg : c.inkMute}>
+                        {option.label}
+                      </BentoText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                {breakdownModeOptions.map((option) => {
+                  const disabled = valueMode !== "actual" && option.value === "food";
+                  const active = option.value === effectiveBreakdownMode;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      disabled={disabled}
+                      onPress={() => setBreakdownMode(option.value)}
+                      style={({ pressed }) => ({
+                        minHeight: 28,
+                        paddingHorizontal: 10,
+                        borderRadius: 999,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: active ? c.positive : c.glass,
+                        borderWidth: 1,
+                        borderColor: active ? c.positive : c.glassBorder,
+                        opacity: disabled ? 0.35 : pressed ? 0.8 : 1,
+                      })}
+                    >
+                      <BentoText weight="semibold" variant="micro" color={active ? c.bg : c.inkMute}>
+                        {option.label}
+                      </BentoText>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
 
             <View style={{ gap: 6, padding: 12, borderRadius: 12, backgroundColor: c.glass, borderWidth: 1, borderColor: c.glassBorder }}>
-              <BentoText weight="semibold" variant="caption" color={c.ink}>Calculation basis</BentoText>
+              <BentoText weight="semibold" variant="caption" color={c.ink}>目标来源</BentoText>
               <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18 }}>
                 {detail.targetReason}
               </BentoText>
@@ -1206,7 +1403,7 @@ function DashboardMetricDetailModal({
 
             <View style={{ gap: 8 }}>
               <BentoText weight="semibold" variant="caption" color={c.ink}>{detail.sourceTitle}</BentoText>
-              {detail.sources.length > 0 ? detail.sources.map((source) => (
+              {activeSources.length > 0 ? activeSources.map((source) => (
                 <View
                   key={`${source.name}-${source.detail}-${source.value}`}
                   style={{

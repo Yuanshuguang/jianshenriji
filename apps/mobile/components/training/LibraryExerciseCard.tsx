@@ -1,4 +1,5 @@
 import { Image, Pressable, View } from "react-native";
+import { useRef } from "react";
 import { Text as BentoText, useBentoTheme } from "../../components/bento";
 import { exerciseCardActionA11yLabel } from "../../features/exercise-library-actions";
 import type { LibraryExercise } from "./LibraryBodyPartTab";
@@ -21,14 +22,47 @@ export function LibraryExerciseCard({
   bottom?: boolean;
   thumbUri?: string;
   onPress: () => void;
-  onLongPress: () => void;
-  onActionPress?: () => void;
+  onLongPress: (anchor: { x: number; y: number; width: number; height: number }) => void;
+  onActionPress?: (anchor: { x: number; y: number; width: number; height: number }) => void;
 }) {
   const c = useBentoTheme().colors;
+  const actionButtonRef = useRef<any>(null);
+
+  const emitActionAnchor = () => {
+    if (!onActionPress) return;
+    const node = actionButtonRef.current;
+    if (!node) return;
+    const report = (x: number, y: number, width: number, height: number) => onActionPress({ x, y, width, height });
+    if (typeof node.measureInWindow === "function") {
+      node.measureInWindow(report);
+      return;
+    }
+    if (typeof node.measure === "function") {
+      node.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+        report(pageX ?? x, pageY ?? y, width, height);
+      });
+    }
+  };
+
+  const emitLongPressAnchor = () => {
+    if (!onLongPress) return;
+    const node = actionButtonRef.current;
+    if (!node) return;
+    const report = (x: number, y: number, width: number, height: number) => onLongPress({ x, y, width, height });
+    if (typeof node.measureInWindow === "function") {
+      node.measureInWindow(report);
+      return;
+    }
+    if (typeof node.measure === "function") {
+      node.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+        report(pageX ?? x, pageY ?? y, width, height);
+      });
+    }
+  };
   return (
     <Pressable
       onPress={onPress}
-      onLongPress={onLongPress}
+      onLongPress={emitLongPressAnchor}
       delayLongPress={360}
       style={({ pressed }) => ({
         width: "47%",
@@ -59,7 +93,7 @@ export function LibraryExerciseCard({
         }}
       >
         <BentoText weight="bold" variant="micro" style={{ color: c.bg }}>
-          {active ? "已加" : "讲解"}
+          {active ? "已加" : "动作"}
         </BentoText>
       </View>
       {(favorite || pinned || bottom) ? (
@@ -71,11 +105,12 @@ export function LibraryExerciseCard({
       ) : null}
       {onActionPress ? (
         <Pressable
+          ref={actionButtonRef}
           accessibilityRole="button"
           accessibilityLabel={exerciseCardActionA11yLabel}
           onPress={(event) => {
             event.stopPropagation();
-            onActionPress();
+            emitActionAnchor();
           }}
           hitSlop={8}
           style={({ pressed }) => ({

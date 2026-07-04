@@ -2,7 +2,7 @@
 // 核心目标：口语长句先拆餐次和食物片段，再绑定数量单位，最后匹配整菜优先词库。
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateFoodTotals, foods, recommendMacroAwarePortions, type Food } from "@fitness-calendar/shared";
+import { calculateFoodTotals, foods, recommendMacroAwarePortions, sumNutrition, type Food } from "@fitness-calendar/shared";
 import { parseFoodIntelligence, parseFoodIntelligencePipeline, type FoodIntelligenceItem } from "../food-intelligence-engine";
 import { buildActualFoodPortionsFromText, buildMealPlan } from "../today-plan";
 
@@ -188,6 +188,30 @@ test("量词 + 长词优先：16个猪肉大葱馅儿水饺 => 400g / 早餐", (
   assert.equal(dumplings?.quantity, 16);
   assert.equal(dumplings?.unit, "个");
   assert.equal(dumplings?.meal, "breakfast");
+});
+
+test("水饺口语量词：16颗猪肉大葱水饺应按单颗计算，不能退回默认份量", () => {
+  const result = parseFoodIntelligence("晚上吃了16颗猪肉大葱水饺");
+  const dumplings = result.items.find((item) => item.food.id === "pork-scallion-dumplings");
+  assert.ok(dumplings, "expected pork-scallion-dumplings");
+  assert.equal(result.items.length, 1);
+  assert.equal(dumplings?.grams, 400);
+  assert.equal(dumplings?.quantity, 16);
+  assert.equal(dumplings?.unit, "颗");
+  assert.equal(dumplings?.meal, "dinner");
+});
+
+test("用户真实长句：今日统计不应因“16颗水饺”膨胀到万卡级别", () => {
+  const input = "晚上吃两个馒头。300g土豆，16颗猪肉大葱水饺。早上吃了一碗热干面，一杯豆浆；中午吃了一碗方便面，一碗蔬菜沙拉，一盒牛奶。";
+  const actual = buildActualFoodPortionsFromText(input, [], { dailyCalorieTarget: 1800 });
+  const dumplings = actual.parsed.matched.find((item) => item.food.id === "pork-scallion-dumplings");
+  const total = sumNutrition(actual.portions.map((portion) => portion.totals));
+
+  assert.ok(dumplings, "expected pork-scallion-dumplings");
+  assert.equal(dumplings?.grams, 400);
+  assert.equal(dumplings?.quantity, 16);
+  assert.equal(dumplings?.unit, "颗");
+  assert.ok(total.calories > 2500 && total.calories < 4500, "expected realistic total calories, got " + total.calories);
 });
 
 test("脏词条防线：早上 / 16个 即使在我的菜单里也不能识别成食物", () => {

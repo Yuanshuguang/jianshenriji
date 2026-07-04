@@ -161,3 +161,36 @@ test("整份食品：鸡蛋和香蕉不会为了闭合热量无限放大", () =>
   assert.equal(portionGrams(result.portions, "banana"), 120);
   assert.ok(result.warnings.some((warning) => warning.includes("无法")));
 });
+
+test("极端快餐池：可以估算热量，但必须提示蛋白不足和脂肪偏高", () => {
+  const result = solveMealPlan({
+    foods: [food("hamburger"), food("chips"), food("cola")],
+    target: { calories: 2200, proteinG: 130, fatG: 70, carbsG: 280 }
+  });
+
+  assert.ok(result.totals.proteinG < 130 * 0.75);
+  assert.ok(result.warnings.some((warning) => warning.includes("蛋白质明显不足")));
+  assert.ok(result.warnings.some((warning) => warning.includes("脂肪明显偏高")));
+});
+
+test("极端主食池：不能把低蛋白低脂搭配包装成正常健身餐", () => {
+  const result = solveMealPlan({
+    foods: [food("rice-cooked"), food("noodles"), food("mantou")],
+    target: { calories: 2200, proteinG: 130, fatG: 70, carbsG: 280 }
+  });
+
+  assert.ok(result.warnings.some((warning) => warning.includes("缺少优质蛋白")));
+  assert.ok(result.warnings.some((warning) => warning.includes("脂肪过低")));
+  assert.ok(result.warnings.some((warning) => warning.includes("不适合作为默认健身餐")));
+});
+
+test("极端蛋白池：蛋白粉或鸡胸肉份量过大时必须预警", () => {
+  const result = solveMealPlan({
+    foods: [food("chicken-breast"), food("beef"), food("protein-powder")],
+    target: { calories: 2200, proteinG: 130, fatG: 70, carbsG: 280 }
+  });
+
+  assert.ok(result.totals.carbsG < 60);
+  assert.ok(result.warnings.some((warning) => warning.includes("碳水明显不足")));
+  assert.ok(result.warnings.some((warning) => warning.includes("不适合作为默认健身餐")));
+});

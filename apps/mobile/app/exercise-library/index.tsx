@@ -1,12 +1,10 @@
 import { exercises } from "@fitness-calendar/shared";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Image, Pressable, ScrollView, View } from "react-native";
+import { Image, Modal, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { EmptyState, LoadingState, SkeletonCard } from "../../components/shared/EmptyState";
 import {
   Badge,
-  GlassTile,
-  Label,
   Screen,
   ScreenHeader,
   Text as BentoText,
@@ -89,6 +87,7 @@ function getEquipmentLabel(equipment: string | null | undefined) {
 export default function ExerciseLibraryScreen() {
   const router = useRouter();
   const c = useBentoTheme().colors;
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const todayTrainingPlan = useFitnessStore((state) => state.todayTrainingPlan);
   const setTodayTrainingPlan = useFitnessStore((state) => state.setTodayTrainingPlan);
   const exerciseLibraryPreferences = useFitnessStore((state) => state.exerciseLibraryPreferences);
@@ -105,8 +104,8 @@ export default function ExerciseLibraryScreen() {
   const [libraryError, setLibraryError] = useState("");
   const [selectedLibraryEquipment, setSelectedLibraryEquipment] = useState("all");
   const [selectedLibraryBodyPart, setSelectedLibraryBodyPart] = useState("Chest");
-  const [selectedLibraryExercise, setSelectedLibraryExercise] = useState<LibraryExercise | null>(null);
   const [actionExercise, setActionExercise] = useState<LibraryExercise | null>(null);
+  const [actionAnchor, setActionAnchor] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [libraryThumbUris, setLibraryThumbUris] = useState<Record<string, string>>({});
   const [libraryVisibleLimit, setLibraryVisibleLimit] = useState(24);
 
@@ -249,12 +248,15 @@ export default function ExerciseLibraryScreen() {
     });
   };
 
-  const openExerciseActions = (item: LibraryExercise) => {
+  const openExerciseActions = (item: LibraryExercise, anchor?: { x: number; y: number; width: number; height: number }) => {
     setActionExercise(item);
-    setSelectedLibraryExercise(item);
+    setActionAnchor(anchor ?? null);
   };
 
-  const closeExerciseActions = () => setActionExercise(null);
+  const closeExerciseActions = () => {
+    setActionExercise(null);
+    setActionAnchor(null);
+  };
 
   const isFavoriteExercise = (item: LibraryExercise) => exerciseLibraryPreferences.favoriteExerciseIds.includes(item.id);
   const isPinnedExercise = (item: LibraryExercise) => exerciseLibraryPreferences.pinnedExerciseIds.includes(item.id);
@@ -265,114 +267,80 @@ export default function ExerciseLibraryScreen() {
       <ScreenHeader
         kicker="动作库"
         title="浏览动作"
-        subtitle="单击动作看讲解，点卡片右上角或长按可收藏、置顶、加入今日参考。"
+        subtitle="点卡片右上角或长按可收藏、置顶、加入今日参考。"
         badge={{ text: `${combinedLibraryItems.length} 项`, color: "accent2" }}
       />
 
-      {selectedLibraryExercise ? (
-        <GlassTile glow="accent2" style={{ gap: 10 }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Label color={c.inkMute} variant="label">动作讲解</Label>
-              <BentoText weight="bold" style={{ color: c.ink, fontSize: 16 }} numberOfLines={2}>
-                {selectedLibraryExercise.displayName}
-              </BentoText>
-              <BentoText variant="micro" style={{ color: c.inkMute }} numberOfLines={1}>
-                {[
-                  getEquipmentLabel(selectedLibraryExercise.equipment),
-                  selectedLibraryExercise.bodyPart ? bodyPartLabels[selectedLibraryExercise.bodyPart] ?? selectedLibraryExercise.bodyPart : null
-                ].filter(Boolean).join(" / ") || "动作库"}
-              </BentoText>
-            </View>
-            <Badge color={isExerciseInTodayPlan(selectedLibraryExercise) ? "accent2" : "positive"} size="sm">
-              {isExerciseInTodayPlan(selectedLibraryExercise) ? "已加入" : "长按加入"}
-            </Badge>
-          </View>
-          {selectedLibraryExercise.gifUrl ? (
-            <Image
-              source={{ uri: selectedLibraryExercise.gifUrl }}
-              resizeMode="contain"
-              style={{ width: "100%", height: 180, borderRadius: 14, backgroundColor: `${c.ink}10` }}
-            />
-          ) : null}
-          {selectedLibraryExercise.instructions?.length ? (
-            <View style={{ gap: 6 }}>
-              {selectedLibraryExercise.instructions.slice(0, 4).map((step, index) => (
-                <BentoText key={`${selectedLibraryExercise.id}-step-${index}`} variant="micro" color={c.inkMute} style={{ lineHeight: 18 }}>
-                  {index + 1}. {step}
-                </BentoText>
-              ))}
-            </View>
-          ) : (
-            <BentoText variant="micro" color={c.inkMute}>
-              暂无文字步骤，先参考动作 GIF。长按动作卡片可加入或取消今日参考。
-            </BentoText>
-          )}
-          {customTrainingExercises.length > 0 ? (
-            <View style={{ paddingTop: 6, borderTopWidth: 1, borderTopColor: c.glassBorder }}>
-              <BentoText variant="micro" color={c.inkMute}>
-                今日已选 {customTrainingExercises.length} 个：{customTrainingExercises.map((exercise) => exercise.name).join("、")}
-              </BentoText>
-            </View>
-          ) : null}
-        </GlassTile>
-      ) : null}
-
       {actionExercise ? (
-        <GlassTile glow="positive" style={{ gap: 10 }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Label color={c.inkMute} variant="label">动作操作</Label>
-              <BentoText weight="bold" color={c.ink} numberOfLines={1}>
-                {actionExercise.displayName}
-              </BentoText>
-            </View>
-            <Pressable
-              onPress={closeExerciseActions}
-              style={({ pressed }) => ({
-                width: 34,
-                height: 34,
-                borderRadius: 17,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: c.bg,
-                opacity: pressed ? 0.76 : 1
-              })}
+        <Modal visible transparent animationType="fade" onRequestClose={closeExerciseActions}>
+          <Pressable onPress={closeExerciseActions} style={{ flex: 1, backgroundColor: "rgba(4, 10, 24, 0.16)" }}>
+            <View
+              style={{
+                position: "absolute",
+                width: 184,
+                left: Math.min(
+                  Math.max(12, (actionAnchor?.x ?? windowWidth / 2) + (actionAnchor?.width ?? 0) - 184),
+                  Math.max(12, windowWidth - 196)
+                ),
+                top: Math.min(
+                  Math.max(12, (actionAnchor?.y ?? 120) + (actionAnchor?.height ?? 0) + 6),
+                  Math.max(12, windowHeight - 232)
+                ),
+              }}
             >
-              <BentoText weight="bold" color={c.inkMute}>×</BentoText>
-            </Pressable>
-          </View>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            <ActionPill
-              label={isFavoriteExercise(actionExercise) ? "取消收藏" : "收藏"}
-              onPress={() => {
-                toggleFavoriteExercise(actionExercise.id);
-                closeExerciseActions();
-              }}
-            />
-            <ActionPill
-              label={isPinnedExercise(actionExercise) ? "已置顶" : "置顶"}
-              onPress={() => {
-                pinExerciseToTop(actionExercise.id);
-                closeExerciseActions();
-              }}
-            />
-            <ActionPill
-              label={isBottomExercise(actionExercise) ? "已置底" : "置底"}
-              onPress={() => {
-                pinExerciseToBottom(actionExercise.id);
-                closeExerciseActions();
-              }}
-            />
-            <ActionPill
-              label={isExerciseInTodayPlan(actionExercise) ? "取消今日参考" : "加入今日参考"}
-              onPress={() => {
-                toggleLibraryExerciseInPlan(actionExercise);
-                closeExerciseActions();
-              }}
-            />
-          </View>
-        </GlassTile>
+              <View
+                style={{
+                  gap: 6,
+                  padding: 8,
+                  borderRadius: 14,
+                  backgroundColor: c.bg,
+                  borderWidth: 1,
+                  borderColor: c.glassBorderBright,
+                  shadowColor: "#000",
+                  shadowOpacity: 0.12,
+                  shadowRadius: 14,
+                  shadowOffset: { width: 0, height: 8 },
+                  elevation: 8,
+                }}
+              >
+                <BentoText variant="micro" color={c.inkMute} numberOfLines={1} style={{ paddingHorizontal: 4 }}>
+                  {actionExercise.displayName}
+                </BentoText>
+                <View style={{ height: 1, backgroundColor: c.glassBorder }} />
+                <View style={{ gap: 4 }}>
+                  <MenuActionButton
+                    label={isFavoriteExercise(actionExercise) ? "取消收藏" : "收藏"}
+                    onPress={() => {
+                      toggleFavoriteExercise(actionExercise.id);
+                      closeExerciseActions();
+                    }}
+                  />
+                  <MenuActionButton
+                    label={isPinnedExercise(actionExercise) ? "取消置顶" : "置顶"}
+                    onPress={() => {
+                      pinExerciseToTop(actionExercise.id);
+                      closeExerciseActions();
+                    }}
+                  />
+                  <MenuActionButton
+                    label={isBottomExercise(actionExercise) ? "取消置底" : "置底"}
+                    onPress={() => {
+                      pinExerciseToBottom(actionExercise.id);
+                      closeExerciseActions();
+                    }}
+                  />
+                  <MenuActionButton
+                    label={isExerciseInTodayPlan(actionExercise) ? "取消今日参考" : "加入今日参考"}
+                    onPress={() => {
+                      toggleLibraryExerciseInPlan(actionExercise);
+                      closeExerciseActions();
+                    }}
+                  />
+                </View>
+              </View>
+            </View>
+          </Pressable>
+        </Modal>
       ) : null}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 8 }}>
@@ -429,7 +397,7 @@ export default function ExerciseLibraryScreen() {
             </View>
           ) : filteredLibraryItems.length === 0 && !libraryError ? (
             <EmptyState
-              icon="空"
+              iconName="inbox"
               title="暂无动作"
               subtitle={selectedLibraryBodyPart === favoriteBodyPartKey ? "还没有收藏动作，点卡片右上角或长按动作即可收藏。" : "该部位暂无可用动作，试试其他部位。"}
             />
@@ -453,9 +421,9 @@ export default function ExerciseLibraryScreen() {
                         pinned={isPinnedExercise(item)}
                         bottom={isBottomExercise(item)}
                         thumbUri={libraryThumbUris[item.id]}
-                        onPress={() => setSelectedLibraryExercise(item)}
-                        onLongPress={() => openExerciseActions(item)}
-                        onActionPress={() => openExerciseActions(item)}
+                        onPress={() => {}}
+                        onLongPress={(anchor) => openExerciseActions(item, anchor)}
+                        onActionPress={(anchor) => openExerciseActions(item, anchor)}
                       />
                     ))}
                   </View>
@@ -519,16 +487,16 @@ function getLibrarySortRank(exerciseId: string, preferences: ExerciseLibraryPref
   return 0;
 }
 
-function ActionPill({ label, onPress }: { label: string; onPress: () => void }) {
+function MenuActionButton({ label, onPress }: { label: string; onPress: () => void }) {
   const c = useBentoTheme().colors;
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 36,
-        paddingHorizontal: 14,
-        borderRadius: 999,
-        alignItems: "center",
+        minHeight: 40,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        alignItems: "flex-start",
         justifyContent: "center",
         backgroundColor: c.bg,
         borderWidth: 1,

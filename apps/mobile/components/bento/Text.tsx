@@ -24,11 +24,15 @@ function lineHeightKey(variant: keyof typeof typography.sizes): keyof typeof typ
   return variant as keyof typeof typography.lineHeights;
 }
 
-function fontFamilyFor(variant: keyof typeof typography.sizes, mono: boolean) {
+function fontFamilyFor(variant: keyof typeof typography.sizes, mono: boolean, children?: ReactNode) {
+  // 含中文字符 → 使用 CJK 字体族
+  if (children && typeof children === "string" && /[一-龥\u3400-\u4DBF]/.test(children)) {
+    return fontFamilies.cjk;
+  }
+  // 数字 / 大标题 → mono (Barlow Condensed)
   if (mono || variant === "display" || variant === "h1" || variant === "h2" || variant === "h3") {
     return fontFamilies.mono;
   }
-
   return fontFamilies.sans;
 }
 
@@ -79,9 +83,10 @@ export function Text({
   const scaledStyle = scaleStyle(style, fontScale);
 
   const base: TextStyle = {
-    fontFamily: fontFamilyFor(variant, mono),
+    fontFamily: fontFamilyFor(variant, mono, children),
     fontSize: size,
     fontWeight: typography.weights[weight],
+    fontVariant: ["tabular-nums"],
     color: resolveThemeColor(color, theme) ?? theme.colors.ink,
     lineHeight,
     letterSpacing: tracking ?? typography.tracking.normal,
