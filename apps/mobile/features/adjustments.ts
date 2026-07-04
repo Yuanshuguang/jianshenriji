@@ -38,6 +38,7 @@ export type DailyAdjustmentSummary = {
   ignoredRules: string[];
   warning?: string;
   dietQualityWarnings: string[];
+  macroGapWarnings: string[];
 };
 
 export function buildDailyAdjustmentSummary(input: {
@@ -109,6 +110,7 @@ export function buildDailyAdjustmentSummary(input: {
     ignoredRules: result.ignoredRules,
     warning: result.adjustedDailyCalories === createDefaultAdjustmentRules(input.settings, input.gender).safetyFloorCalories ? "已触发最低安全摄入保护。" : undefined,
     dietQualityWarnings: [],
+    macroGapWarnings: buildMacroGapWarnings(input.actualTotals,input.target),
   };
 }
 
@@ -197,4 +199,15 @@ function mealLabel(meal: MealAdjustmentKey): string {
     case "dinner": return "晚餐";
     case "snack": return "加餐";
   }
+}
+
+function buildMacroGapWarnings(actual: NutritionTotals, target: NutritionTotals): string[] {
+  const out: string[] = [];
+  const proteinGap = target.proteinG - actual.proteinG;
+  if (proteinGap > 10) out.push("?????? (? " + Math.round(proteinGap) + "g)?????????????????");
+  const fatGap = target.fatG - actual.fatG;
+  if (fatGap > 5) out.push("?????? (? " + Math.round(fatGap) + "g)?????????????????????");
+  const carbsGap = target.carbsG - actual.carbsG;
+  if (carbsGap > 15) out.push("?????? (? " + Math.round(carbsGap) + "g)?????????????????????");
+  return out;
 }

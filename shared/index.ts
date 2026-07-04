@@ -422,9 +422,10 @@ export function calculateGoalEnergyPlan(input: {
       ? 10 * input.currentWeightKg + 6.25 * input.heightCm - 5 * input.age + 5
       : 10 * input.currentWeightKg + 6.25 * input.heightCm - 5 * input.age - 161;
   const tdee = Math.round(bmr * input.activityFactor);
-  const dailyDeficitRaw = ((input.currentWeightKg - input.targetWeightKg) * 7700) / Math.max(1, input.days);
+  const dailyDeficitRaw = ((input.currentWeightKg - input.targetWeightKg) * 7700 * 0.85) / Math.max(1, input.days);
   const dailyDeficit = Math.round(Math.max(-300, Math.min(750, dailyDeficitRaw)));
-  const calories = Math.max(1200, Math.round(tdee - dailyDeficit));
+  const safetyFloor = input.gender === "female" ? 1200 : 1500;
+  const calories = Math.max(safetyFloor, Math.round(tdee - dailyDeficit));
   const proteinG = Math.round(resolveProteinReferenceWeight(input.currentWeightKg, input.heightCm) * 1.8);
   const fatG = Math.round(Math.max(40, (calories * 0.25) / 9));
   const carbsG = Math.round(Math.max(80, (calories - proteinG * 4 - fatG * 9) / 4));

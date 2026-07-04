@@ -388,11 +388,11 @@ function hasRedFlag(input: DynamicPlanEngineInput, rules: AdjustmentRules): bool
     : nutrition.actual.calories;
   if (actual < rules.safetyFloorCalories * 0.7) return true;
   const weightDiff = input.userProfile.weightKg - input.goalPlan.targetWeightKg;
-  if (weightDiff > 0 && (weightDiff / Math.max(1, input.goalPlan.targetDays)) > 0.2) return true;
+  if (weightDiff > 0 && (weightDiff / Math.max(1, input.goalPlan.targetDays)) > 0.15) return true;
   return false;
 }
 function resolveHybridRatio(netDelta: number, baseRatio: number): number {
-  if (netDelta <= 150) return 0;
+  if (netDelta <= 150) return 0.15;
   if (netDelta <= 500) return 0.25;
   if (netDelta <= 1200) return baseRatio;
   if (netDelta <= 2500) return 0.35;
