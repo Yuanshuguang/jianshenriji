@@ -6,6 +6,7 @@ import type { LibraryExercise } from "./LibraryBodyPartTab";
 
 export function LibraryExerciseCard({
   item,
+  badgeLabel,
   active,
   favorite = false,
   pinned = false,
@@ -16,6 +17,7 @@ export function LibraryExerciseCard({
   onActionPress,
 }: {
   item: LibraryExercise;
+  badgeLabel: string;
   active: boolean;
   favorite?: boolean;
   pinned?: boolean;
@@ -59,6 +61,7 @@ export function LibraryExerciseCard({
       });
     }
   };
+
   return (
     <Pressable
       onPress={onPress}
@@ -93,7 +96,7 @@ export function LibraryExerciseCard({
         }}
       >
         <BentoText weight="bold" variant="micro" style={{ color: c.bg }}>
-          {active ? "已加" : "动作"}
+          {badgeLabel}
         </BentoText>
       </View>
       {(favorite || pinned || bottom) ? (

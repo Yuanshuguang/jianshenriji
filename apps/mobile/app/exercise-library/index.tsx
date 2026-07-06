@@ -78,7 +78,6 @@ const extendedEquipmentLabels: Record<string, string> = {
   "elliptical machine": "椭圆机",
   "stepmill machine": "登阶机"
 };
-
 function getEquipmentLabel(equipment: string | null | undefined) {
   if (!equipment) return null;
   return equipmentLabels[equipment] ?? extendedEquipmentLabels[equipment.toLowerCase()] ?? equipment;
@@ -381,8 +380,7 @@ export default function ExerciseLibraryScreen() {
               {selectedLibraryBodyPart === "all" ? "全部动作" : `${getBodyPartLabel(selectedLibraryBodyPart)}动作`}
             </BentoText>
             <BentoText mono variant="micro" color={c.positive}>
-              {filteredLibraryItems.length}/{Math.max(libraryTotal, combinedLibraryItems.length)} 项
-            </BentoText>
+              {filteredLibraryItems.length}/{Math.max(libraryTotal, combinedLibraryItems.length)} 项</BentoText>
           </View>
 
           {libraryError ? (
@@ -424,6 +422,7 @@ export default function ExerciseLibraryScreen() {
                         onPress={() => {}}
                         onLongPress={(anchor) => openExerciseActions(item, anchor)}
                         onActionPress={(anchor) => openExerciseActions(item, anchor)}
+                        badgeLabel={getExerciseLibraryBadgeLabel(selectedLibraryBodyPart, item.bodyPart)}
                       />
                     ))}
                   </View>
@@ -477,6 +476,36 @@ export default function ExerciseLibraryScreen() {
 function getBodyPartLabel(part: string): string {
   if (part === favoriteBodyPartKey) return "收藏";
   return bodyPartLabels[part] ?? part;
+}
+
+function getExerciseLibraryBadgeLabel(selectedBodyPart: string, itemBodyPart?: string | null): string {
+  if (selectedBodyPart === favoriteBodyPartKey) return "收藏";
+  const sourceBodyPart = selectedBodyPart === "all" ? (itemBodyPart ?? "") : selectedBodyPart;
+  const bodyPart = getBodyPartLabel(sourceBodyPart);
+  switch (bodyPart) {
+    case "胸":
+      return "胸部";
+    case "背":
+      return "背部";
+    case "肩":
+      return "肩部";
+    case "上臂":
+      return "上臂";
+    case "前臂":
+      return "前臂";
+    case "核心":
+      return "核心";
+    case "大腿":
+      return "大腿";
+    case "小腿":
+      return "小腿";
+    case "有氧":
+      return "有氧";
+    case "颈部":
+      return "颈部";
+    default:
+      return bodyPart || "动作";
+  }
 }
 
 function getLibrarySortRank(exerciseId: string, preferences: ExerciseLibraryPreferences): number {

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 中国常见食物补充数据库
  * 数据来源：《中国食物成分表》第6版标准版/普及版
  * 覆盖：早餐面点、面条米粉、粥品、八大菜系代表菜、火锅干锅、烧烤、
@@ -258,6 +258,8 @@ const defs: FoodDef[] = [
   ["heimei", "黑莓", ["黑莓", "黑莓"], "fruit", 43, 1.4, 0.5, 9.6, 100, [["把", 100]], { foodGranularity: "ingredient" }],
   ["emei", "鹅莓", ["鹅莓", "醋栗", "鹅莓"], "fruit", 44, 0.9, 0.6, 9.4, 100, [["把", 100]], { foodGranularity: "ingredient" }],
   ["renxinguo", "人心果", ["人心果", "人心果"], "fruit", 83, 0.4, 0.6, 19.9, 100, [["个", 100]], { foodGranularity: "ingredient" }],
+  ["mangguo", "芒果", ["芒果", "mangguo", "mango", "芒果干", "芒果片"], "fruit", 60, 0.6, 0.2, 15.0, 100, [["个", 100]], { foodGranularity: "ingredient" }],
+  ["xigua", "西瓜", ["西瓜", "黑美人西瓜"], "fruit", 31, 0.6, 0.2, 7.9, 100, [["块", 200], ["片", 100]], { foodGranularity: "ingredient" }],
 
   // ========== 甜品/糖水 (4种) ==========
   ["jiangzhuangnai", "姜撞奶", ["姜撞奶", "姜汁撞奶"], "snack", 88, 3.5, 3.0, 11.0, 200, [["碗", 200]], { foodGranularity: "prepared-dish" }],

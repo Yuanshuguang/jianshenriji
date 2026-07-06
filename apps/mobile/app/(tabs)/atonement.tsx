@@ -176,7 +176,7 @@ export default function AtonementScreen() {
         </GlassTile>
       )}
 
-      <BentoText variant="micro" color={c.inkFaint} style={{lineHeight:16,marginBottom:6}}>???????????????????????????????????????</BentoText>
+      <BentoText variant="micro" color={c.inkFaint} style={{lineHeight:16,marginBottom:6}}>赎罪 = 动态调整目标偏差，系统会把差额重新分配回计划轨道。</BentoText>
       <CalorieLedgerPanel
         historyLogs={historyLogs}
         previewEntry={previewEntry}

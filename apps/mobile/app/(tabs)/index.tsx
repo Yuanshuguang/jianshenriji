@@ -1,4 +1,4 @@
-import {
+﻿import {
   calculateNutritionGap,
   calculateFoodTotals,
   calculateDietPlanMacroTargets,
@@ -1329,6 +1329,9 @@ function DashboardMetricDetailModal({
               <BentoText weight="bold" color={c.ink} style={{ fontSize: 20, lineHeight: 24 }}>
                 {detail.label}
               </BentoText>
+              <BentoText variant="micro" color={c.inkMute} style={{ lineHeight: 18 }}>
+                先看结论，再看来源；点击切换不同口径。
+              </BentoText>
             </View>
 
             <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
@@ -1337,92 +1340,114 @@ function DashboardMetricDetailModal({
               <Badge color={detail.diffTone} size="sm">{detail.diffLine}</Badge>
             </View>
 
-            <View style={{ gap: 8 }}>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-                {valueModeOptions.map((option) => {
-                  const active = option.value === valueMode;
-                  return (
-                    <Pressable
-                      key={option.value}
-                      onPress={() => setValueMode(option.value)}
-                      style={({ pressed }) => ({
-                        minHeight: 30,
-                        paddingHorizontal: 10,
-                        borderRadius: 999,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: active ? c.accent : c.glass,
-                        borderWidth: 1,
-                        borderColor: active ? c.accent : c.glassBorder,
-                        opacity: pressed ? 0.8 : 1,
-                      })}
-                    >
-                      <BentoText weight="semibold" variant="micro" color={active ? c.bg : c.inkMute}>
-                        {option.label}
-                      </BentoText>
-                    </Pressable>
-                  );
-                })}
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {valueModeOptions.map((option) => {
+                const active = option.value === valueMode;
+                return (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => setValueMode(option.value)}
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      minHeight: 34,
+                      paddingHorizontal: 10,
+                      borderRadius: 999,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: active ? c.accent : c.glass,
+                      borderWidth: 1,
+                      borderColor: active ? c.accent : c.glassBorder,
+                      opacity: pressed ? 0.8 : 1,
+                    })}
+                  >
+                    <BentoText weight="semibold" variant="micro" color={active ? c.bg : c.inkMute}>
+                      {option.label}
+                    </BentoText>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {breakdownModeOptions.map((option) => {
+                const disabled = valueMode !== "actual" && option.value === "food";
+                const active = option.value === effectiveBreakdownMode;
+                return (
+                  <Pressable
+                    key={option.value}
+                    disabled={disabled}
+                    onPress={() => setBreakdownMode(option.value)}
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      minHeight: 32,
+                      paddingHorizontal: 10,
+                      borderRadius: 999,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: active ? c.positive : c.glass,
+                      borderWidth: 1,
+                      borderColor: active ? c.positive : c.glassBorder,
+                      opacity: disabled ? 0.35 : pressed ? 0.8 : 1,
+                    })}
+                  >
+                    <BentoText weight="semibold" variant="micro" color={active ? c.bg : c.inkMute}>
+                      {option.label}
+                    </BentoText>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.glass }}>
+              <View style={{ flexDirection: "row", backgroundColor: c.glassRaised, borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
+                <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}>
+                  <BentoText weight="semibold" variant="micro" color={c.inkMute}>目标来源</BentoText>
+                </View>
+                <View style={{ flex: 1.2, paddingVertical: 10, paddingHorizontal: 12, alignItems: "flex-end" }}>
+                  <BentoText weight="semibold" variant="micro" color={c.inkMute}>说明</BentoText>
+                </View>
               </View>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-                {breakdownModeOptions.map((option) => {
-                  const disabled = valueMode !== "actual" && option.value === "food";
-                  const active = option.value === effectiveBreakdownMode;
-                  return (
-                    <Pressable
-                      key={option.value}
-                      disabled={disabled}
-                      onPress={() => setBreakdownMode(option.value)}
-                      style={({ pressed }) => ({
-                        minHeight: 28,
-                        paddingHorizontal: 10,
-                        borderRadius: 999,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: active ? c.positive : c.glass,
-                        borderWidth: 1,
-                        borderColor: active ? c.positive : c.glassBorder,
-                        opacity: disabled ? 0.35 : pressed ? 0.8 : 1,
-                      })}
-                    >
-                      <BentoText weight="semibold" variant="micro" color={active ? c.bg : c.inkMute}>
-                        {option.label}
-                      </BentoText>
-                    </Pressable>
-                  );
-                })}
+              <View style={{ flexDirection: "row" }}>
+                <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
+                  <BentoText weight="semibold" color={c.ink}>{detail.sourceTitle}</BentoText>
+                </View>
+                <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
+                  <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18, textAlign: "right" }}>
+                    {detail.targetReason}
+                  </BentoText>
+                </View>
               </View>
             </View>
 
-            <View style={{ gap: 6, padding: 12, borderRadius: 12, backgroundColor: c.glass, borderWidth: 1, borderColor: c.glassBorder }}>
-              <BentoText weight="semibold" variant="caption" color={c.ink}>目标来源</BentoText>
-              <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18 }}>
-                {detail.targetReason}
-              </BentoText>
-            </View>
-
-            <View style={{ gap: 8 }}>
-              <BentoText weight="semibold" variant="caption" color={c.ink}>{detail.sourceTitle}</BentoText>
+            <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.glass }}>
+              <View style={{ flexDirection: "row", backgroundColor: c.glassRaised, borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
+                <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}>
+                  <BentoText weight="semibold" variant="micro" color={c.inkMute}>来源</BentoText>
+                </View>
+                <View style={{ flex: 1.2, paddingVertical: 10, paddingHorizontal: 12, alignItems: "flex-end" }}>
+                  <BentoText weight="semibold" variant="micro" color={c.inkMute}>数值</BentoText>
+                </View>
+              </View>
               {activeSources.length > 0 ? activeSources.map((source) => (
                 <View
                   key={`${source.name}-${source.detail}-${source.value}`}
                   style={{
                     flexDirection: "row",
-                    gap: 10,
-                    alignItems: "center",
-                    paddingVertical: 8,
-                    borderTopWidth: 1,
-                    borderTopColor: c.glassBorder,
+                    borderBottomWidth: 1,
+                    borderBottomColor: c.glassBorder,
                   }}
                 >
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <BentoText weight="semibold" variant="caption" color={c.ink}>{source.name}</BentoText>
+                  <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12, gap: 2 }}>
+                    <BentoText weight="semibold" color={c.ink}>{source.name}</BentoText>
                     <BentoText variant="micro" color={c.inkMute}>{source.detail}</BentoText>
                   </View>
-                  <BentoText mono weight="bold" color={c.accent} style={{ fontSize: 14 }}>{source.value}</BentoText>
+                  <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end", justifyContent: "center" }}>
+                    <BentoText mono weight="bold" color={c.accent} style={{ fontSize: 14 }}>{source.value}</BentoText>
+                  </View>
                 </View>
               )) : (
-                <BentoText variant="caption" color={c.inkFaint}>{detail.emptySourceLabel}</BentoText>
+                <View style={{ padding: 12 }}>
+                  <BentoText variant="caption" color={c.inkFaint}>{detail.emptySourceLabel}</BentoText>
+                </View>
               )}
             </View>
 
@@ -1576,18 +1601,13 @@ function CustomMealAdjustmentModal({
             gap: 12,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <BentoText weight="bold" color={c.ink} style={{ fontSize: 16, lineHeight: 20 }}>
-                {"\u81ea\u5b9a\u4e49\u52a8\u6001\u8c03\u6574"}
-              </BentoText>
-              <BentoText variant="micro" color={c.inkMute} style={{ marginTop: 3 }}>
-                {"\u9501\u5b9a\u7684\u9910\u6b21\u4e0d\u4f1a\u627f\u63a5\u5176\u4ed6\u9910\u6b21\u51cf\u5c11\u7684\u98df\u7269\u6216\u8425\u517b\u3002"}
-              </BentoText>
-            </View>
-            <Button variant="glass" color="warn" size="sm" onPress={() => onChange({ lockedMeals: {}, foodGrams: {}, macroTargets: {} })}>
-              {"\u91cd\u7f6e"}
-            </Button>
+          <View style={{ gap: 4 }}>
+            <BentoText weight="bold" color={c.ink} style={{ fontSize: 16, lineHeight: 20 }}>
+              {"\u81ea\u5b9a\u4e49\u52a8\u6001\u8c03\u6574"}
+            </BentoText>
+            <BentoText variant="micro" color={c.inkMute} style={{ lineHeight: 18 }}>
+              {"\u6309\u98df\u7269 / \u6309\u8425\u517b \u5207\u6362\u8c03\u6574\u65b9\u5f0f\uff0c\u9501\u5b9a\u9910\u6b21\u4e0d\u4f1a\u88ab\u5176\u4ed6\u9910\u6b21\u5f71\u54cd\u3002"}
+            </BentoText>
           </View>
 
           <View style={{ flexDirection: "row", gap: 8 }}>
@@ -1596,6 +1616,9 @@ function CustomMealAdjustmentModal({
             </Button>
             <Button variant={mode === "macro" ? "filled" : "glass"} color="accent" block onPress={() => onModeChange("macro")}>
               {"\u6309\u8425\u517b"}
+            </Button>
+            <Button variant="glass" color="warn" size="sm" onPress={() => onChange({ lockedMeals: {}, foodGrams: {}, macroTargets: {} })}>
+              {"\u91cd\u7f6e"}
             </Button>
           </View>
 
@@ -1802,60 +1825,73 @@ function MealTextEditorModal({
             <BentoText weight="bold" variant="caption" color={c.ink}>
               {mealName}
             </BentoText>
-            <BentoText variant="micro" color={c.inkMute}>
+            <BentoText variant="micro" color={c.inkMute} style={{ lineHeight: 18 }}>
               点击食物标签可查看或修改详情
             </BentoText>
           </View>
 
-          <View
-            style={{
-              borderRadius: 16,
-              padding: 12,
-              gap: 8,
-              backgroundColor: c.glass,
-              borderWidth: 1,
-              borderColor: c.glassBorder,
-            }}
-          >
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {detailFoods.length > 0
-                ? detailFoods.slice(0, 6).map((item) => (
-                    <Badge key={item.key} color="accent" size="sm">
-                      {item.label}
-                    </Badge>
-                  ))
-                : null}
+          <View style={{ borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.glass }}>
+            <View style={{ flexDirection: "row", backgroundColor: c.glassRaised, borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
+              <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}>
+                <BentoText weight="semibold" variant="micro" color={c.inkMute}>当前餐次</BentoText>
+              </View>
+              <View style={{ flex: 1.2, paddingVertical: 10, paddingHorizontal: 12, alignItems: "flex-end" }}>
+                <BentoText weight="semibold" variant="micro" color={c.inkMute}>说明</BentoText>
+              </View>
+            </View>
+            <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
+              <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {detailFoods.length > 0
+                    ? detailFoods.slice(0, 6).map((item) => (
+                        <Badge key={item.key} color="accent" size="sm">
+                          {item.label}
+                        </Badge>
+                      ))
+                    : null}
+                </View>
+              </View>
+              <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
+                <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18, textAlign: "right" }}>
+                  {detailFoods.length > 0 ? "当前餐次已识别食物与营养表" : "暂无食物标签"}
+                </BentoText>
+              </View>
             </View>
             {detailFoods.length > 0 ? <MealNutritionTable foods={detailFoods} totals={mealTotals} /> : null}
-            {mode === "actual" ? (
-              <TextInput
-                value={text}
-                onChangeText={onChangeText}
-                multiline
-                placeholder="在这里输入本餐实际吃了什么"
-                placeholderTextColor={c.inkFaint}
-                style={{
-                  minHeight: 92,
-                  borderRadius: 14,
-                  borderWidth: 1,
-                  borderColor: c.glassBorder,
-                  backgroundColor: c.bg,
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  color: c.ink,
-                  fontSize: 13,
-                  lineHeight: 18,
-                  textAlignVertical: "top",
-                }}
-              />
-            ) : (
-              <View style={{ minHeight: 92, borderRadius: 14, borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.bg, padding: 12, justifyContent: "center" }}>
+          </View>
+
+          {mode === "actual" ? (
+            <TextInput
+              value={text}
+              onChangeText={onChangeText}
+              multiline
+              placeholder="在这里输入本餐实际吃了什么"
+              placeholderTextColor={c.inkFaint}
+              style={{
+                minHeight: 92,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: c.glassBorder,
+                backgroundColor: c.bg,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                color: c.ink,
+                fontSize: 13,
+                lineHeight: 18,
+                textAlignVertical: "top",
+              }}
+            />
+          ) : (
+            <View style={{ minHeight: 92, borderRadius: 14, borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.bg, padding: 12, justifyContent: "center" }}>
               <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18 }}>
                 计划模式只展示当前餐次内容，不提供直接编辑。
               </BentoText>
-              </View>
-            )}
-          </View>
+            </View>
+          )}
+
+          <Button variant="filled" color="accent" block onPress={onClose}>
+            知道了
+          </Button>
 
           <Button variant="filled" color="accent" block onPress={onClose}>
             知道了
@@ -2095,17 +2131,36 @@ function DietPlanLogicModal({
                 </Badge>
               ))}
             </View>
-            <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18 }}>
-              {summary.logic}
-            </BentoText>
-            <View style={{ gap: 6 }}>
-              <Label color={c.inkFaint} variant="micro">
-                营养分配
-              </Label>
+            <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.glass }}>
+              <View style={{ flexDirection: "row", backgroundColor: c.glassRaised, borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
+                <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}>
+                  <BentoText weight="semibold" variant="micro" color={c.inkMute}>项目</BentoText>
+                </View>
+                <View style={{ flex: 1.2, paddingVertical: 10, paddingHorizontal: 12, alignItems: "flex-end" }}>
+                  <BentoText weight="semibold" variant="micro" color={c.inkMute}>说明</BentoText>
+                </View>
+              </View>
+              <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
+                <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
+                  <BentoText weight="semibold" color={c.ink}>计划逻辑</BentoText>
+                </View>
+                <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
+                  <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18, textAlign: "right" }}>
+                    {summary.logic}
+                  </BentoText>
+                </View>
+              </View>
               {summary.allocation.map((item) => (
-                <BentoText key={item} variant="caption" color={c.ink} style={{ lineHeight: 18 }}>
-                  {item}
-                </BentoText>
+                <View key={item} style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
+                  <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
+                    <BentoText weight="semibold" color={c.ink}>分配项</BentoText>
+                  </View>
+                  <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
+                    <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18, textAlign: "right" }}>
+                      {item}
+                    </BentoText>
+                  </View>
+                </View>
               ))}
             </View>
             <View style={{ gap: 8, paddingTop: 4 }}>
@@ -2688,15 +2743,19 @@ function FoodTagEditorModal({
       <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: "rgba(15,23,42,0.28)", justifyContent: "center", padding: 20 }}>
         <Pressable onPress={(e) => e.stopPropagation()} style={{ borderRadius: 18, backgroundColor: c.bg, borderWidth: 1, borderColor: c.glassBorderBright, padding: 16, gap: 14 }}>
           <View style={{ gap: 4 }}>
-              <BentoText weight="bold" variant="caption" color={c.ink}>食物标签详情</BentoText>
-              <BentoText variant="micro" color={c.inkMute}>识别出 {quantityLabel} {edit.foodName}，可调整类型和重量让估算更接近实际。</BentoText>
+            <BentoText weight="bold" variant="caption" color={c.ink}>食物标签详情</BentoText>
+            <BentoText variant="micro" color={c.inkMute} style={{ lineHeight: 18 }}>
+              识别出 {quantityLabel} {edit.foodName}，可调整类型和重量让估算更接近实际。
+            </BentoText>
+          </View>
+
+          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+            <Badge color="accent" size="sm">{quantityLabel}</Badge>
+            <Badge color="positive" size="sm">{edit.foodName}</Badge>
+            <Badge color={edit.foodCategory === "dish" ? "accent2" : "accent"} size="sm">{variantGroupLabel}</Badge>
           </View>
 
           <View style={{ gap: 8 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-              <BentoText weight="bold" variant="caption" color={c.ink}>1. 细分类型</BentoText>
-              <BentoText variant="micro" color={c.inkMute}>{variantGroupLabel}</BentoText>
-            </View>
             {fillingOptions.length > 0 ? (
               <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
                 {fillingOptions.map((option) => {
@@ -2745,14 +2804,47 @@ function FoodTagEditorModal({
             </View>
           </View>
 
-          <View style={{ flexDirection: "row", gap: 8, padding: 10, borderRadius: 12, backgroundColor: c.glass, borderWidth: 1, borderColor: c.glassBorder }}>
-            <View style={{ flex: 1 }}>
-          <BentoText variant="micro" color={c.inkMute}>估算热量</BentoText>
-              <BentoText mono weight="bold" variant="h3" color={c.accent}>{finalCalories}</BentoText>
+          <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.glass }}>
+            <View style={{ flexDirection: "row", backgroundColor: c.glassRaised, borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
+              <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}>
+                <BentoText weight="semibold" variant="micro" color={c.inkMute}>项目</BentoText>
+              </View>
+              <View style={{ flex: 1.2, paddingVertical: 10, paddingHorizontal: 12, alignItems: "flex-end" }}>
+                <BentoText weight="semibold" variant="micro" color={c.inkMute}>当前值</BentoText>
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-          <BentoText variant="micro" color={c.inkMute}>蛋白 / 脂肪 / 碳水</BentoText>
-              <BentoText variant="caption" color={c.ink}>{round1(nutritionTotals.proteinG)} / {round1(nutritionTotals.fatG)} / {round1(nutritionTotals.carbsG)}g</BentoText>
+            <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
+              <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
+                <BentoText weight="semibold" color={c.ink}>估算热量</BentoText>
+              </View>
+              <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
+                <BentoText mono weight="bold" variant="h3" color={c.accent}>{finalCalories}</BentoText>
+                <BentoText variant="micro" color={c.inkMute}>kcal</BentoText>
+              </View>
+            </View>
+            <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
+              <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
+                <BentoText weight="semibold" color={c.ink}>蛋白质</BentoText>
+              </View>
+              <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
+                <BentoText weight="bold" variant="caption" color={c.ink}>{round1(nutritionTotals.proteinG)}g</BentoText>
+              </View>
+            </View>
+            <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
+              <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
+                <BentoText weight="semibold" color={c.ink}>脂肪</BentoText>
+              </View>
+              <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
+                <BentoText weight="bold" variant="caption" color={c.ink}>{round1(nutritionTotals.fatG)}g</BentoText>
+              </View>
+            </View>
+            <View style={{ flexDirection: "row" }}>
+              <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
+                <BentoText weight="semibold" color={c.ink}>碳水</BentoText>
+              </View>
+              <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
+                <BentoText weight="bold" variant="caption" color={c.ink}>{round1(nutritionTotals.carbsG)}g</BentoText>
+              </View>
             </View>
           </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
@@ -2938,15 +3030,38 @@ function AdjustmentSummaryInline({ summary }: { summary: ReturnType<typeof build
           {summary.netDelta >= 0 ? "+" : ""}{summary.netDelta} kcal
         </Badge>
       </View>
-      <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
-        <Badge color="accent" size="sm">分档 {summary.days} 天</Badge>
-        <Badge color="positive" size="sm">新目标 {summary.adjustedDailyCalories} kcal/天</Badge>
-        <Badge color="accent2" size="sm">{Math.round(summary.adjustedMacros.proteinG)}g</Badge>
+      <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.glass }}>
+        <View style={{ flexDirection: "row", backgroundColor: c.glassRaised, borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
+          <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}>
+            <BentoText weight="semibold" variant="micro" color={c.inkMute}>项目</BentoText>
+          </View>
+          <View style={{ flex: 1.2, paddingVertical: 10, paddingHorizontal: 12, alignItems: "flex-end" }}>
+            <BentoText weight="semibold" variant="micro" color={c.inkMute}>当前值</BentoText>
+          </View>
+        </View>
+        {[
+          { label: "分档天数", value: `${summary.days} 天` },
+          { label: "每日调整", value: `${summary.dailyRepayCalories} kcal/天` },
+          { label: "新目标", value: `${summary.adjustedDailyCalories} kcal/天` },
+        ].map((item) => (
+          <View key={item.label} style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
+            <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
+              <BentoText weight="semibold" color={c.ink}>{item.label}</BentoText>
+            </View>
+            <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
+              <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18, textAlign: "right" }}>
+                {item.value}
+              </BentoText>
+            </View>
+          </View>
+        ))}
       </View>
       {summary.warning ? (
-        <BentoText variant="micro" color={c.warn} style={{ lineHeight: 16 }}>
-          {summary.warning}
-        </BentoText>
+        <View style={{ padding: 10, borderRadius: 12, backgroundColor: `${c.warn}12`, borderWidth: 1, borderColor: `${c.warn}33` }}>
+          <BentoText variant="micro" color={c.warn} style={{ lineHeight: 16 }}>
+            {summary.warning}
+          </BentoText>
+        </View>
       ) : null}
     </View>
   );
