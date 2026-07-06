@@ -133,22 +133,40 @@ function MacroTargetCard({ title, target }: { title: string; target: NutritionTo
   );
 }
 
-function VariantCard({ variant, selected, onSelect }: { variant: DietCycleVariant; selected: boolean; onSelect: () => void }) {
+function VariantCard({
+  variant,
+  selected,
+  expanded,
+  onToggleExpand,
+  onSelect,
+}: {
+  variant: DietCycleVariant;
+  selected: boolean;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onSelect: () => void;
+}) {
   const c = useBentoTheme().colors;
   return (
-    <Pressable
-      onPress={onSelect}
-      style={({ pressed }) => ({
+    <View
+      style={{
         borderRadius: 14,
         borderWidth: 1,
         borderColor: selected ? c.accent : c.glassBorder,
         backgroundColor: selected ? `${c.accent}18` : c.glassRaised,
         padding: 12,
-        gap: 8,
-        opacity: pressed ? 0.8 : 1,
-      })}
+        gap: expanded ? 10 : 0,
+      }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      <Pressable
+        onPress={onToggleExpand}
+        style={({ pressed }) => ({
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 10,
+          opacity: pressed ? 0.82 : 1,
+        })}
+      >
         <View
           style={{
             width: 18,
@@ -165,21 +183,32 @@ function VariantCard({ variant, selected, onSelect }: { variant: DietCycleVarian
         <BentoText weight="semibold" color={selected ? c.accent : c.ink} style={{ flex: 1, fontSize: 14 }}>
           {variant.name}
         </BentoText>
-      </View>
-      <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18 }}>
-        {variant.description}
-      </BentoText>
-      <BentoText variant="micro" color={c.inkFaint} style={{ lineHeight: 16 }}>
-        {cyclePatternLabel(variant.cycleDays)}
-      </BentoText>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-        {variant.goalFit.map((item) => (
-          <Badge key={item} color="accent2" size="sm">
-            {item}
-          </Badge>
-        ))}
-      </View>
-    </Pressable>
+        <BentoText color={c.inkFaint} style={{ fontSize: 16 }}>
+          {expanded ? "∧" : "∨"}
+        </BentoText>
+      </Pressable>
+
+      {expanded ? (
+        <View style={{ gap: 8, paddingTop: 8 }}>
+          <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18 }}>
+            {variant.description}
+          </BentoText>
+          <BentoText variant="micro" color={c.inkFaint} style={{ lineHeight: 16 }}>
+            {cyclePatternLabel(variant.cycleDays)}
+          </BentoText>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+            {variant.goalFit.map((item) => (
+              <Badge key={item} color="accent2" size="sm">
+                {item}
+              </Badge>
+            ))}
+          </View>
+          <Button variant="glass" color="accent" onPress={onSelect}>
+            {selected ? "当前方案" : "选用此方案"}
+          </Button>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -246,6 +275,7 @@ export default function DietPlanDetailScreen() {
     ? selectedDietPlanVariantId ?? plan?.cycleVariants?.[0]?.id ?? null
     : plan?.cycleVariants?.[0]?.id ?? null;
   const [pendingVariantId, setPendingVariantId] = useState<string | null>(initialVariantId);
+  const [expandedVariantId, setExpandedVariantId] = useState<string | null>(initialVariantId);
   const [manualEntry, setManualEntry] = useState(false);
   const [introOpen, setIntroOpen] = useState(false);
 
@@ -304,9 +334,6 @@ export default function DietPlanDetailScreen() {
           <BentoText weight="semibold" color={c.ink} style={{ fontSize: 15 }}>
             手动录入每天克数
           </BentoText>
-          <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18 }}>
-            关闭时由系统按体重、目标和公式自动计算；打开后后续可分别编辑各日型克数。
-          </BentoText>
         </View>
         <Switch value={manualEntry} onValueChange={setManualEntry} />
       </View>
@@ -324,7 +351,12 @@ export default function DietPlanDetailScreen() {
               key={variant.id}
               variant={variant}
               selected={selectedVariantId === variant.id}
-              onSelect={() => setPendingVariantId(variant.id)}
+              expanded={expandedVariantId === variant.id}
+              onToggleExpand={() => setExpandedVariantId((current) => (current === variant.id ? null : variant.id))}
+              onSelect={() => {
+                setPendingVariantId(variant.id);
+                setExpandedVariantId(variant.id);
+              }}
             />
           ))}
         </View>
@@ -342,9 +374,6 @@ export default function DietPlanDetailScreen() {
           return (
             <View key={dayType} style={{ gap: 6 }}>
               <MacroTargetCard title={dayTypeLabels[dayType]} target={target} />
-              <BentoText variant="micro" color={c.inkFaint} style={{ lineHeight: 16 }}>
-                {dayTypeHints[dayType] ?? "按该饮食法的默认规则执行。"}
-              </BentoText>
             </View>
           );
         })}

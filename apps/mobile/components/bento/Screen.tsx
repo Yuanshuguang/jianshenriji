@@ -16,9 +16,9 @@ export type ScreenProps = {
 export function Screen({ children, scroll = true }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const theme = useBentoTheme();
-  const bottomSafeSpace = Math.max(132, insets.bottom + 108);
+  const bottomSafeSpace = Math.max(116, insets.bottom + 96);
   const containerStyle = [screenContainer, { backgroundColor: theme.colors.bg }];
-  const content = <View style={{ flex: 1, paddingTop: insets.top + 8, paddingBottom: bottomSafeSpace }}>{children}</View>;
+  const content = <View style={{ flex: 1, paddingTop: insets.top + 4, paddingBottom: bottomSafeSpace }}>{children}</View>;
 
   if (!scroll) {
     return <View style={[containerStyle, { flex: 1 }]}>{content}</View>;
@@ -27,7 +27,7 @@ export function Screen({ children, scroll = true }: ScreenProps) {
   return (
     <ScrollView
       style={[containerStyle, { flex: 1 }]}
-      contentContainerStyle={[scrollViewContent, { paddingTop: insets.top + 8, paddingBottom: bottomSafeSpace }]}
+      contentContainerStyle={[scrollViewContent, { paddingTop: insets.top + 4, paddingBottom: bottomSafeSpace }]}
       showsVerticalScrollIndicator={false}
     >
       {children}
@@ -63,7 +63,7 @@ export function ScreenHeader({
   const canGoBack = showBackButton ?? (!isTabRoute && (router.canGoBack?.() ?? false));
 
   return (
-    <View style={[{ gap: 8, marginBottom: bento.tileGap }, style]}>
+    <View style={[{ gap: 4, marginBottom: 6 }, style]}>
       {kicker ? (
         onKickerPress ? (
           <Pressable onPress={onKickerPress} style={{ alignSelf: "flex-start" }}>
@@ -122,11 +122,6 @@ export function ScreenHeader({
                   {title}
                 </Text>
               )
-            ) : null}
-            {subtitle ? (
-              <Text variant="caption" color={c.inkMute}>
-                {subtitle}
-              </Text>
             ) : null}
           </View>
         </View>

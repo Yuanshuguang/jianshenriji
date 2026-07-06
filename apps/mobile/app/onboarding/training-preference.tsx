@@ -86,11 +86,10 @@ export default function TrainingPreferenceScreen() {
       <ScreenHeader
         kicker="ONBOARDING / 2 / 2"
         title="训练偏好"
-        subtitle="选择愿意练的部位、可用器材和每周频率。APP 会按饮食计划的高碳/低碳日调整训练强度。"
       />
 
       <GlassTile glow="accent2" style={{ gap: 12 }}>
-        <SectionTitle title="训练部位" subtitle="选择你愿意轮换训练的部位，不选冷门部位也不会强制安排。" />
+        <SectionTitle title="训练部位" />
         <ChipWrap>
           {muscleOptions.map((value) => (
             <SelectChip
@@ -105,7 +104,7 @@ export default function TrainingPreferenceScreen() {
       </GlassTile>
 
       <GlassTile glow="accent" style={{ gap: 12 }}>
-        <SectionTitle title="可用器材" subtitle="只基于你能用到的器材推荐动作，避免在家训练却推健身房器械。" />
+        <SectionTitle title="可用器材" />
         <ChipWrap>
           {equipmentOptions.map((item) => (
             <SelectChip
@@ -120,7 +119,7 @@ export default function TrainingPreferenceScreen() {
       </GlassTile>
 
       <GlassTile glow="positive" style={{ gap: 12 }}>
-        <SectionTitle title="训练频率" subtitle="选择你一周现实能完成几天：2-3 天偏全身，4 天适合多数用户，5-6 天适合训练习惯稳定的人。" />
+        <SectionTitle title="训练频率" />
         <ChipWrap>
           {frequencyOptions.map((value) => (
             <SelectChip
@@ -135,9 +134,6 @@ export default function TrainingPreferenceScreen() {
         <GlassTile padding={12} style={{ gap: 4, backgroundColor: `${colors.positive}10` }}>
           <BentoText weight="semibold" color={colors.ink}>
             {currentSplit.title}
-          </BentoText>
-          <BentoText variant="caption" color={colors.inkMute}>
-            {currentSplit.description}
           </BentoText>
         </GlassTile>
       </GlassTile>
@@ -177,9 +173,6 @@ export default function TrainingPreferenceScreen() {
               />
             ))}
           </ChipWrap>
-          <BentoText variant="caption" color={colors.inkMute}>
-            {selectedCardio.note}
-          </BentoText>
         </GlassTile>
       </View>
 
@@ -263,14 +256,11 @@ export default function TrainingPreferenceScreen() {
   );
 }
 
-function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) {
+function SectionTitle({ title }: { title: string }) {
   return (
     <View style={{ gap: 4 }}>
       <BentoText weight="bold" color={colors.ink}>
         {title}
-      </BentoText>
-      <BentoText variant="caption" color={colors.inkMute}>
-        {subtitle}
       </BentoText>
     </View>
   );

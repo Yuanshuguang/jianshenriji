@@ -11,7 +11,7 @@ import { AppIcon, type AppIconName, Text as BentoText, radius, useBentoTheme } f
 export function SectionHeader({ title }: { title: string }) {
   const c = useBentoTheme().colors;
   return (
-    <View style={{ paddingHorizontal: 16, paddingTop: 24, paddingBottom: 6 }}>
+    <View style={{ paddingHorizontal: 14, paddingTop: 16, paddingBottom: 4 }}>
       <BentoText weight="semibold" variant="micro" color={c.inkMute} style={{ textTransform: "uppercase", letterSpacing: 0.8 }}>
         {title}
       </BentoText>
@@ -80,24 +80,19 @@ export function SettingsRow({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        paddingVertical: 13,
-        paddingHorizontal: 16,
-        gap: 12,
-        minHeight: 52,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        gap: 10,
+        minHeight: 46,
       }}
     >
       {resolvedIcon ? (
         <View style={{ width: 28, alignItems: "center", justifyContent: "center" }}>{resolvedIcon}</View>
       ) : null}
-      <View style={{ flex: 1, gap: 2 }}>
+      <View style={{ flex: 1, gap: 1 }}>
         <BentoText weight="medium" variant="body" color={dangerous ? c.warn : "#F7FAFF"}>
           {label}
         </BentoText>
-        {subtitle ? (
-          <BentoText variant="micro" color={dangerous ? c.warn : c.inkMute} numberOfLines={1}>
-            {subtitle}
-          </BentoText>
-        ) : null}
       </View>
       {trailing}
       {showArrow && onPress ? (
@@ -139,16 +134,16 @@ export function ExpandableRow({
     <View>
       <Pressable
         onPress={onToggle}
-        style={({ pressed }) => ({
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          minHeight: 50,
-          paddingHorizontal: 16,
-          opacity: pressed ? 0.7 : 1,
-        })}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        minHeight: 44,
+        paddingHorizontal: 14,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           {icon}
           <BentoText variant="body" weight="semibold" color="#F7FAFF">{label}</BentoText>
         </View>
@@ -158,7 +153,7 @@ export function ExpandableRow({
         </View>
       </Pressable>
       {expanded && children ? (
-        <View style={{ paddingHorizontal: 16, paddingBottom: 14, paddingTop: 6 }}>
+        <View style={{ paddingHorizontal: 14, paddingBottom: 10, paddingTop: 4 }}>
           {children}
         </View>
       ) : null}

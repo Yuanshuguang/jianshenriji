@@ -141,11 +141,11 @@ export const radius = {
 } as const;
 
 export const bento = {
-  pagePadding: 14,
-  tileGap: 10,
+  pagePadding: 12,
+  tileGap: 8,
   tileRadius: 24,
   tileRadiusSmall: 18,
-  tilePadding: 16,
+  tilePadding: 12,
 } as const;
 
 export const motion = {

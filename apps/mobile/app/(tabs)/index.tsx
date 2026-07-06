@@ -247,6 +247,7 @@ export default function TodayScreen() {
   const dishImageInputRef = useRef<HTMLInputElement | null>(null);
   const nutritionLabelInputRef = useRef<HTMLInputElement | null>(null);
   const lastSavedDailyLogSignatureRef = useRef("");
+  const didAutoSaveDailyLogRef = useRef(false);
 
   const selectedDietPlan = getDietPlanById(selectedDietPlanId);
   const dietPlanCycleSelection: DietPlanCycleSelection = selectedDietPlanVariantId
@@ -449,10 +450,11 @@ export default function TodayScreen() {
   }, [actualFoodText, actualMealTexts, actualTotals, actualTraining, adjustmentSummary, dietTarget, hasFoodRecord, hasTrainingRecordToday, todayKey]);
 
   useEffect(() => {
-    if (!currentDebtPreview) return;
+    if (!currentDebtPreview || didAutoSaveDailyLogRef.current) return;
     const signature = JSON.stringify(currentDebtPreview);
     if (signature === lastSavedDailyLogSignatureRef.current) return;
     lastSavedDailyLogSignatureRef.current = signature;
+    didAutoSaveDailyLogRef.current = true;
     saveDailyLog(todayKey, currentDebtPreview);
   }, [currentDebtPreview, saveDailyLog, todayKey]);
 

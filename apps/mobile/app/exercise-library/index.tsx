@@ -265,9 +265,7 @@ export default function ExerciseLibraryScreen() {
     <Screen>
       <ScreenHeader
         kicker="动作库"
-        title="浏览动作"
-        subtitle="点卡片右上角或长按可收藏、置顶、加入今日参考。"
-        badge={{ text: `${combinedLibraryItems.length} 项`, color: "accent2" }}
+        title="浏览动作"        badge={{ text: `${combinedLibraryItems.length} 项`, color: "accent2" }}
       />
 
       {actionExercise ? (
@@ -396,9 +394,7 @@ export default function ExerciseLibraryScreen() {
           ) : filteredLibraryItems.length === 0 && !libraryError ? (
             <EmptyState
               iconName="inbox"
-              title="暂无动作"
-              subtitle={selectedLibraryBodyPart === favoriteBodyPartKey ? "还没有收藏动作，点卡片右上角或长按动作即可收藏。" : "该部位暂无可用动作，试试其他部位。"}
-            />
+              title="暂无动作"            />
           ) : (
             <View style={{ gap: 18, paddingRight: 6, paddingBottom: 20 }}>
               {supplementalLibraryLoading ? (

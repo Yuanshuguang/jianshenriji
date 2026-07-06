@@ -366,8 +366,7 @@ export default function BodyScreen() {
     <Screen>
       <ScreenHeader
         kicker="Onboarding / 1 / 2"
-        title="身体基线"
-        subtitle="先填年龄、体重和身高，再补目标体重、周期和体型。体脂、骨骼肌、水分和基础代谢可后补，也能先上传报告或自拍。"
+        title="身体基线"
       />
 
       <GlassTile glow="accent" style={{ gap: 12 }}>

@@ -69,15 +69,10 @@ export function CollapsibleCard({
     <GlassTile glow={glow} style={[{ gap: 0 }, style]} {...rest}>
       {/* 头部：标题 + 按钮 */}
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <View style={{ flex: 1, gap: 2 }}>
+        <View style={{ flex: 1 }}>
           <Label color={colors.inkMute} variant="label">
             {title}
           </Label>
-          {subtitle ? (
-            <Text variant="micro" color={colors.inkFaint}>
-              {subtitle}
-            </Text>
-          ) : null}
         </View>
         <Pressable
           onPress={() => setOpen((v) => !v)}
@@ -117,7 +112,7 @@ export function CollapsibleCard({
           overflow: "hidden",
         }}
       >
-        <View style={{ gap: bento.tileGap, marginTop: bento.tileGap, paddingTop: bento.tileGap, borderTopWidth: 1, borderTopColor: colors.glassBorder }}>
+        <View style={{ gap: 6, marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: colors.glassBorder }}>
           {children}
         </View>
       </Animated.View>

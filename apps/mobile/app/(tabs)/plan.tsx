@@ -3,6 +3,7 @@ import {
   exercises,
   resolveTrainingSchedule,
   type DietPlanCycleSelection,
+  type MealAdjustmentKey,
   type TrainingScheduleEntry,
 } from "@fitness-calendar/shared";
 import { useRouter } from "expo-router";
@@ -20,6 +21,13 @@ const trainingLevelLabels: Record<string, string> = {
   regular: "规律训练",
 };
 
+const dietMealPreferenceOptions: Array<{ key: MealAdjustmentKey; label: string }> = [
+  { key: "breakfast", label: "早餐" },
+  { key: "lunch", label: "午餐" },
+  { key: "dinner", label: "晚餐" },
+  { key: "snack", label: "加餐" },
+];
+
 export default function PlanScreen() {
   const router = useRouter();
   const profile = useFitnessStore((state) => state.profile);
@@ -29,6 +37,7 @@ export default function PlanScreen() {
   const selectedDietPlanId = useFitnessStore((state) => state.selectedDietPlanId);
   const selectedDietPlanVariantId = useFitnessStore((state) => state.selectedDietPlanVariantId);
   const selectedDietPlan = getDietPlanById(selectedDietPlanId);
+  const dietPreference = useFitnessStore((state) => state.dietPreference);
 
   const dietPlanCycleSelection: DietPlanCycleSelection = selectedDietPlanVariantId
     ? { variantId: selectedDietPlanVariantId }
@@ -89,6 +98,13 @@ export default function PlanScreen() {
           subtitle={selectedDietPlan ? selectedDietPlan.name : "选择一个适配健身目标的饮食策略"}
           badge={selectedDietPlan ? "已选择" : "待选择"}
           onPress={() => router.push("/diet-plan")}
+        />
+        <ModernSettingCard
+          iconName="food"
+          title="饮食偏好"
+          subtitle={dietMealPreferenceOptions.map((item) => item.label).join(" · ")}
+          badge="4 餐"
+          onPress={() => router.push("/diet-preference")}
         />
       </View>
 
