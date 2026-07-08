@@ -1,4 +1,4 @@
-// 自动生成：由数据库/健身APP食物数据库_优化修复版_V3 .csv 转换而来。
+﻿// 自动生成：由数据库/健身APP食物数据库_优化修复版_V3 .csv 转换而来。
 // 只导入 isActive=是 的记录；份量单位由 APP 运行规则补齐。
 // 更新 CSV 后运行：pnpm --dir shared import:curated-foods
 import type { Food } from "../index";
@@ -180,10 +180,10 @@ export const csvGeneratedFoods: Food[] = [
     name: "酥油茶（原味）",
     aliases: ["黄油（西藏）","酥油（牦牛乳）"],
     category: "snack",
-    caloriesPer100g: 465,
+    caloriesPer100g: 170,
     proteinPer100g: 3,
-    fatPer100g: 17.7,
-    carbsPer100g: 73.3,
+    fatPer100g: 18,
+    carbsPer100g: 2,
     defaultUnitGram: 10,
     servingUnits: [{"name":"勺","grams":10},{"name":"份","grams":10}],
     source: "builtin"

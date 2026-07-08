@@ -9,9 +9,9 @@
 import * as fs from "fs";
 import * as path from "path";
 
-const RAW_FILE = path.resolve(__dirname, "../../shared/data/off-foods-raw.json");
-const OUTPUT_TS = path.resolve(__dirname, "../../shared/data/off-foods-generated.ts");
-const OUTPUT_LOG = path.resolve(__dirname, "../../shared/data/off-foods-import-log.md");
+const RAW_FILE = path.resolve(__dirname, "../../shared/data/review-pool/foreign-source-quarantine/off-foods-raw.json");
+const OUTPUT_TS = path.resolve(__dirname, "../../shared/data/review-pool/foreign-source-quarantine/off-foods-generated.ts");
+const OUTPUT_LOG = path.resolve(__dirname, "../../shared/data/review-pool/foreign-source-quarantine/off-foods-import-log.md");
 
 interface RawFoodEntry {
   name: string;

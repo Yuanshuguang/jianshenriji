@@ -1,4 +1,4 @@
-import type { Food, FoodPortion, MuscleGroup, NutritionTotals } from "../index";
+﻿import type { Food, FoodPortion, MuscleGroup, NutritionTotals } from "../index";
 
 export type MealPlannerMeal = NonNullable<FoodPortion["meal"]>;
 
@@ -340,11 +340,17 @@ function closePlanMacros(portions: FoodPortion[], foods: Food[], target: Nutriti
   next = optimizeMacroTargets(next, foods, target);
   next = addCookingOilTowardFatTarget(next, foods, target);
   next = optimizeMacroTargets(next, foods, target);
-  return closeCarbs(next, foods, target);
+  const closed = closeCarbs(next, foods, target);
+  if (!isLowCarbDay(options.dayType) && sumNutrition(closed.map((portion) => portion.totals)).calories < target.calories * 0.88) {
+    return closeCaloriesFlexible(closed, foods, target.calories);
+  }
+  return closed;
 }
 
 function shouldEnforceMacroCaps(target: NutritionTotals, options: MealPlannerOptions): boolean {
-  return isLowCarbDay(options.dayType) || options.dayType === "high-carb" && target.carbsG >= 220;
+  if (isLowCarbDay(options.dayType) || options.dayType === "high-carb" && target.carbsG >= 220) return true;
+  if (options.dayType !== "balanced" && options.dayType !== "normal-eating") return false;
+  return target.calories > 0 && target.proteinG > 0 && target.fatG > 0 && target.carbsG > 0;
 }
 
 function closeCaloriesFlexible(portions: FoodPortion[], foods: Food[], targetCalories: number): FoodPortion[] {
@@ -996,7 +1002,7 @@ function portionMaxGrams(food: Food, meal: MealPlannerMeal): number {
 function planningMaxGrams(food: Food, meal: MealPlannerMeal): number {
   const base = portionMaxGrams(food, meal);
   if (food.carbsPer100g <= 8 && (food.category === "protein" || food.proteinPer100g >= 12)) {
-    return Math.round(base * 2.2);
+    return Math.min(Math.round(base * 1.5), 400);
   }
   return base;
 }

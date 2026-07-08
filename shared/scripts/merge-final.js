@@ -1,9 +1,9 @@
 const fs = require("fs");
 
 const indexPath = "C:/Users/Administrator/Documents/健身日历/shared/index.ts";
-const batch1Path = "C:/Users/Administrator/Documents/健身日历/shared/data/new-foods-batch.ts";
-const batch2Path = "C:/Users/Administrator/Documents/健身日历/shared/data/new-foods-batch2.ts";
-const batch3Path = "C:/Users/Administrator/Documents/健身日历/shared/data/new-foods-batch3.ts";
+const batch1Path = "C:/Users/Administrator/Documents/健身日历/shared/data/review-pool/pending-cn/new-foods-batch.ts";
+const batch2Path = "C:/Users/Administrator/Documents/健身日历/shared/data/review-pool/pending-cn/new-foods-batch2.ts";
+const batch3Path = "C:/Users/Administrator/Documents/健身日历/shared/data/review-pool/pending-cn/new-foods-batch3.ts";
 
 // Read original as binary buffer (preserves exact bytes)
 const origBuf = fs.readFileSync(indexPath);

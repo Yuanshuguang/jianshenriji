@@ -1,7 +1,6 @@
 ﻿export * from "./design-tokens";
 export * from "./calorie-debt-ledger";
 export * from "./dynamic-plan-engine";
-export * from "./calorie-debt-ledger";
 export * from "./data/diet-plan-database";
 export * from "./data/meal-planner-solver";
 export * from "./data/training-diet-rules";
@@ -9,6 +8,9 @@ export * from "./data/training-schedule-resolver";
 import { categoryFallbackFoods } from "./data/category-fallback-foods";
 import { csvGeneratedFoods } from "./data/curated-foods";
 import { chineseSupplementFoods } from "./data/chinese-foods-supplement";
+import { gapSupplementFoods } from "./data/food-gap-supplement";
+import { cfcCorrections } from "./data/food-cfc-corrections";
+import { aliasOwnerOverrides } from "./data/food-alias-overrides";
 import { solveMealPlan } from "./data/meal-planner-solver";
 
 export type Gender = "male" | "female";
@@ -57,6 +59,12 @@ export type Food = {
   cookingMethod?: CookingMethod;
   /** 食物粒度层级，供本体论分类使用 */
   foodGranularity?: "generic" | "ingredient" | "specific-food" | "prepared-dish" | "packaged-sku";
+  /** 数据来源库标识（CFC-6 / USDA / expert / csv-import 等），用于溯源 */
+  sourceDb?: string;
+  /** 来源版本/批次（如 2026-07 / V3） */
+  sourceVersion?: string;
+  /** 最近核验日期（ISO，如 2026-07-08），用于置信度重分级与防回归 */
+  lastVerifiedAt?: string;
 };
 
 export type CookingMethod =
@@ -172,7 +180,7 @@ export const foods: Food[] = [
   food("oatmeal", "燕麦", ["燕麦片"], "staple", 380, 13, 7, 67, 40, [["勺", 10], ["碗", 45]]),
   food("sweet-potato", "红薯", ["地瓜", "番薯"], "staple", 86, 1.6, 0.1, 20, 150, [["个", 150], ["根", 150]]),
   food("corn", "玉米", ["玉米棒"], "staple", 112, 4, 1.2, 22, 180, [["根", 180]]),
-  food("egg", "鸡蛋", ["蛋", "水煮蛋", "煎蛋"], "protein", 144, 13.3, 8.8, 2.8, 55, [["个", 55], ["颗", 55], ["只", 55]]),
+  food("egg", "鸡蛋", ["蛋", "水煮蛋", "煎蛋"], "protein", 144, 13.3, 8.8, 1.5, 55, [["个", 55], ["颗", 55], ["只", 55]]),
   food("chicken-breast", "鸡胸肉", ["鸡胸", "鸡肉"], "protein", 133, 19.4, 5.0, 2.5, 120, [["块", 120]]),
   food("beef", "牛肉", ["卤牛肉", "酱牛肉"], "protein", 125, 20, 4.2, 1, 120, [["块", 120], ["份", 120]]),
   food("lean-beef", "瘦牛肉", ["牛里脊", "牛臀肉", "低脂牛肉"], "protein", 125, 20, 4.2, 1, 120, [["块", 120], ["份", 120]]),
@@ -356,7 +364,7 @@ export const foods: Food[] = [
   food("beef-belly-skewer", "肥牛", ["肥牛卷", "雪花肥牛", "和牛肉眼"], "protein", 250, 17, 19, 0, 200, [["片", 30], ["份", 200]]),
   food("fried-dough-strips", "油条豆浆", ["油条配豆浆", "豆浆油条", "一份油条豆浆"], "staple", 220, 6, 14, 22, 250, [["份", 250]]),
   food("boiled-fish", "水煮鱼", ["水煮鱼片", "水煮鱼块", "川香水煮鱼"], "dish", 125, 15, 6, 3, 400, [["份", 400], ["盘", 600]]),
-  food("braised-pork", "红烧肉", ["红烧五花肉", "红烧肉饭", "红烧肉盖饭", "毛氏红烧肉"], "dish", 380, 18, 30, 8, 300, [["份", 350], ["块", 50]]),
+  food("braised-pork", "红烧肉", ["红烧五花肉", "红烧肉饭", "红烧肉盖饭", "毛氏红烧肉"], "dish", 430, 14, 37, 8, 300, [["份", 350], ["块", 50]]),
   food("salad", "沙拉", ["轻食沙拉", "蔬菜沙拉", "鸡胸肉沙拉", "水果沙拉"], "dish", 95, 5, 5, 8, 300, [["份", 300], ["碗", 300], ["盒", 300]]),
   food("pomelo", "柚子", ["西柚", "葡萄柚", "文旦柚", "蜜柚"], "fruit", 42, 0.8, 0.1, 10, 250, [["个", 1000], ["瓣", 80], ["份", 200]]),
   food("beer", "啤酒", ["冰啤", "生啤", "精酿啤酒", "酒"], "drink", 43, 0.5, 0, 3.5, 330, [["瓶", 500], ["罐", 330], ["杯", 250], ["瓶", 1000]]),
@@ -416,11 +424,9 @@ export function calculateGoalEnergyPlan(input: {
   age: number;
   gender: Gender;
   activityFactor: number;
+  bodyFatPercent?: number | null;
 }): EnergyPlan {
-  const bmr =
-    input.gender === "male"
-      ? 10 * input.currentWeightKg + 6.25 * input.heightCm - 5 * input.age + 5
-      : 10 * input.currentWeightKg + 6.25 * input.heightCm - 5 * input.age - 161;
+  const bmr = calculateBmr(input);
   const tdee = Math.round(bmr * input.activityFactor);
   const dailyDeficitRaw = ((input.currentWeightKg - input.targetWeightKg) * 7700 * 0.85) / Math.max(1, input.days);
   const dailyDeficit = Math.round(Math.max(-300, Math.min(750, dailyDeficitRaw)));
@@ -433,17 +439,113 @@ export function calculateGoalEnergyPlan(input: {
   return { calories, proteinG, fatG, carbsG, bmr: Math.round(bmr), tdee, dailyDeficit };
 }
 
+function calculateBmr(input: {
+  currentWeightKg: number;
+  heightCm: number;
+  age: number;
+  gender: Gender;
+  bodyFatPercent?: number | null;
+}): number {
+  if (typeof input.bodyFatPercent === "number" && input.bodyFatPercent >= 5 && input.bodyFatPercent <= 60) {
+    const leanMassKg = input.currentWeightKg * (1 - input.bodyFatPercent / 100);
+    return 370 + 21.6 * leanMassKg;
+  }
+
+  return input.gender === "male"
+    ? 10 * input.currentWeightKg + 6.25 * input.heightCm - 5 * input.age + 5
+    : 10 * input.currentWeightKg + 6.25 * input.heightCm - 5 * input.age - 161;
+}
+
 export function getFoodByIdFromCatalog(id: string, customFoods: Food[] = []): Food | undefined {
-  return getFoodCatalog(customFoods).find((item) => item.id === id);
+  const { catalog, idRedirect } = buildCleanedCatalog(customFoods);
+  const direct = catalog.find((item) => item.id === id);
+  if (direct) return direct;
+  const redirected = idRedirect[id];
+  if (redirected) return catalog.find((item) => item.id === redirected);
+  return undefined;
+}
+
+/**
+ * 同名/别名冲突管线级收敛（food-db-cfc 产出）。
+ *
+ * 不修改任何生成文件（curated-foods.ts / foods 数组），仅在合并层做运行时清洗：
+ *  1) 别名归属：每个别名首现优先（按层序 custom>cfc>builtin>supplement>fallback>csv>gap）
+ *     归属到唯一食物；再施加 aliasOwnerOverrides 显式覆盖层校正少数"默认会选错"的案例。
+ *  2) 别名清洗：每个食物仅保留"自己拥有"的别名 → 歧义别名收敛到单一归属，搜索不再发散。
+ *  3) 同名合并：归一化 name 作为 mergeKey 首现优先；被合并的冗余项登记 idRedirect，
+ *     由 getFoodByIdFromCatalog 跟随重定向 → 历史饮食记录的旧 id 仍可解析，不丢数据。
+ *
+ * 返回去重+清洗后的目录，以及 droppedId -> survivorId 的重定向表。
+ */
+export function buildCleanedCatalog(customFoods: Food[]): { catalog: Food[]; idRedirect: Record<string, string> } {
+  // 1) 打标签，保持与历史 getFoodCatalog 一致的层序
+  const tagged: { food: Food; layer: number }[] = [
+    ...customFoods.map((f) => ({ food: f, layer: 0 })),
+    ...cfcCorrections.map((f) => ({ food: f, layer: 1 })),
+    ...foods.map((f) => ({ food: f, layer: 2 })),
+    ...chineseSupplementFoods.map((f) => ({ food: f, layer: 3 })),
+    ...categoryFallbackFoods.map((f) => ({ food: f, layer: 4 })),
+    ...csvGeneratedFoods.map((f) => ({ food: f, layer: 5 })),
+    ...gapSupplementFoods.map((f) => ({ food: f, layer: 6 })),
+  ];
+
+  // 2) 别名归属：首现优先（按层序），再施加显式覆盖层
+  const aliasOwner: Record<string, string> = {};
+  for (const { food } of tagged) {
+    for (const a of food.aliases ?? []) {
+      const k = normalizeMergeKey(a);
+      if (!(k in aliasOwner)) aliasOwner[k] = food.id;
+    }
+  }
+  for (const [alias, id] of Object.entries(aliasOwnerOverrides)) {
+    aliasOwner[normalizeMergeKey(alias)] = id;
+  }
+
+  // 3) 别名清洗 + 注入覆盖层别名（克隆，不修改源对象）：仅保留"自己拥有"的别名
+  const aliasCleaned = tagged.map(({ food, layer }) => {
+    let aliases = food.aliases ?? [];
+    for (const [alias, id] of Object.entries(aliasOwnerOverrides)) {
+      if (id === food.id && !aliases.includes(alias)) aliases = [...aliases, alias];
+    }
+    const kept = aliases.filter((a) => aliasOwner[normalizeMergeKey(a)] === food.id);
+    return { layer, food: { ...food, aliases: kept } };
+  });
+
+  // 4) 同名合并 + id 去重：mergeKey 首现优先；冗余项登记重定向
+  const idSurvivor: Record<string, string> = {};
+  const nameSeen: Record<string, string> = {};
+  const idRedirect: Record<string, string> = {};
+  const catalog: Food[] = [];
+  for (const { food } of aliasCleaned) {
+    const key = normalizeMergeKey(food.name);
+    if (food.id in idSurvivor) {
+      idRedirect[food.id] = idSurvivor[food.id];
+      continue;
+    }
+    if (key in nameSeen) {
+      idRedirect[food.id] = nameSeen[key];
+      continue;
+    }
+    idSurvivor[food.id] = food.id;
+    nameSeen[key] = food.id;
+    catalog.push(food);
+  }
+
+  return { catalog, idRedirect };
+}
+
+// 归一化用于 mergeKey / 别名比较：NFKC 归一 + 去空白 + 小写 + 去标点
+function normalizeMergeKey(s: string): string {
+  return s
+    .normalize("NFKC")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/[，,。.、；;:：!！?？()（）\[\]【】"'""''《》<>/\\|·•・]/g, "");
 }
 
 export function getFoodCatalog(customFoods: Food[] = []): Food[] {
-  const seen = new Set<string>();
-  return [...customFoods, ...foods, ...chineseSupplementFoods, ...categoryFallbackFoods, ...csvGeneratedFoods].filter((item) => {
-    if (seen.has(item.id)) return false;
-    seen.add(item.id);
-    return true;
-  });
+  return buildCleanedCatalog(customFoods).catalog;
 }
 
 export function calculateFoodTotals(food: Food, grams: number): NutritionTotals {

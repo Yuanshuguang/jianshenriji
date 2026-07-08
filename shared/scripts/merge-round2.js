@@ -3,8 +3,8 @@ const fs = require('fs');
 const path = require('path');
 
 const indexPath = path.resolve(__dirname, '../../shared/index.ts');
-const batch2Path = path.resolve(__dirname, '../../shared/data/new-foods-batch2.ts');
-const batch3Path = path.resolve(__dirname, '../../shared/data/new-foods-batch3.ts');
+const batch2Path = path.resolve(__dirname, '../../shared/data/review-pool/pending-cn/new-foods-batch2.ts');
+const batch3Path = path.resolve(__dirname, '../../shared/data/review-pool/pending-cn/new-foods-batch3.ts');
 
 let lines = fs.readFileSync(indexPath, 'utf-8').split('\n');
 

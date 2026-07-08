@@ -239,7 +239,7 @@ const defs: FoodDef[] = [
   ["sherou", "蛇肉", ["蛇肉", "大王蛇肉"], "protein", 81, 15.7, 0.9, 5.0, 200, [["份", 200]], { foodGranularity: "ingredient" }],
   ["luotuorou", "骆驼肉", ["骆驼肉"], "protein", 160, 22.0, 7.0, 0, 200, [["份", 200]], { foodGranularity: "ingredient" }],
   ["tuoniaorou", "鸵鸟肉", ["鸵鸟肉", "鸵鸟肉"], "protein", 98, 20.5, 2.0, 0, 200, [["份", 200]], { foodGranularity: "ingredient" }],
-  ["canyong", "蚕蛹", ["蚕蛹", "蚕虫"], "protein", 230, 51.0, 15.0, 6.0, 50, [["份", 50]], { cookingMethod: "deep-fried", foodGranularity: "ingredient" }],
+  ["canyong", "蚕蛹", ["蚕蛹", "蚕虫"], "protein", 260, 22.0, 16.0, 6.0, 50, [["份", 50]], { cookingMethod: "deep-fried", foodGranularity: "ingredient" }],
   ["fengyong", "蜂蛹", ["蜂蛹", "蜜蜂蛹"], "protein", 168, 33.0, 6.0, 5.0, 50, [["份", 50]], { cookingMethod: "deep-fried", foodGranularity: "ingredient" }],
   ["zhuchong", "竹虫", ["竹虫", "竹蛆"], "protein", 215, 30.0, 10.0, 6.0, 30, [["份", 30]], { cookingMethod: "deep-fried", foodGranularity: "ingredient" }],
   ["zhiliaohou", "知了猴", ["知了猴", "金蝉", "爬叉"], "protein", 175, 21.0, 8.5, 4.0, 30, [["份", 30]], { cookingMethod: "deep-fried", foodGranularity: "ingredient" }],

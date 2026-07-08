@@ -195,6 +195,34 @@ function passesQualityGate(row) {
   return true;
 }
 
+// 生成期校验：在写出 curated-foods.ts 前，拦截 CSV 内部的数据噪声。
+// - 重复 ID 是致命 bug（运行时按 id 去重会静默丢数据），直接阻断生成。
+// - 同名冲突 / 别名歧义属软冲突（运行时 buildCleanedCatalog 按 mergeKey 首现优先折叠），
+//   仅告警暴露，不阻断重生成。
+function validateGeneratedFoods(foods) {
+  const norm = (s) => String(s == null ? "" : s).trim().toLowerCase().replace(/\s+/g, "");
+  const idCount = new Map();
+  const nameMap = new Map();
+  const aliasMap = new Map();
+
+  for (const f of foods) {
+    idCount.set(f.id, (idCount.get(f.id) || 0) + 1);
+    const nk = norm(f.name);
+    if (!nameMap.has(nk)) nameMap.set(nk, []);
+    nameMap.get(nk).push(f.id);
+    for (const a of (f.aliases || [])) {
+      const ak = norm(a);
+      if (!aliasMap.has(ak)) aliasMap.set(ak, new Set());
+      aliasMap.get(ak).add(f.id);
+    }
+  }
+
+  const dupIds = [...idCount.entries()].filter(([, c]) => c > 1);
+  const dupNames = [...nameMap.entries()].filter(([, ids]) => ids.length > 1);
+  const ambAliases = [...aliasMap.entries()].filter(([, ids]) => ids.size > 1);
+  return { dupIds, dupNames, ambAliases, total: foods.length };
+}
+
 function js(value) {
   return JSON.stringify(value);
 }
@@ -256,6 +284,21 @@ const snacks = regionalSnacks.map((s) => ({
   confidenceLevel: "reference"
 }));
 const foods = [...csvFoods, ...snacks];
+
+const report = validateGeneratedFoods(foods);
+console.log("--- 生成期校验 ---");
+console.log(`食物总数: ${report.total}`);
+console.log(`重复 ID（阻断）: ${report.dupIds.length}`);
+for (const [id, c] of report.dupIds.slice(0, 10)) console.log(`  x ${id} x${c}`);
+console.log(`同名冲突（告警）: ${report.dupNames.length}`);
+for (const [name, ids] of report.dupNames.slice(0, 10)) console.log(`  ! "${name}" -> ${ids.join(", ")}`);
+console.log(`别名歧义（告警）: ${report.ambAliases.length}`);
+for (const [alias, ids] of report.ambAliases.slice(0, 10)) console.log(`  ? "${alias}" -> ${[...ids].join(", ")}`);
+
+if (report.dupIds.length > 0) {
+  console.error("生成中止：存在重复 ID，请先清理 CSV 源数据（不同食物不能共用同一 foodCode）。");
+  process.exit(1);
+}
 
 fs.writeFileSync(outputFile, generateFoods(foods, csvFile), "utf8");
 

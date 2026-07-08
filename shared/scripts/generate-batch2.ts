@@ -244,6 +244,6 @@ ${lines.join("\n")}
 ];
 `;
 
-const outPath = path.resolve(__dirname, "../../shared/data/new-foods-batch2.ts");
+const outPath = path.resolve(__dirname, "../../shared/data/review-pool/pending-cn/new-foods-batch2.ts");
 fs.writeFileSync(outPath, output, "utf-8");
 console.log("Generated " + defs.length + " food entries -> " + outPath);

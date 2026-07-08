@@ -1,4 +1,4 @@
-// ========== Batch 3a: 豆制品、奶制品 ==========
+﻿// ========== Batch 3a: 豆制品、奶制品 ==========
   food("firm-tofu", "老豆腐", ["北豆腐,硬豆腐"], "protein", 82, 8, 4.8, 3.4, 150),
   food("medium-tofu", "中豆腐", ["中硬豆腐"], "protein", 80, 7, 4.5, 3.5, 150),
   food("brine-tofu", "卤水豆腐", ["盐卤豆腐"], "protein", 85, 8.5, 5, 3, 150),
@@ -118,7 +118,7 @@
   food("salt-baked-chicken", "盐焗鸡", ["东江盐焗鸡,沙姜鸡"], "dish", 180, 22, 9, 2, 200),
   food("scallion-oil-chicken", "葱油鸡", ["葱油淋鸡,葱油白切鸡"], "dish", 190, 21, 10, 2, 200),
   food("ginger-chicken", "姜葱鸡", ["姜葱炒鸡,沙姜鸡"], "dish", 185, 20, 10, 2, 200),
-  food("white-cut-chicken-cn", "白切鸡", ["白斩鸡,白切", "dish", 200, 20, 11, 1, 300),
+  food("white-cut-chicken-cn", "白切鸡", ["白斩鸡","白切"], "dish", 200, 20, 11, 1, 300),
   food("pepper-numbing-chicken", "椒麻鸡", ["新疆椒麻鸡,花椒鸡"], "dish", 190, 22, 9, 3, 200),
 
 // ========== 凉菜 ==========
