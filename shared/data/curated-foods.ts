@@ -1,4 +1,4 @@
-﻿// 自动生成：由数据库/健身APP食物数据库_优化修复版_V3 .csv 转换而来。
+// 自动生成：由数据库/健身APP食物数据库_优化修复版_V3 .csv 转换而来。
 // 只导入 isActive=是 的记录；份量单位由 APP 运行规则补齐。
 // 更新 CSV 后运行：pnpm --dir shared import:curated-foods
 import type { Food } from "../index";
