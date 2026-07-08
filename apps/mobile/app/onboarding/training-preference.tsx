@@ -21,7 +21,7 @@ import {
 } from "../../components/bento";
 import { dietDayTypeLabels, getDietPlanById } from "../../features/diet-plans";
 import { muscleNameMap } from "../../features/today-plan";
-import { useFitnessStore, type TrainingPreferenceDraft } from "../../store/fitness-store";
+import { useFitnessStore, type TrainingPreferenceDraft, type UserProfile } from "../../store/fitness-store";
 
 const muscleOptions: MuscleGroup[] = ["chest", "back", "legs", "shoulders", "arms", "core", "cardio"];
 const frequencyOptions = [2, 3, 4, 5, 6];
@@ -246,7 +246,13 @@ export default function TrainingPreferenceScreen() {
         color="positive"
         block
         onPress={() => {
-          setTrainingPreference(normalizePreference(draft));
+          const normalized = normalizePreference(draft);
+          // 根据周训练天数自动推导训练水平
+          const trainingLevel: UserProfile["trainingLevel"] =
+            normalized.daysPerWeek <= 2 ? "beginner" : normalized.daysPerWeek >= 5 ? "regular" : "intermediate";
+          const state = useFitnessStore.getState();
+          state.setProfile({ ...state.profile, trainingLevel });
+          setTrainingPreference(normalized);
           router.replace("/plan");
         }}
       >

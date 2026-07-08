@@ -35,6 +35,11 @@ export function AdjustmentSummaryCard({ summary }: { summary: ReturnType<typeof 
       {summary.warning ? (
         <BentoText variant="caption" color={c.warn}>{summary.warning}</BentoText>
       ) : null}
+      {summary.dietQualityWarnings.slice(0, 3).map((warning) => (
+        <BentoText key={warning} variant="caption" color={c.amber} style={{ lineHeight: 18 }}>
+          {warning}
+        </BentoText>
+      ))}
     </GlassTile>
   );
 }

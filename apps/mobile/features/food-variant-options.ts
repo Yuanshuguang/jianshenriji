@@ -249,11 +249,11 @@ const foodVariantFamilies: Record<FoodVariantFamily, FoodVariantOption[]> = {
     variant("蔬菜菌菇", "filling", "蔬菜和菌菇本体热量低，主要看锅底和蘸料", { caloriesPer100g: 35, proteinPer100g: 2, fatPer100g: 1, carbsPer100g: 6 }),
   ],
   "hotpot-spicy": [
-    variant("清汤", "flavor", "汤底油脂较低"),
-    variant("菌汤", "flavor", "菌汤汤底油脂通常较低，但需注意额外蘸料"),
-    variant("番茄汤", "flavor", "番茄汤底中等热量"),
-    variant("麻辣红油", "flavor", "红油汤底会显著增加脂肪"),
-    variant("蘸料多", "topping", "芝麻酱、油碟和花生碎会增加热量"),
+    variant("清汤", "flavor", "汤底油脂较低", { caloriesPer100g: 140, proteinPer100g: 7.5, fatPer100g: 7.0, carbsPer100g: 11.0 }),
+    variant("菌汤", "flavor", "菌汤汤底油脂通常较低，但需注意额外蘸料", { caloriesPer100g: 150, proteinPer100g: 7.8, fatPer100g: 7.5, carbsPer100g: 11.0 }),
+    variant("番茄汤", "flavor", "番茄汤底中等热量", { caloriesPer100g: 165, proteinPer100g: 7.8, fatPer100g: 8.0, carbsPer100g: 14.0 }),
+    variant("麻辣红油", "flavor", "红油汤底会显著增加脂肪", { caloriesPer100g: 220, proteinPer100g: 8.0, fatPer100g: 15.0, carbsPer100g: 11.0 }),
+    variant("蘸料多", "topping", "芝麻酱、油碟和花生碎会增加热量", { caloriesPer100g: 250, proteinPer100g: 8.5, fatPer100g: 20.0, carbsPer100g: 12.0 }),
   ],
   "luosifen-topping": [
     variant("原味螺蛳粉", "flavor", "不额外加炸蛋、叉烧等高热量加料", { caloriesPer100g: 130, proteinPer100g: 3, fatPer100g: 4, carbsPer100g: 22 }),
@@ -263,25 +263,25 @@ const foodVariantFamilies: Record<FoodVariantFamily, FoodVariantOption[]> = {
     variant("重油辣螺蛳粉", "flavor", "红油更多，脂肪和热量更高", { caloriesPer100g: 180, proteinPer100g: 4, fatPer100g: 9, carbsPer100g: 22 }),
   ],
   "congee-flavor": [
-    variant("白粥", "flavor", "不含额外肉蛋配料"),
-    variant("皮蛋瘦肉粥", "flavor", "含皮蛋和瘦肉，蛋白和脂肪更高"),
-    variant("海鲜粥", "flavor", "海鲜提高蛋白，油脂通常较低"),
-    variant("甜粥", "flavor", "加糖或红豆等配料，碳水更高"),
+    variant("白粥", "flavor", "不含额外肉蛋配料", { caloriesPer100g: 46, proteinPer100g: 1.1, fatPer100g: 0.1, carbsPer100g: 10.0 }),
+    variant("皮蛋瘦肉粥", "flavor", "含皮蛋和瘦肉，蛋白和脂肪更高", { caloriesPer100g: 68, proteinPer100g: 3.5, fatPer100g: 1.5, carbsPer100g: 9.5 }),
+    variant("海鲜粥", "flavor", "海鲜提高蛋白，油脂通常较低", { caloriesPer100g: 62, proteinPer100g: 4.0, fatPer100g: 0.8, carbsPer100g: 9.5 }),
+    variant("甜粥", "flavor", "加糖或红豆等配料，碳水更高", { caloriesPer100g: 65, proteinPer100g: 1.2, fatPer100g: 0.2, carbsPer100g: 14.5 }),
   ],
   "soup-base": [
-    variant("清汤", "flavor", "油脂较低，主要按汤料本体估算"),
-    variant("肉汤", "flavor", "排骨汤、鸡汤等肉汤脂肪和蛋白更高"),
-    variant("奶白浓汤", "flavor", "乳化脂肪更多，热量更高"),
-    variant("酸辣汤", "flavor", "酸辣调味和淀粉可能增加热量"),
-    variant("麻辣汤", "flavor", "麻辣调味油会提高脂肪和热量"),
+    variant("清汤", "flavor", "油脂较低，主要按汤料本体估算", { caloriesPer100g: 28, proteinPer100g: 1.2, fatPer100g: 0.4, carbsPer100g: 4.0 }),
+    variant("肉汤", "flavor", "排骨汤、鸡汤等肉汤脂肪和蛋白更高", { caloriesPer100g: 42, proteinPer100g: 2.2, fatPer100g: 1.6, carbsPer100g: 4.5 }),
+    variant("奶白浓汤", "flavor", "乳化脂肪更多，热量更高", { caloriesPer100g: 68, proteinPer100g: 2.4, fatPer100g: 4.2, carbsPer100g: 5.0 }),
+    variant("酸辣汤", "flavor", "酸辣调味和淀粉可能增加热量", { caloriesPer100g: 52, proteinPer100g: 1.8, fatPer100g: 1.8, carbsPer100g: 7.0 }),
+    variant("麻辣汤", "flavor", "麻辣调味油会提高脂肪和热量", { caloriesPer100g: 75, proteinPer100g: 2.0, fatPer100g: 5.0, carbsPer100g: 5.5 }),
   ],
   "noodle-style": [
-    variant("清汤", "flavor", "汤底油脂较低"),
-    variant("红烧面", "flavor", "红烧汤底和浇头含油盐糖"),
-    variant("酱香面", "flavor", "酱料会影响热量和钠"),
-    variant("拌面", "flavor", "酱料和拌油会影响热量"),
-    variant("炒面", "cooking", "烹调用油会显著增加热量"),
-    variant("炒粉", "cooking", "烹调用油会显著增加热量"),
+    variant("清汤", "flavor", "汤底油脂较低", { caloriesPer100g: 110, proteinPer100g: 3.8, fatPer100g: 0.8, carbsPer100g: 22 }),
+    variant("红烧面", "flavor", "红烧汤底和浇头含油盐糖", { caloriesPer100g: 135, proteinPer100g: 4.2, fatPer100g: 2.5, carbsPer100g: 24 }),
+    variant("酱香面", "flavor", "酱料会影响热量和钠", { caloriesPer100g: 140, proteinPer100g: 4.0, fatPer100g: 3.0, carbsPer100g: 24 }),
+    variant("拌面", "flavor", "酱料和拌油会影响热量", { caloriesPer100g: 150, proteinPer100g: 4.0, fatPer100g: 4.5, carbsPer100g: 24 }),
+    variant("炒面", "cooking", "烹调用油会显著增加热量", { caloriesPer100g: 180, proteinPer100g: 4.2, fatPer100g: 6.0, carbsPer100g: 25 }),
+    variant("炒粉", "cooking", "烹调用油会显著增加热量", { caloriesPer100g: 175, proteinPer100g: 3.8, fatPer100g: 5.5, carbsPer100g: 26 }),
   ],
   "sauce-type": [
     variant("芝麻酱/麻酱", "processing", "芝麻本体脂肪高，一小勺也会明显增加热量", { caloriesPer100g: 630, proteinPer100g: 18, fatPer100g: 54, carbsPer100g: 19 }),
@@ -963,6 +963,33 @@ export function inferDefaultFoodVariant(food: FoodForVariant, context?: FoodVari
   return food.category === "dish" || food.category === "fastfood" ? defaultDishVariant : defaultFoodVariant;
 }
 
+function clampNutrition(n: {
+  caloriesPer100g: number;
+  proteinPer100g: number;
+  fatPer100g: number;
+  carbsPer100g: number;
+}) {
+  return {
+    caloriesPer100g: Math.max(0, n.caloriesPer100g),
+    proteinPer100g: Math.max(0, n.proteinPer100g),
+    fatPer100g: Math.max(0, n.fatPer100g),
+    carbsPer100g: Math.max(0, n.carbsPer100g),
+  };
+}
+
+// 变体解析后的营养自洽校验（仅告警，不改变数值，避免破坏既有变体测试）
+// 阈值：Atwater 计算值比标称高出 >100kcal 且相对 >50%，判定宏量严重偏高
+function warnIfVariantNutritionUnsane(food: Food, ctx: string) {
+  if (food.caloriesPer100g <= 0) return;
+  const gross = 4 * food.proteinPer100g + 9 * food.fatPer100g + 4 * food.carbsPer100g;
+  const diff = gross - food.caloriesPer100g;
+  if (diff > 100 && diff / food.caloriesPer100g > 0.5) {
+    console.warn(
+      `[food-variant] 变体「${ctx}」营养不自洽: 标称${food.caloriesPer100g}kcal, Atwater计算${gross.toFixed(0)}kcal`
+    );
+  }
+}
+
 export function resolveFoodByVariant(food: Food, variantLabel?: string): Food {
   if (!variantLabel || variantLabel === defaultDishVariant || variantLabel === defaultFoodVariant) return food;
 
@@ -976,15 +1003,18 @@ export function resolveFoodByVariant(food: Food, variantLabel?: string): Food {
   if (family === "stir-fry-oil-level") {
     const oilDelta = option.profile.fatPer100g ?? 0;
     const oilCalorieDelta = oilDelta * 9; // 脂肪 9kcal/g
-    return {
+    const resolved = {
       ...food,
       caloriesPer100g: Math.max(0, food.caloriesPer100g + oilCalorieDelta),
       fatPer100g: Math.max(0, Math.round((food.fatPer100g + oilDelta) * 10) / 10),
     };
+    return { ...resolved, ...clampNutrition(resolved) };
   }
 
-  return {
+  const resolved = {
     ...food,
     ...option.profile,
   };
+  warnIfVariantNutritionUnsane(resolved, variantLabel);
+  return { ...resolved, ...clampNutrition(resolved) };
 }

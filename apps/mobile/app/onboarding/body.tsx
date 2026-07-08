@@ -1,4 +1,4 @@
-import { createElement, useEffect, useRef, useState } from "react";
+﻿import { createElement, useEffect, useRef, useState } from "react";
 import { Image, Platform, Pressable, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
@@ -366,7 +366,8 @@ export default function BodyScreen() {
     <Screen>
       <ScreenHeader
         kicker="Onboarding / 1 / 2"
-        title="身体基线"
+        title="身体基线"
+
       />
 
       <GlassTile glow="accent" style={{ gap: 12 }}>
@@ -398,7 +399,7 @@ export default function BodyScreen() {
               label="年龄 *"
               keyboardType="numeric"
               value={String(draft.age || "")}
-              onChangeText={(text) => setDraft((current) => ({ ...current, age: parseInteger(text) }))}
+              onChangeText={(text) => setDraft((current) => ({ ...current, age: parseInteger(text, 14, 100) }))}
             />
           </View>
           <View style={{ flex: 1 }}>
@@ -407,7 +408,7 @@ export default function BodyScreen() {
               keyboardType="numeric"
               value={String(draft.weightKg || "")}
               suffix={<BentoText variant="micro" color={colors.inkFaint}>kg</BentoText>}
-              onChangeText={(text) => setDraft((current) => ({ ...current, weightKg: parseInteger(text) }))}
+              onChangeText={(text) => setDraft((current) => ({ ...current, weightKg: parseDecimal(text, 30, 300) }))}
             />
           </View>
         </View>
@@ -417,7 +418,7 @@ export default function BodyScreen() {
           keyboardType="numeric"
           value={String(draft.heightCm || "")}
           suffix={<BentoText variant="micro" color={colors.inkFaint}>cm</BentoText>}
-          onChangeText={(text) => setDraft((current) => ({ ...current, heightCm: parseInteger(text) }))}
+          onChangeText={(text) => setDraft((current) => ({ ...current, heightCm: parseDecimal(text, 120, 220) }))}
         />
       </GlassTile>
 
@@ -437,7 +438,7 @@ export default function BodyScreen() {
               label="目标体重 kg"
               keyboardType="numeric"
               value={String(goalDraft.targetWeightKg || "")}
-              onChangeText={(text) => setGoalDraft((current) => ({ ...current, targetWeightKg: parseInteger(text) }))}
+              onChangeText={(text) => setGoalDraft((current) => ({ ...current, targetWeightKg: parseDecimal(text, 30, 300) }))}
             />
           </View>
           <View style={{ flex: 1 }}>
@@ -445,7 +446,7 @@ export default function BodyScreen() {
               label="周期天数"
               keyboardType="numeric"
               value={String(goalDraft.targetDays || "")}
-              onChangeText={(text) => setGoalDraft((current) => ({ ...current, targetDays: parseInteger(text) }))}
+              onChangeText={(text) => setGoalDraft((current) => ({ ...current, targetDays: parseInteger(text, 14, 365) }))}
             />
           </View>
         </View>
@@ -756,11 +757,17 @@ function getBodyAsyncStatus(message: string): "idle" | "loading" | "success" | "
   return "success";
 }
 
-function parseInteger(value: string): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0;
-}
 
+function parseDecimal(value: string, min = 0, max = Infinity): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(min, Math.min(max, parsed));
+}
+function parseInteger(value: string, min = 0, max = Infinity): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(min, Math.min(max, Math.round(parsed)));
+}
 function parseOptionalInteger(value: string): number | null {
   const trimmed = value.trim();
   if (trimmed.length === 0) return null;

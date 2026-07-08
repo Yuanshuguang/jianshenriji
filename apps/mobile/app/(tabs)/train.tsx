@@ -141,7 +141,7 @@ export default function TrainScreen() {
         ? 0
         : next.text.trim().length > 0 || parsedTraining.totalMinutes > 0
           ? parsedTraining.totalCalories
-          : estimateTodayWorkoutCalories(todayWorkout, profile.weightKg);
+          : estimateTodayWorkoutCalories(todayWorkout, profile);
 
     setActualTraining({
       ...next,

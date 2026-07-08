@@ -87,6 +87,15 @@ export function buildDailyAdjustmentSummary(input: {
     atonementPreference: input.atonementPreference
   });
 
+  const dietQualityWarnings = buildDietQualityWarnings({
+    target: input.target,
+    actualTotals: normalizeActualFoodTotals(input.target, input.actualTotals, input.actualFoodIsDelta),
+    adjustedDailyCalories: result.adjustedDailyCalories,
+    gender: input.gender,
+    plannedTrainingCalories: input.plannedTrainingCalories,
+    actualTrainingCalories: input.actualTrainingCalories
+  });
+
   return {
     deviationLevel: resolveDeviationLevel(result.netDelta),
     title: buildAdjustmentTitle(result.adjustmentMode, result.netDelta, goalType),
@@ -108,8 +117,53 @@ export function buildDailyAdjustmentSummary(input: {
     adjustedMacros: result.adjustedMacros,
     ignoredRules: result.ignoredRules,
     warning: result.adjustedDailyCalories === createDefaultAdjustmentRules(input.settings, input.gender).safetyFloorCalories ? "已触发最低安全摄入保护。" : undefined,
-    dietQualityWarnings: [],
+    dietQualityWarnings,
   };
+}
+
+function normalizeActualFoodTotals(target: NutritionTotals, actual: NutritionTotals, actualFoodIsDelta: boolean): NutritionTotals {
+  if (!actualFoodIsDelta) return actual;
+  return {
+    calories: target.calories + actual.calories,
+    proteinG: target.proteinG + actual.proteinG,
+    fatG: target.fatG + actual.fatG,
+    carbsG: target.carbsG + actual.carbsG
+  };
+}
+
+function buildDietQualityWarnings(input: {
+  target: EnergyPlan;
+  actualTotals: NutritionTotals;
+  adjustedDailyCalories: number;
+  gender: Gender;
+  plannedTrainingCalories: number;
+  actualTrainingCalories: number;
+}): string[] {
+  const warnings: string[] = [];
+  const safetyFloor = input.gender === "female" ? 1200 : 1500;
+  const actual = input.actualTotals;
+  const target = input.target;
+
+  if (actual.calories > 0 && actual.calories < safetyFloor * 0.95) {
+    warnings.push("今日摄入接近最低安全线，优先补足正餐，不建议继续压低热量。");
+  }
+  if (actual.proteinG < target.proteinG * 0.8) {
+    warnings.push("蛋白质明显不足，下一餐优先补充鸡蛋、鱼虾、瘦肉、豆制品或乳制品。");
+  }
+  if (actual.fatG < Math.max(25, target.fatG * 0.55)) {
+    warnings.push("脂肪摄入偏低，长期过低可能影响激素、饱腹感和执行稳定性。");
+  }
+  if (actual.fatG > target.fatG * 1.35) {
+    warnings.push("脂肪明显偏高，后续餐次减少油炸、肥肉、奶油和坚果叠加。");
+  }
+  if (input.actualTrainingCalories > input.plannedTrainingCalories && actual.carbsG < target.carbsG * 0.6) {
+    warnings.push("训练消耗增加但碳水偏低，可在训练后补一点米饭、土豆、燕麦或水果。");
+  }
+  if (input.adjustedDailyCalories <= safetyFloor + 80) {
+    warnings.push("新目标已接近安全下限，建议优先延长周期，而不是继续压缩饮食。");
+  }
+
+  return Array.from(new Set(warnings)).slice(0, 4);
 }
 
 export function buildDebtSnapshot(summary: DailyAdjustmentSummary): CalorieDebtSnapshot {

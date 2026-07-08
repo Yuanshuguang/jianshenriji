@@ -1,12 +1,9 @@
 ﻿import {
-  calculateNutritionGap,
   calculateFoodTotals,
   calculateDietPlanMacroTargets,
   calculateDefaultMealBudgets,
   exercises,
-  getFoodByIdFromCatalog,
   getFoodCatalog,
-  recommendMacroAwarePortions,
   resolveTrainingDietRecommendation,
   resolveDietPlanDay,
   sumNutrition,
@@ -55,14 +52,16 @@ import {
 import { getFoodRecordStateCopy, resolveFoodRecordState } from "../../features/food-record-state";
 import { buildDailyAdjustmentSummary, buildDebtSnapshot } from "../../features/adjustments";
 import { getDietPlanById, type DietPlan } from "../../features/diet-plans";
-import { getFoodVariantGroupLabel, getFoodVariantOptions, inferDefaultFoodVariant, resolveFoodByVariant } from "../../features/food-variant-options";
+import { getFoodVariantGroupLabel, getFoodVariantOptions, inferDefaultFoodVariant } from "../../features/food-variant-options";
 import { searchOnlineFood } from "../../features/food-online-search";
+import { buildTodayFoodState, type FoodTagMatch, type FoodTagOverride } from "../../features/today-screen-calculations";
 import { buildTrainingQueue, useCurrentEnergyPlan, useFitnessStore, type AiRecognizedMealFood } from "../../store/fitness-store";
 import { resolveFoodNutrition } from "../../features/food-nutrition-resolver";
 import { recognizeDishImage, resolveDishRecognitionFoods, type DishRecognitionCandidate } from "../../features/food-image-recognition";
 import { buildCustomFoodFromNutritionLabel, recognizeNutritionLabelImage } from "../../features/nutrition-label-recognition";
 import { prepareAiImageUploadFromBase64Asset, prepareAiImageUploadFromFile } from "../../features/ai-image-upload";
 
+type FoodRecordMode = "actual" | "prepared";
 type MealDisplayMode = "planned" | "actual";
 
 type DashboardMetric = {
@@ -133,33 +132,6 @@ type FoodTagEdit = {
   unit?: string;
 };
 
-type FoodTagOverride = {
-  hidden?: boolean;
-  label?: string;
-  calories?: number;
-  grams?: number;
-  filling?: string;
-};
-
-type FoodTagMatch = {
-  input: string;
-  food: Food;
-  grams: number;
-  quantity?: number;
-  unit?: string;
-  displayAmount?: string;
-  meal?: MealAdjustmentKey | "unknown";
-  confidence?: number;
-  needsDetails?: boolean;
-  detailHint?: string;
-};
-
-type ActualFoodPortionWithMeta = FoodPortion & {
-  meal?: MealAdjustmentKey;
-  displayAmount?: string;
-  sourceIndex?: number;
-};
-
 type MealFoodTag = {
   key: string;
   label: string;
@@ -217,13 +189,12 @@ export default function TodayScreen() {
   const setMealPlanCustomAdjustment = useFitnessStore((state) => state.setMealPlanCustomAdjustment);
   const saveDailyLog = useFitnessStore((state) => state.saveDailyLog);
 
-  const today = new Date();
-  const todayKey = formatDateKey(today);
   const [mealCalendarOpen, setMealCalendarOpen] = useState(false);
-  const [selectedWeekDateKey, setSelectedWeekDateKey] = useState(todayKey);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [recordCollapsed, setRecordCollapsed] = useState(false);
   const [mealsCollapsed, setMealsCollapsed] = useState(false);
   const [menuCollapsed, setMenuCollapsed] = useState(true);
+  const [foodRecordMode, setFoodRecordMode] = useState<FoodRecordMode>("actual");
   const [mealDisplayMode, setMealDisplayMode] = useState<MealDisplayMode>("actual");
   const [customMealAdjustmentOpen, setCustomMealAdjustmentOpen] = useState(false);
   const [customMealAdjustmentMode, setCustomMealAdjustmentMode] = useState<"food" | "macro">("food");
@@ -247,8 +218,9 @@ export default function TodayScreen() {
   const dishImageInputRef = useRef<HTMLInputElement | null>(null);
   const nutritionLabelInputRef = useRef<HTMLInputElement | null>(null);
   const lastSavedDailyLogSignatureRef = useRef("");
-  const didAutoSaveDailyLogRef = useRef(false);
 
+  const today = new Date();
+  const todayKey = formatDateKey(today);
   const selectedDietPlan = getDietPlanById(selectedDietPlanId);
   const dietPlanCycleSelection: DietPlanCycleSelection = selectedDietPlanVariantId
     ? { variantId: selectedDietPlanVariantId }
@@ -283,45 +255,54 @@ export default function TodayScreen() {
     minutesPerSession: dietTrainingRecommendation.durationMinutes,
     preferredMuscleGroups: [dietTrainingRecommendation.focus]
   })[0] ?? recommendedWorkout;
-  const plannedTrainingBaseCalories = estimateTodayWorkoutCalories(plannedTrainingWorkout, profile.weightKg);
+  const plannedTrainingBaseCalories = estimateTodayWorkoutCalories(plannedTrainingWorkout, profile);
   const plannedTrainingCalories =
     todayTrainingPlan.minutes && plannedTrainingWorkout?.estimatedMinutes
       ? Math.round(plannedTrainingBaseCalories * (todayTrainingPlan.minutes / Math.max(1, plannedTrainingWorkout.estimatedMinutes)))
       : plannedTrainingBaseCalories;
 
-  const selectedFoods = selectedFoodIds.flatMap((foodId) => {
-    const food = getFoodByIdFromCatalog(foodId, customFoods);
-    return food ? [food] : [];
-  });
   const enabledMeals = dietPreference.enabledMeals;
   const visibleMealSlots = mealSlots.filter((slot) => enabledMeals[slot.id] !== false);
   const activeMealSlots = visibleMealSlots.length > 0 ? visibleMealSlots : mealSlots.filter((slot) => slot.id === "lunch");
   const activeDishRecognitionMeal = enabledMeals[dishRecognitionMeal] === false
     ? activeMealSlots[0]?.id ?? "lunch"
     : dishRecognitionMeal;
-  const plannedPortions = recommendMacroAwarePortions(selectedFoods, dietTarget, {
+  const foodState = useMemo(() => buildTodayFoodState({
+    selectedFoodIds,
+    customFoods,
+    dietTarget,
     enabledMeals,
     dayType: resolvedDietDay.dayType,
     trainingFocus: plannedTrainingFocus,
-    adjustments: mealPlanCustomAdjustment
-  });
-  const plannedTotals = sumNutrition(plannedPortions.map((portion) => portion.totals));
-  const preparedResult = parseFoodText(preparedFoodText, customFoods);
-  const actualFood = buildActualFoodPortionsFromText(actualFoodText, customFoods, {
-    dailyCalorieTarget: dietTarget.calories,
-  });
-  const aiImageMatches = buildAiImageFoodMatches(actualMealImageFoods, customFoods);
-  const aiImagePortions = buildAiImageFoodPortions(aiImageMatches, actualFood.parsed.matched.length);
-  const combinedActualMatches = [...actualFood.parsed.matched, ...aiImageMatches];
-  const combinedActualPortions = [...actualFood.portions, ...aiImagePortions];
-  const adjustedActualPortions = applyFoodTagOverrides(combinedActualPortions, combinedActualMatches, foodTagEdits);
-  const actualTotals = sumNutrition(adjustedActualPortions.map((portion) => portion.totals));
-  const actualIntake = Math.round(actualTotals.calories);
+    mealPlanCustomAdjustment,
+    actualFoodText,
+    actualMealImageFoods,
+    foodTagEdits
+  }), [
+    actualFoodText,
+    actualMealImageFoods,
+    customFoods,
+    dietTarget,
+    enabledMeals,
+    foodTagEdits,
+    mealPlanCustomAdjustment,
+    plannedTrainingFocus,
+    resolvedDietDay.dayType,
+    selectedFoodIds
+  ]);
+  const {
+    plannedPortions,
+    preparedResult,
+    actualFood,
+    combinedActualMatches,
+    adjustedActualPortions,
+    actualTotals,
+    actualIntake
+  } = foodState;
   const intakeDiff = Math.round(actualIntake - dietTarget.calories);
   const intakeDiffLabel = intakeDiff > 0
     ? `超出 ${Math.abs(intakeDiff)} kcal`
     : `还差 ${Math.abs(intakeDiff)} kcal`;
-  const actualGap = calculateNutritionGap(dietTarget, actualTotals);
   const intakeColor: SemanticColor = intakeDiff > 0 ? "warn" : "accent";
 
   const dashboardCells: DashboardCell[] = [
@@ -391,17 +372,7 @@ export default function TodayScreen() {
     actualIntake,
   }));
   const selectedDashboardDetail = dashboardDetails.find((item) => item.key === dashboardDetailKey) ?? null;
-  const weekRailItems = buildHomeWeekRailItems(
-    today,
-    selectedDietPlanId,
-    dietPlanCycleSelection,
-    todayKey,
-    selectedWeekDateKey,
-    (dateKey) => {
-      setSelectedWeekDateKey(dateKey);
-      setMealCalendarOpen((value) => (selectedWeekDateKey === dateKey ? !value : true));
-    },
-  );
+  const weekRailItems = buildHomeWeekRailItems(today);
   const mealBudgets = calculateDefaultMealBudgets(dietTarget.calories);
   const foodRecordState = resolveFoodRecordState({
     actualFoodText,
@@ -450,11 +421,10 @@ export default function TodayScreen() {
   }, [actualFoodText, actualMealTexts, actualTotals, actualTraining, adjustmentSummary, dietTarget, hasFoodRecord, hasTrainingRecordToday, todayKey]);
 
   useEffect(() => {
-    if (!currentDebtPreview || didAutoSaveDailyLogRef.current) return;
+    if (!currentDebtPreview) return;
     const signature = JSON.stringify(currentDebtPreview);
     if (signature === lastSavedDailyLogSignatureRef.current) return;
     lastSavedDailyLogSignatureRef.current = signature;
-    didAutoSaveDailyLogRef.current = true;
     saveDailyLog(todayKey, currentDebtPreview);
   }, [currentDebtPreview, saveDailyLog, todayKey]);
 
@@ -643,31 +613,40 @@ export default function TodayScreen() {
 
   return (
     <Screen>
-      <GlassTile glow="accent" raised padding={12} style={{ gap: 6 }}>
-        <View style={{ gap: 2 }}>
-          <WeekDateRail items={weekRailItems} />
-          {mealCalendarOpen ? (
-            <View style={{ marginTop: 6 }}>
-              <CalendarHistoryPanel />
+      <GlassTile glow="accent" raised padding={14} style={{ gap: 12 }}>
+        <View style={{ gap: 8 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+            <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+              <BentoText weight="bold" style={{ fontSize: 26, lineHeight: 30, color: c.ink }}>
+                今日饮食
+              </BentoText>
+              <BentoText variant="caption" color={c.inkMute}>
+                估算 · 动态调整
+              </BentoText>
             </View>
-          ) : null}
-
-          <View style={{ flexDirection: "row", gap: 6, alignItems: "stretch" }}>
             <Pressable
-              onPress={() => setDashboardDetailKey("intake")}
-              accessibilityRole="button"
-              accessibilityLabel="查看热量营养详情"
-              style={({ pressed }) => ({
-                width: 128,
+              onPress={() => setMealCalendarOpen((value) => !value)}
+            style={({ pressed }) => ({
+                minHeight: 34,
+                minWidth: 34,
+                paddingHorizontal: 6,
+                borderRadius: 16,
                 alignItems: "center",
                 justifyContent: "center",
-                opacity: pressed ? 0.86 : 1,
+                opacity: pressed ? 0.82 : 1,
               })}
             >
+              <AppIcon name="calendar" size={18} color="accent" strokeWidth={2} />
+            </Pressable>
+          </View>
+          <WeekDateRail items={weekRailItems} />
+
+          <View style={{ flexDirection: "row", gap: 12, alignItems: "stretch" }}>
+            <View style={{ width: 156, alignItems: "center", justifyContent: "center" }}>
               <View style={{ position: "relative", alignItems: "center", justifyContent: "center" }}>
                 <ProgressRing
-                  size={128}
-                  stroke={9}
+                  size={156}
+                  stroke={12}
                   percent={Math.min(1, actualIntake / Math.max(1, dietTarget.calories))}
                   color="accent"
                   showLabel={false}
@@ -676,17 +655,17 @@ export default function TodayScreen() {
                   <BentoText variant="micro" color={c.inkMute}>
                     {actualIntake <= dietTarget.calories ? "还可继续" : "已超出"}
                   </BentoText>
-                  <BentoText mono weight="bold" style={{ fontSize: 30, lineHeight: 32, color: c.ink }}>
+                  <BentoText mono weight="bold" style={{ fontSize: 40, lineHeight: 42, color: c.ink }}>
                     {Math.abs(dietTarget.calories - actualIntake)}
                   </BentoText>
-                  <BentoText mono color={c.inkMute} style={{ fontSize: 11, lineHeight: 13 }}>
+                  <BentoText mono color={c.inkMute} style={{ fontSize: 14, lineHeight: 16 }}>
                     kcal
                   </BentoText>
                 </View>
               </View>
-            </Pressable>
+            </View>
 
-            <View style={{ flex: 1, gap: 6, justifyContent: "center" }}>
+            <View style={{ flex: 1, gap: 10, justifyContent: "center" }}>
               {dashboardCells.map((cell) => {
                 const displayLabel = getDashboardMetricLabel(cell);
                 const over = cell.actual > cell.target;
@@ -699,32 +678,30 @@ export default function TodayScreen() {
                     accessibilityRole="button"
                     accessibilityLabel={`查看${displayLabel}来源详情`}
                     style={({ pressed }) => ({
-                      gap: 2,
+                      gap: 5,
                       borderRadius: 12,
-                      paddingVertical: 1,
+                      paddingVertical: 3,
                       paddingHorizontal: 4,
                       opacity: pressed ? 0.78 : 1,
                       backgroundColor: pressed ? c.glass : "transparent",
                     })}
                   >
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 4 }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                         <View style={{ width: 9, height: 9, borderRadius: 999, backgroundColor: c[barColor] }} />
-                        <BentoText weight="semibold" color={c.ink} style={{ fontSize: 12 }}>
-                          {displayLabel}
-                        </BentoText>
+                        <BentoText weight="semibold" color={c.ink}>{displayLabel}</BentoText>
                       </View>
-                      <BentoText mono weight="bold" color={c.ink} style={{ fontSize: 13 }}>
+                      <BentoText mono weight="bold" color={c.ink} style={{ fontSize: 15 }}>
                         {Math.round(cell.actual)} / {Math.round(cell.target)}{cell.unit}
                       </BentoText>
                     </View>
-                    <MetricCompareBar actual={cell.actual} target={cell.target} color={barColor} height={4} />
+                    <MetricCompareBar actual={cell.actual} target={cell.target} color={barColor} height={6} />
                     {over ? (
-                      <BentoText variant="micro" color={c.warn} style={{ fontSize: 9, lineHeight: 11 }}>
+                      <BentoText variant="micro" color={c.warn}>
                         超出 {Math.round(cell.actual - cell.target)}{cell.unit}
                       </BentoText>
                     ) : (
-                      <BentoText variant="micro" color={c.inkFaint} style={{ fontSize: 9, lineHeight: 11 }}>
+                      <BentoText variant="micro" color={c.inkFaint}>
                         还差 {Math.round(cell.target - cell.actual)}{cell.unit}
                       </BentoText>
                     )}
@@ -733,16 +710,120 @@ export default function TodayScreen() {
               })}
             </View>
           </View>
+
+          <Pressable
+            onPress={() => setDashboardDetailKey("intake")}
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              justifyContent: "center",
+              alignItems: "center",
+              paddingTop: 8,
+              opacity: pressed ? 0.78 : 1,
+            })}
+          >
+            <BentoText weight="semibold" color={c.inkMute}>
+              查看日历记录
+            </BentoText>
+          </Pressable>
         </View>
+      </GlassTile>
+      {mealCalendarOpen ? <CalendarHistoryPanel /> : null}
+
+      <GlassTile style={{ gap: 12 }}>
+        <CardHeader
+          title="饮食记录"
+          collapsed={recordCollapsed}
+          onToggle={() => setRecordCollapsed((value) => !value)}
+          trailing={null}
+        />
+        {!recordCollapsed ? (
+          <View style={{ gap: 12 }}>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <Button
+                variant={foodRecordMode === "prepared" ? "filled" : "glass"}
+                color="accent"
+                size="sm"
+                block
+                onPress={() => setFoodRecordMode("prepared")}
+              >
+                储备食物
+              </Button>
+              <Button
+                variant={foodRecordMode === "actual" ? "filled" : "glass"}
+                color="accent2"
+                size="sm"
+                block
+                onPress={() => setFoodRecordMode("actual")}
+              >
+                实际饮食
+              </Button>
+            </View>
+            {foodRecordMode === "actual" ? (
+              <View style={{ gap: 10 }}>
+                <RecordStateBanner state={foodRecordState} title={foodRecordStateCopy.title} subtitle={foodRecordStateCopy.subtitle} />
+                <ActualFoodInputSection
+                  text={actualFoodText}
+                  onTextChange={updateActualFoods}
+                  unmatched={actualFood.parsed.unmatched}
+                  onAddUnmatchedFood={startCustomFoodFromUnmatched}
+                  onlineFoodLookup={onlineFoodLookup}
+                  onSearchUnmatchedFood={searchFoodFromUnmatched}
+                />
+                <View style={{ gap: 8 }}>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                    {activeMealSlots.map((slot) => (
+                      <PillButton
+                        key={slot.id}
+                        label={slot.name}
+                        color={activeDishRecognitionMeal === slot.id ? "accent" : "positive"}
+                        onPress={() => setDishRecognitionMeal(slot.id)}
+                      />
+                    ))}
+                  </View>
+                  <Button variant="filled" color="accent2" block onPress={openDishImagePicker} disabled={dishRecognitionBusy}>
+                    {dishRecognitionBusy ? "识别中..." : "AI 识别菜品"}
+                  </Button>
+                  <AsyncStatusBanner
+                    status={dishRecognitionBusy ? "loading" : getAsyncStatusFromMessage(dishRecognitionMessage)}
+                    message={dishRecognitionMessage}
+                  />
+                </View>
+              </View>
+            ) : (
+              <View style={{ gap: 8 }}>
+                  <TextInput
+                    multiline
+                    value={preparedFoodText}
+                    onChangeText={updatePreparedFoods}
+                    placeholder="示例：鸡蛋、米饭、鸡胸肉、青菜"
+                    placeholderTextColor={c.inkFaint}
+                    style={getInputStyle(c)}
+                  />
+                {preparedResult.unmatched.length > 0 ? (
+                  <UnmatchedFoodActions
+                    unmatched={preparedResult.unmatched}
+                    lookup={onlineFoodLookup}
+                    onManual={startCustomFoodFromUnmatched}
+                    onSearch={searchFoodFromUnmatched}
+                  />
+                ) : null}
+              </View>
+            )}
+          </View>
+        ) : null}
       </GlassTile>
 
       <GlassTile style={{ gap: 12 }}>
         <CardHeader
-              title={
-                <View style={{ gap: 5 }}>
-                  <Label color={c.inkMute} variant="label">{"\u4eca\u65e5\u9910\u6b21"}</Label>
-                </View>
-              }
+          title={
+            <View style={{ gap: 5 }}>
+              <Label color={c.inkMute} variant="label">{"\u4eca\u65e5\u9910\u6b21"}</Label>
+              <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+                <Badge color="accent" size="sm">{getDietDayTypeLabel(resolvedDietDay.dayType)}</Badge>
+                <Badge color="positive" size="sm">{"\u76ee\u6807\u78b3\u6c34"} {Math.round(dietTarget.carbsG)}g</Badge>
+              </View>
+            </View>
+          }
           collapsed={mealsCollapsed}
           onToggle={() => setMealsCollapsed((value) => !value)}
           onTitlePress={() => setDietPlanLogicOpen(true)}
@@ -760,33 +841,6 @@ export default function TodayScreen() {
         />
         {!mealsCollapsed ? (
           <View style={{ gap: 12 }}>
-            <View style={{ gap: 10 }}>
-              <RecordStateBanner state={foodRecordState} title={foodRecordStateCopy.title} subtitle={foodRecordStateCopy.subtitle} />
-              <ActualFoodInputSection
-                text={actualFoodText}
-                onTextChange={updateActualFoods}
-                unmatched={actualFood.parsed.unmatched}
-                onAddUnmatchedFood={startCustomFoodFromUnmatched}
-                onlineFoodLookup={onlineFoodLookup}
-                onSearchUnmatchedFood={searchFoodFromUnmatched}
-              />
-              <View style={{ gap: 8 }}>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-                  {activeMealSlots.map((slot) => (
-                    <PillButton
-                      key={slot.id}
-                      label={slot.name}
-                      color={activeDishRecognitionMeal === slot.id ? "accent" : "positive"}
-                      onPress={() => setDishRecognitionMeal(slot.id)}
-                    />
-                  ))}
-                </View>
-                <AsyncStatusBanner
-                  status={dishRecognitionBusy ? "loading" : getAsyncStatusFromMessage(dishRecognitionMessage)}
-                  message={dishRecognitionMessage}
-                />
-              </View>
-            </View>
             {mealRows.map((row) => (
               <MealRecordCard
                 key={row.id}
@@ -817,30 +871,8 @@ export default function TodayScreen() {
           trailing={<BentoText mono color={c.inkMute} style={{ fontSize: 12 }}>菜单项 {menuFoods.length}</BentoText>}
         />
         {!menuCollapsed ? (
-          <View style={{ gap: 12 }}>
-            <View style={{ gap: 8 }}>
-              <Label color={c.inkMute} variant="micro">自定义食物</Label>
-              <TextInput
-                multiline
-                value={preparedFoodText}
-                onChangeText={updatePreparedFoods}
-                placeholder="示例：鸡蛋、米饭、鸡胸肉、青菜"
-                placeholderTextColor={c.inkFaint}
-                style={getInputStyle(c)}
-              />
-              {preparedResult.unmatched.length > 0 ? (
-                <UnmatchedFoodActions
-                  unmatched={preparedResult.unmatched}
-                  lookup={onlineFoodLookup}
-                  onManual={startCustomFoodFromUnmatched}
-                  onSearch={searchFoodFromUnmatched}
-                />
-              ) : null}
-            </View>
-
-            <View style={{ gap: 8, paddingTop: 4, borderTopWidth: 1, borderTopColor: c.glassBorder }}>
-              <Label color={c.inkMute} variant="micro">菜单编辑</Label>
-              <TextInput value={menuName} onChangeText={setMenuName} placeholder="食物名称" placeholderTextColor={c.inkFaint} style={getInputStyle(c)} />
+          <View style={{ gap: 8 }}>
+            <TextInput value={menuName} onChangeText={setMenuName} placeholder="食物名称" placeholderTextColor={c.inkFaint} style={getInputStyle(c)} />
             <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
               <SmallInput label="千卡/100g" value={menuCalories} onChangeText={setMenuCalories} />
               <SmallInput label="蛋白/100g" value={menuProtein} onChangeText={setMenuProtein} />
@@ -875,7 +907,6 @@ export default function TodayScreen() {
                 </Pressable>
               </View>
             ))}
-            </View>
           </View>
         ) : null}
       </GlassTile>
@@ -1007,16 +1038,14 @@ function getInputStyle(c: BentoThemeColors) {
 
 function getRecordInputStyle(c: BentoThemeColors) {
   return {
-    minHeight: 56,
-    backgroundColor: c.glass,
-    borderWidth: 1,
-    borderColor: c.glassBorder,
-    borderRadius: radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    minHeight: 28,
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    borderRadius: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
     color: c.ink,
     fontSize: 15,
-    textAlignVertical: "top",
   } as const;
 }
 
@@ -1280,9 +1309,6 @@ function DashboardMetricDetailModal({
               <BentoText weight="bold" color={c.ink} style={{ fontSize: 20, lineHeight: 24 }}>
                 {detail.label}
               </BentoText>
-              <BentoText variant="micro" color={c.inkMute} style={{ lineHeight: 18 }}>
-                先看结论，再看来源；点击切换不同口径。
-              </BentoText>
             </View>
 
             <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
@@ -1291,114 +1317,92 @@ function DashboardMetricDetailModal({
               <Badge color={detail.diffTone} size="sm">{detail.diffLine}</Badge>
             </View>
 
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              {valueModeOptions.map((option) => {
-                const active = option.value === valueMode;
-                return (
-                  <Pressable
-                    key={option.value}
-                    onPress={() => setValueMode(option.value)}
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      minHeight: 34,
-                      paddingHorizontal: 10,
-                      borderRadius: 999,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: active ? c.accent : c.glass,
-                      borderWidth: 1,
-                      borderColor: active ? c.accent : c.glassBorder,
-                      opacity: pressed ? 0.8 : 1,
-                    })}
-                  >
-                    <BentoText weight="semibold" variant="micro" color={active ? c.bg : c.inkMute}>
-                      {option.label}
-                    </BentoText>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              {breakdownModeOptions.map((option) => {
-                const disabled = valueMode !== "actual" && option.value === "food";
-                const active = option.value === effectiveBreakdownMode;
-                return (
-                  <Pressable
-                    key={option.value}
-                    disabled={disabled}
-                    onPress={() => setBreakdownMode(option.value)}
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      minHeight: 32,
-                      paddingHorizontal: 10,
-                      borderRadius: 999,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: active ? c.positive : c.glass,
-                      borderWidth: 1,
-                      borderColor: active ? c.positive : c.glassBorder,
-                      opacity: disabled ? 0.35 : pressed ? 0.8 : 1,
-                    })}
-                  >
-                    <BentoText weight="semibold" variant="micro" color={active ? c.bg : c.inkMute}>
-                      {option.label}
-                    </BentoText>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.glass }}>
-              <View style={{ flexDirection: "row", backgroundColor: c.glassRaised, borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
-                <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}>
-                  <BentoText weight="semibold" variant="micro" color={c.inkMute}>目标来源</BentoText>
-                </View>
-                <View style={{ flex: 1.2, paddingVertical: 10, paddingHorizontal: 12, alignItems: "flex-end" }}>
-                  <BentoText weight="semibold" variant="micro" color={c.inkMute}>说明</BentoText>
-                </View>
+            <View style={{ gap: 8 }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                {valueModeOptions.map((option) => {
+                  const active = option.value === valueMode;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      onPress={() => setValueMode(option.value)}
+                      style={({ pressed }) => ({
+                        minHeight: 30,
+                        paddingHorizontal: 10,
+                        borderRadius: 999,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: active ? c.accent : c.glass,
+                        borderWidth: 1,
+                        borderColor: active ? c.accent : c.glassBorder,
+                        opacity: pressed ? 0.8 : 1,
+                      })}
+                    >
+                      <BentoText weight="semibold" variant="micro" color={active ? c.bg : c.inkMute}>
+                        {option.label}
+                      </BentoText>
+                    </Pressable>
+                  );
+                })}
               </View>
-              <View style={{ flexDirection: "row" }}>
-                <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
-                  <BentoText weight="semibold" color={c.ink}>{detail.sourceTitle}</BentoText>
-                </View>
-                <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
-                  <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18, textAlign: "right" }}>
-                    {detail.targetReason}
-                  </BentoText>
-                </View>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                {breakdownModeOptions.map((option) => {
+                  const disabled = valueMode !== "actual" && option.value === "food";
+                  const active = option.value === effectiveBreakdownMode;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      disabled={disabled}
+                      onPress={() => setBreakdownMode(option.value)}
+                      style={({ pressed }) => ({
+                        minHeight: 28,
+                        paddingHorizontal: 10,
+                        borderRadius: 999,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: active ? c.positive : c.glass,
+                        borderWidth: 1,
+                        borderColor: active ? c.positive : c.glassBorder,
+                        opacity: disabled ? 0.35 : pressed ? 0.8 : 1,
+                      })}
+                    >
+                      <BentoText weight="semibold" variant="micro" color={active ? c.bg : c.inkMute}>
+                        {option.label}
+                      </BentoText>
+                    </Pressable>
+                  );
+                })}
               </View>
             </View>
 
-            <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.glass }}>
-              <View style={{ flexDirection: "row", backgroundColor: c.glassRaised, borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
-                <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}>
-                  <BentoText weight="semibold" variant="micro" color={c.inkMute}>来源</BentoText>
-                </View>
-                <View style={{ flex: 1.2, paddingVertical: 10, paddingHorizontal: 12, alignItems: "flex-end" }}>
-                  <BentoText weight="semibold" variant="micro" color={c.inkMute}>数值</BentoText>
-                </View>
-              </View>
+            <View style={{ gap: 6, padding: 12, borderRadius: 12, backgroundColor: c.glass, borderWidth: 1, borderColor: c.glassBorder }}>
+              <BentoText weight="semibold" variant="caption" color={c.ink}>目标来源</BentoText>
+              <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18 }}>
+                {detail.targetReason}
+              </BentoText>
+            </View>
+
+            <View style={{ gap: 8 }}>
+              <BentoText weight="semibold" variant="caption" color={c.ink}>{detail.sourceTitle}</BentoText>
               {activeSources.length > 0 ? activeSources.map((source) => (
                 <View
                   key={`${source.name}-${source.detail}-${source.value}`}
                   style={{
                     flexDirection: "row",
-                    borderBottomWidth: 1,
-                    borderBottomColor: c.glassBorder,
+                    gap: 10,
+                    alignItems: "center",
+                    paddingVertical: 8,
+                    borderTopWidth: 1,
+                    borderTopColor: c.glassBorder,
                   }}
                 >
-                  <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12, gap: 2 }}>
-                    <BentoText weight="semibold" color={c.ink}>{source.name}</BentoText>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <BentoText weight="semibold" variant="caption" color={c.ink}>{source.name}</BentoText>
                     <BentoText variant="micro" color={c.inkMute}>{source.detail}</BentoText>
                   </View>
-                  <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end", justifyContent: "center" }}>
-                    <BentoText mono weight="bold" color={c.accent} style={{ fontSize: 14 }}>{source.value}</BentoText>
-                  </View>
+                  <BentoText mono weight="bold" color={c.accent} style={{ fontSize: 14 }}>{source.value}</BentoText>
                 </View>
               )) : (
-                <View style={{ padding: 12 }}>
-                  <BentoText variant="caption" color={c.inkFaint}>{detail.emptySourceLabel}</BentoText>
-                </View>
+                <BentoText variant="caption" color={c.inkFaint}>{detail.emptySourceLabel}</BentoText>
               )}
             </View>
 
@@ -1455,7 +1459,7 @@ function CardHeader({
 function MealDisplaySwitch({ value, onChange }: { value: MealDisplayMode; onChange: (value: MealDisplayMode) => void }) {
   const c = useBentoTheme().colors;
   const options: Array<{ value: MealDisplayMode; label: string }> = [
-    { value: "planned", label: "计划餐次" },
+    { value: "planned", label: "储备食物" },
     { value: "actual", label: "实际饮食" },
   ];
   return (
@@ -1552,13 +1556,18 @@ function CustomMealAdjustmentModal({
             gap: 12,
           }}
         >
-          <View style={{ gap: 4 }}>
-            <BentoText weight="bold" color={c.ink} style={{ fontSize: 16, lineHeight: 20 }}>
-              {"\u81ea\u5b9a\u4e49\u52a8\u6001\u8c03\u6574"}
-            </BentoText>
-            <BentoText variant="micro" color={c.inkMute} style={{ lineHeight: 18 }}>
-              {"\u6309\u98df\u7269 / \u6309\u8425\u517b \u5207\u6362\u8c03\u6574\u65b9\u5f0f\uff0c\u9501\u5b9a\u9910\u6b21\u4e0d\u4f1a\u88ab\u5176\u4ed6\u9910\u6b21\u5f71\u54cd\u3002"}
-            </BentoText>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <BentoText weight="bold" color={c.ink} style={{ fontSize: 16, lineHeight: 20 }}>
+                {"\u81ea\u5b9a\u4e49\u52a8\u6001\u8c03\u6574"}
+              </BentoText>
+              <BentoText variant="micro" color={c.inkMute} style={{ marginTop: 3 }}>
+                {"\u9501\u5b9a\u7684\u9910\u6b21\u4e0d\u4f1a\u627f\u63a5\u5176\u4ed6\u9910\u6b21\u51cf\u5c11\u7684\u98df\u7269\u6216\u8425\u517b\u3002"}
+              </BentoText>
+            </View>
+            <Button variant="glass" color="warn" size="sm" onPress={() => onChange({ lockedMeals: {}, foodGrams: {}, macroTargets: {} })}>
+              {"\u91cd\u7f6e"}
+            </Button>
           </View>
 
           <View style={{ flexDirection: "row", gap: 8 }}>
@@ -1567,9 +1576,6 @@ function CustomMealAdjustmentModal({
             </Button>
             <Button variant={mode === "macro" ? "filled" : "glass"} color="accent" block onPress={() => onModeChange("macro")}>
               {"\u6309\u8425\u517b"}
-            </Button>
-            <Button variant="glass" color="warn" size="sm" onPress={() => onChange({ lockedMeals: {}, foodGrams: {}, macroTargets: {} })}>
-              {"\u91cd\u7f6e"}
             </Button>
           </View>
 
@@ -1776,73 +1782,60 @@ function MealTextEditorModal({
             <BentoText weight="bold" variant="caption" color={c.ink}>
               {mealName}
             </BentoText>
-            <BentoText variant="micro" color={c.inkMute} style={{ lineHeight: 18 }}>
+            <BentoText variant="micro" color={c.inkMute}>
               点击食物标签可查看或修改详情
             </BentoText>
           </View>
 
-          <View style={{ borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.glass }}>
-            <View style={{ flexDirection: "row", backgroundColor: c.glassRaised, borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
-              <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}>
-                <BentoText weight="semibold" variant="micro" color={c.inkMute}>当前餐次</BentoText>
-              </View>
-              <View style={{ flex: 1.2, paddingVertical: 10, paddingHorizontal: 12, alignItems: "flex-end" }}>
-                <BentoText weight="semibold" variant="micro" color={c.inkMute}>说明</BentoText>
-              </View>
-            </View>
-            <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
-              <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {detailFoods.length > 0
-                    ? detailFoods.slice(0, 6).map((item) => (
-                        <Badge key={item.key} color="accent" size="sm">
-                          {item.label}
-                        </Badge>
-                      ))
-                    : null}
-                </View>
-              </View>
-              <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
-                <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18, textAlign: "right" }}>
-                  {detailFoods.length > 0 ? "当前餐次已识别食物与营养表" : "暂无食物标签"}
-                </BentoText>
-              </View>
+          <View
+            style={{
+              borderRadius: 16,
+              padding: 12,
+              gap: 8,
+              backgroundColor: c.glass,
+              borderWidth: 1,
+              borderColor: c.glassBorder,
+            }}
+          >
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {detailFoods.length > 0
+                ? detailFoods.slice(0, 6).map((item) => (
+                    <Badge key={item.key} color="accent" size="sm">
+                      {item.label}
+                    </Badge>
+                  ))
+                : null}
             </View>
             {detailFoods.length > 0 ? <MealNutritionTable foods={detailFoods} totals={mealTotals} /> : null}
-          </View>
-
-          {mode === "actual" ? (
-            <TextInput
-              value={text}
-              onChangeText={onChangeText}
-              multiline
-              placeholder="在这里输入本餐实际吃了什么"
-              placeholderTextColor={c.inkFaint}
-              style={{
-                minHeight: 92,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: c.glassBorder,
-                backgroundColor: c.bg,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                color: c.ink,
-                fontSize: 13,
-                lineHeight: 18,
-                textAlignVertical: "top",
-              }}
-            />
-          ) : (
-            <View style={{ minHeight: 92, borderRadius: 14, borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.bg, padding: 12, justifyContent: "center" }}>
+            {mode === "actual" ? (
+              <TextInput
+                value={text}
+                onChangeText={onChangeText}
+                multiline
+                placeholder="在这里输入本餐实际吃了什么"
+                placeholderTextColor={c.inkFaint}
+                style={{
+                  minHeight: 92,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: c.glassBorder,
+                  backgroundColor: c.bg,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  color: c.ink,
+                  fontSize: 13,
+                  lineHeight: 18,
+                  textAlignVertical: "top",
+                }}
+              />
+            ) : (
+              <View style={{ minHeight: 92, borderRadius: 14, borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.bg, padding: 12, justifyContent: "center" }}>
               <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18 }}>
                 计划模式只展示当前餐次内容，不提供直接编辑。
               </BentoText>
-            </View>
-          )}
-
-          <Button variant="filled" color="accent" block onPress={onClose}>
-            知道了
-          </Button>
+              </View>
+            )}
+          </View>
 
           <Button variant="filled" color="accent" block onPress={onClose}>
             知道了
@@ -1866,7 +1859,6 @@ function MealNutritionSummaryCard({
   mode: MealDisplayMode;
 }) {
   const c = useBentoTheme().colors;
-  const [collapsed, setCollapsed] = useState(true);
   const summaryRows = rows.map((row) => ({
     key: row.id,
     name: row.name,
@@ -1877,47 +1869,37 @@ function MealNutritionSummaryCard({
   return (
     <GlassTile radius={bento.tileRadiusSmall} padding={0}>
       <View style={{ borderRadius: bento.tileRadiusSmall, overflow: "hidden", borderWidth: 1, borderColor: c.glassBorder }}>
-        <CardHeader
-          title="营养统计表"
-          collapsed={collapsed}
-          onToggle={() => setCollapsed((value) => !value)}
-          trailing={<BentoText mono color={c.inkMute} style={{ fontSize: 12 }}>餐次 {summaryRows.length}</BentoText>}
-        />
-        {!collapsed ? (
-          <>
-            <View style={{ flexDirection: "row", paddingHorizontal: 10, paddingVertical: 8, backgroundColor: c.glass }}>
-              <NutritionTableHeader label={"\u9910\u6b21"} flex={1.15} align="left" />
-              <NutritionTableHeader label={"\u70ed\u91cf"} />
-              <NutritionTableHeader label={"\u78b3\u6c34"} />
-              <NutritionTableHeader label={"\u86cb\u767d"} />
-              <NutritionTableHeader label={"\u8102\u80aa"} />
+        <View style={{ flexDirection: "row", paddingHorizontal: 10, paddingVertical: 8, backgroundColor: c.glass }}>
+          <NutritionTableHeader label={"\u9910\u6b21"} flex={1.15} align="left" />
+          <NutritionTableHeader label={"\u70ed\u91cf"} />
+          <NutritionTableHeader label={"\u78b3\u6c34"} />
+          <NutritionTableHeader label={"\u86cb\u767d"} />
+          <NutritionTableHeader label={"\u8102\u80aa"} />
+        </View>
+        {summaryRows.map((row) => (
+          <View key={row.key} style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 9, borderTopWidth: 1, borderTopColor: c.glassBorder }}>
+            <View style={{ flex: 1.15, minWidth: 0 }}>
+              <BentoText weight="medium" color={c.ink} numberOfLines={1} style={{ fontSize: 12, lineHeight: 15 }}>
+                {row.name}
+              </BentoText>
             </View>
-            {summaryRows.map((row) => (
-              <View key={row.key} style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 9, borderTopWidth: 1, borderTopColor: c.glassBorder }}>
-                <View style={{ flex: 1.15, minWidth: 0 }}>
-                  <BentoText weight="medium" color={c.ink} numberOfLines={1} style={{ fontSize: 12, lineHeight: 15 }}>
-                    {row.name}
-                  </BentoText>
-                </View>
-                <NutritionTableValue value={`${Math.round(row.totals.calories)}`} color="accent" />
-                <NutritionTableValue value={`${round1(row.totals.carbsG)}g`} color="positive" />
-                <NutritionTableValue value={`${round1(row.totals.proteinG)}g`} color="accent" />
-                <NutritionTableValue value={`${round1(row.totals.fatG)}g`} color="accent2" />
-              </View>
-            ))}
-            <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 10, borderTopWidth: 1, borderTopColor: c.glassBorderBright, backgroundColor: c.glass }}>
-              <View style={{ flex: 1.15, minWidth: 0 }}>
-                <BentoText weight="bold" color={c.ink} numberOfLines={1} style={{ fontSize: 12, lineHeight: 15 }}>
-                  {"\u5408\u8ba1"}
-                </BentoText>
-              </View>
-              <NutritionTableValue value={`${Math.round(totals.calories)}`} color="accent" bold />
-              <NutritionTableValue value={`${round1(totals.carbsG)}g`} color="positive" bold />
-              <NutritionTableValue value={`${round1(totals.proteinG)}g`} color="accent" bold />
-              <NutritionTableValue value={`${round1(totals.fatG)}g`} color="accent2" bold />
-            </View>
-          </>
-        ) : null}
+            <NutritionTableValue value={`${Math.round(row.totals.calories)}`} color="accent" />
+            <NutritionTableValue value={`${round1(row.totals.carbsG)}g`} color="positive" />
+            <NutritionTableValue value={`${round1(row.totals.proteinG)}g`} color="accent" />
+            <NutritionTableValue value={`${round1(row.totals.fatG)}g`} color="accent2" />
+          </View>
+        ))}
+        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 10, borderTopWidth: 1, borderTopColor: c.glassBorderBright, backgroundColor: c.glass }}>
+          <View style={{ flex: 1.15, minWidth: 0 }}>
+            <BentoText weight="bold" color={c.ink} numberOfLines={1} style={{ fontSize: 12, lineHeight: 15 }}>
+              {"\u5408\u8ba1"}
+            </BentoText>
+          </View>
+          <NutritionTableValue value={`${Math.round(totals.calories)}`} color="accent" bold />
+          <NutritionTableValue value={`${round1(totals.carbsG)}g`} color="positive" bold />
+          <NutritionTableValue value={`${round1(totals.proteinG)}g`} color="accent" bold />
+          <NutritionTableValue value={`${round1(totals.fatG)}g`} color="accent2" bold />
+        </View>
       </View>
     </GlassTile>
   );
@@ -2093,36 +2075,17 @@ function DietPlanLogicModal({
                 </Badge>
               ))}
             </View>
-            <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.glass }}>
-              <View style={{ flexDirection: "row", backgroundColor: c.glassRaised, borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
-                <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}>
-                  <BentoText weight="semibold" variant="micro" color={c.inkMute}>项目</BentoText>
-                </View>
-                <View style={{ flex: 1.2, paddingVertical: 10, paddingHorizontal: 12, alignItems: "flex-end" }}>
-                  <BentoText weight="semibold" variant="micro" color={c.inkMute}>说明</BentoText>
-                </View>
-              </View>
-              <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
-                <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
-                  <BentoText weight="semibold" color={c.ink}>计划逻辑</BentoText>
-                </View>
-                <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
-                  <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18, textAlign: "right" }}>
-                    {summary.logic}
-                  </BentoText>
-                </View>
-              </View>
+            <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18 }}>
+              {summary.logic}
+            </BentoText>
+            <View style={{ gap: 6 }}>
+              <Label color={c.inkFaint} variant="micro">
+                营养分配
+              </Label>
               {summary.allocation.map((item) => (
-                <View key={item} style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
-                  <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
-                    <BentoText weight="semibold" color={c.ink}>分配项</BentoText>
-                  </View>
-                  <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
-                    <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18, textAlign: "right" }}>
-                      {item}
-                    </BentoText>
-                  </View>
-                </View>
+                <BentoText key={item} variant="caption" color={c.ink} style={{ lineHeight: 18 }}>
+                  {item}
+                </BentoText>
               ))}
             </View>
             <View style={{ gap: 8, paddingTop: 4 }}>
@@ -2449,47 +2412,6 @@ function buildAiRecognizedMealFoods(
   });
 }
 
-function buildAiImageFoodMatches(
-  mealFoods: Record<MealAdjustmentKey, AiRecognizedMealFood[]>,
-  customFoods: Food[]
-): FoodTagMatch[] {
-  return mealSlots.flatMap((slot) =>
-    mealFoods[slot.id].flatMap((item) => {
-      const food = getFoodByIdFromCatalog(item.foodId, customFoods);
-      if (!food) return [];
-      return [{
-        input: item.candidateName,
-        food,
-        grams: item.grams,
-        displayAmount: item.displayAmount,
-        meal: item.meal,
-        confidence: item.imageConfidence,
-        needsDetails: true,
-        detailHint: "图片识别结果，建议确认重量"
-      }];
-    })
-  );
-}
-
-function buildAiImageFoodPortions(matches: FoodTagMatch[], startIndex: number): ActualFoodPortionWithMeta[] {
-  return matches.map((match, index) => {
-    const resolution = resolveFoodNutrition({
-      food: match.food,
-      grams: match.grams,
-      rawText: match.input,
-    });
-    return {
-      foodId: match.food.id,
-      name: match.food.name,
-      grams: match.grams,
-      meal: match.meal && match.meal !== "unknown" ? match.meal : undefined,
-      displayAmount: match.displayAmount,
-      sourceIndex: startIndex + index,
-      totals: resolution.totals,
-    };
-  });
-}
-
 function buildFoodTagEdit(key: string, item: FoodTagMatch, label: string, calories: string): FoodTagEdit {
   const variantContext = {
     inputText: item.input,
@@ -2528,35 +2450,6 @@ function buildFoodTagEdit(key: string, item: FoodTagMatch, label: string, calori
     quantity,
     unit: item.unit
   };
-}
-
-function applyFoodTagOverrides(portions: FoodPortion[], matched: FoodTagMatch[], edits: Record<string, FoodTagOverride>): FoodPortion[] {
-  return portions.flatMap((portion, index) => {
-    const key = `${portion.foodId}-${index}`;
-    const edit = edits[key];
-    if (edit?.hidden) return [];
-    if (!edit || (!edit.calories && !edit.grams && !edit.label && !edit.filling)) return [portion];
-
-    const match = matched[index];
-    const food = match ? resolveFoodByVariant(match.food, edit.filling) : undefined;
-    const grams = edit.grams ?? Math.abs(portion.grams);
-    const calculatedTotals = food ? calculateFoodTotals(food, grams) : portion.totals;
-    const calories = edit.calories ?? calculatedTotals.calories;
-    const scale = calculatedTotals.calories > 0 ? calories / calculatedTotals.calories : 1;
-
-    return [{
-      ...portion,
-      name: edit.label?.trim() || portion.name,
-      grams: portion.grams < 0 ? -grams : grams,
-      displayAmount: edit.grams ? `${Math.round(grams)}g` : (portion as FoodPortion & { displayAmount?: string }).displayAmount,
-      totals: {
-        calories: Math.round(calories),
-        proteinG: round1(calculatedTotals.proteinG * scale),
-        fatG: round1(calculatedTotals.fatG * scale),
-        carbsG: round1(calculatedTotals.carbsG * scale)
-      }
-    } as FoodPortion & { displayAmount?: string }];
-  });
 }
 
 function buildMealFoodTags(meal: MealPlan | undefined, matched: FoodTagMatch[], edits: Record<string, FoodTagOverride>): MealFoodTag[] {
@@ -2705,19 +2598,15 @@ function FoodTagEditorModal({
       <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: "rgba(15,23,42,0.28)", justifyContent: "center", padding: 20 }}>
         <Pressable onPress={(e) => e.stopPropagation()} style={{ borderRadius: 18, backgroundColor: c.bg, borderWidth: 1, borderColor: c.glassBorderBright, padding: 16, gap: 14 }}>
           <View style={{ gap: 4 }}>
-            <BentoText weight="bold" variant="caption" color={c.ink}>食物标签详情</BentoText>
-            <BentoText variant="micro" color={c.inkMute} style={{ lineHeight: 18 }}>
-              识别出 {quantityLabel} {edit.foodName}，可调整类型和重量让估算更接近实际。
-            </BentoText>
-          </View>
-
-          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-            <Badge color="accent" size="sm">{quantityLabel}</Badge>
-            <Badge color="positive" size="sm">{edit.foodName}</Badge>
-            <Badge color={edit.foodCategory === "dish" ? "accent2" : "accent"} size="sm">{variantGroupLabel}</Badge>
+              <BentoText weight="bold" variant="caption" color={c.ink}>食物标签详情</BentoText>
+              <BentoText variant="micro" color={c.inkMute}>识别出 {quantityLabel} {edit.foodName}，可调整类型和重量让估算更接近实际。</BentoText>
           </View>
 
           <View style={{ gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <BentoText weight="bold" variant="caption" color={c.ink}>1. 细分类型</BentoText>
+              <BentoText variant="micro" color={c.inkMute}>{variantGroupLabel}</BentoText>
+            </View>
             {fillingOptions.length > 0 ? (
               <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
                 {fillingOptions.map((option) => {
@@ -2766,47 +2655,14 @@ function FoodTagEditorModal({
             </View>
           </View>
 
-          <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.glass }}>
-            <View style={{ flexDirection: "row", backgroundColor: c.glassRaised, borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
-              <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}>
-                <BentoText weight="semibold" variant="micro" color={c.inkMute}>项目</BentoText>
-              </View>
-              <View style={{ flex: 1.2, paddingVertical: 10, paddingHorizontal: 12, alignItems: "flex-end" }}>
-                <BentoText weight="semibold" variant="micro" color={c.inkMute}>当前值</BentoText>
-              </View>
+          <View style={{ flexDirection: "row", gap: 8, padding: 10, borderRadius: 12, backgroundColor: c.glass, borderWidth: 1, borderColor: c.glassBorder }}>
+            <View style={{ flex: 1 }}>
+          <BentoText variant="micro" color={c.inkMute}>估算热量</BentoText>
+              <BentoText mono weight="bold" variant="h3" color={c.accent}>{finalCalories}</BentoText>
             </View>
-            <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
-              <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
-                <BentoText weight="semibold" color={c.ink}>估算热量</BentoText>
-              </View>
-              <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
-                <BentoText mono weight="bold" variant="h3" color={c.accent}>{finalCalories}</BentoText>
-                <BentoText variant="micro" color={c.inkMute}>kcal</BentoText>
-              </View>
-            </View>
-            <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
-              <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
-                <BentoText weight="semibold" color={c.ink}>蛋白质</BentoText>
-              </View>
-              <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
-                <BentoText weight="bold" variant="caption" color={c.ink}>{round1(nutritionTotals.proteinG)}g</BentoText>
-              </View>
-            </View>
-            <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
-              <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
-                <BentoText weight="semibold" color={c.ink}>脂肪</BentoText>
-              </View>
-              <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
-                <BentoText weight="bold" variant="caption" color={c.ink}>{round1(nutritionTotals.fatG)}g</BentoText>
-              </View>
-            </View>
-            <View style={{ flexDirection: "row" }}>
-              <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
-                <BentoText weight="semibold" color={c.ink}>碳水</BentoText>
-              </View>
-              <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
-                <BentoText weight="bold" variant="caption" color={c.ink}>{round1(nutritionTotals.carbsG)}g</BentoText>
-              </View>
+            <View style={{ flex: 1 }}>
+          <BentoText variant="micro" color={c.inkMute}>蛋白 / 脂肪 / 碳水</BentoText>
+              <BentoText variant="caption" color={c.ink}>{round1(nutritionTotals.proteinG)} / {round1(nutritionTotals.fatG)} / {round1(nutritionTotals.carbsG)}g</BentoText>
             </View>
           </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
@@ -2992,39 +2848,21 @@ function AdjustmentSummaryInline({ summary }: { summary: ReturnType<typeof build
           {summary.netDelta >= 0 ? "+" : ""}{summary.netDelta} kcal
         </Badge>
       </View>
-      <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.glass }}>
-        <View style={{ flexDirection: "row", backgroundColor: c.glassRaised, borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
-          <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}>
-            <BentoText weight="semibold" variant="micro" color={c.inkMute}>项目</BentoText>
-          </View>
-          <View style={{ flex: 1.2, paddingVertical: 10, paddingHorizontal: 12, alignItems: "flex-end" }}>
-            <BentoText weight="semibold" variant="micro" color={c.inkMute}>当前值</BentoText>
-          </View>
-        </View>
-        {[
-          { label: "分档天数", value: `${summary.days} 天` },
-          { label: "每日调整", value: `${summary.dailyRepayCalories} kcal/天` },
-          { label: "新目标", value: `${summary.adjustedDailyCalories} kcal/天` },
-        ].map((item) => (
-          <View key={item.label} style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: c.glassBorder }}>
-            <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
-              <BentoText weight="semibold" color={c.ink}>{item.label}</BentoText>
-            </View>
-            <View style={{ flex: 1.2, paddingVertical: 12, paddingHorizontal: 12, alignItems: "flex-end" }}>
-              <BentoText variant="caption" color={c.inkMute} style={{ lineHeight: 18, textAlign: "right" }}>
-                {item.value}
-              </BentoText>
-            </View>
-          </View>
-        ))}
+      <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+        <Badge color="accent" size="sm">分档 {summary.days} 天</Badge>
+        <Badge color="positive" size="sm">新目标 {summary.adjustedDailyCalories} kcal/天</Badge>
+        <Badge color="accent2" size="sm">{Math.round(summary.adjustedMacros.proteinG)}g</Badge>
       </View>
       {summary.warning ? (
-        <View style={{ padding: 10, borderRadius: 12, backgroundColor: `${c.warn}12`, borderWidth: 1, borderColor: `${c.warn}33` }}>
-          <BentoText variant="micro" color={c.warn} style={{ lineHeight: 16 }}>
-            {summary.warning}
-          </BentoText>
-        </View>
+        <BentoText variant="micro" color={c.warn} style={{ lineHeight: 16 }}>
+          {summary.warning}
+        </BentoText>
       ) : null}
+      {summary.dietQualityWarnings.slice(0, 2).map((warning) => (
+        <BentoText key={warning} variant="micro" color={c.amber} style={{ lineHeight: 16 }}>
+          {warning}
+        </BentoText>
+      ))}
     </View>
   );
 }
@@ -3047,28 +2885,16 @@ function formatHeroWeekday(date: Date): string {
   return ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getDay()];
 }
 
-function buildHomeWeekRailItems(
-  anchor: Date,
-  planId: string | null,
-  selection: DietPlanCycleSelection,
-  todayKey: string,
-  selectedKey: string,
-  onSelectDate: (dateKey: string) => void,
-) {
+function buildHomeWeekRailItems(anchor: Date) {
   return Array.from({ length: 7 }, (_, index) => {
     const offset = index - 3;
     const next = new Date(anchor);
     next.setDate(anchor.getDate() + offset);
-    const resolvedDay = resolveDietPlanDay(planId, next, selection);
-    const dateKey = formatDateKey(next);
     return {
-      key: dateKey,
+      key: formatDateKey(next),
       dateLabel: String(next.getDate()),
       weekdayLabel: formatHeroWeekday(next),
-      title: getDietDayTypeLabel(resolvedDay.dayType),
-      active: dateKey === todayKey,
-      selected: dateKey === selectedKey,
-      onPress: () => onSelectDate(dateKey),
+      active: offset === 0,
     };
   });
 }

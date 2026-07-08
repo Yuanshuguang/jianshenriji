@@ -440,6 +440,133 @@ export const defaultDynamicAtonementPreference: AtonementPreference = {
   repayDays: 5
 };
 
+export function createDefaultActualTraining(): ActualTrainingFeedback {
+  return {
+    status: "pending",
+    text: "",
+    minutes: 0,
+    calories: 0,
+    fatigue: 3
+  };
+}
+
+export function createDefaultActualMealTexts(): Record<MealAdjustmentKey, string> {
+  return {
+    breakfast: "",
+    lunch: "",
+    dinner: "",
+    snack: ""
+  };
+}
+
+export function createDefaultActualMealImageFoods(): Record<MealAdjustmentKey, AiRecognizedMealFood[]> {
+  return emptyAiRecognizedMealFoods();
+}
+
+export function buildResetHealthDataState(state: Pick<FitnessState, "dietPreference" | "appearanceMode" | "fontScale" | "dashboardStyle" | "dynamicAdjustmentEnabled" | "dynamicAdjustmentSettings" | "dynamicAtonementPreference">): Partial<FitnessState> {
+  return {
+    profile: defaultProfile,
+    goal: defaultGoal,
+    trainingPreference: defaultTrainingPreference,
+    dietPreference: state.dietPreference,
+    mealPlanCustomAdjustment: defaultMealPlanCustomAdjustment,
+    selectedFoodIds: [],
+    preparedFoodText: "",
+    actualFoodText: "",
+    actualMealTexts: createDefaultActualMealTexts(),
+    actualMealImageFoods: createDefaultActualMealImageFoods(),
+    actualFoodIds: [],
+    customFoods: [],
+    menuFoods: [],
+    actualTraining: createDefaultActualTraining(),
+    todayTrainingPlan: defaultTodayTrainingPlan,
+    exerciseLibraryPreferences: defaultExerciseLibraryPreferences,
+    historyLogs: {},
+    selectedDietPlanId: null,
+    selectedDietPlanVariantId: null,
+    appearanceMode: state.appearanceMode,
+    fontScale: state.fontScale,
+    dashboardStyle: state.dashboardStyle,
+    dynamicAdjustmentEnabled: state.dynamicAdjustmentEnabled,
+    dynamicAdjustmentSettings: state.dynamicAdjustmentSettings,
+    dynamicAtonementPreference: state.dynamicAtonementPreference
+  };
+}
+
+export function buildResetTodayRecordsState(): Partial<FitnessState> {
+  return {
+    preparedFoodText: "",
+    selectedFoodIds: [],
+    mealPlanCustomAdjustment: defaultMealPlanCustomAdjustment,
+    actualFoodText: "",
+    actualMealTexts: createDefaultActualMealTexts(),
+    actualMealImageFoods: createDefaultActualMealImageFoods(),
+    actualFoodIds: [],
+    actualTraining: createDefaultActualTraining()
+  };
+}
+
+export function buildResetDevelopmentDataState(): Partial<FitnessState> {
+  return {
+    selectedFoodIds: [],
+    preparedFoodText: "",
+    mealPlanCustomAdjustment: defaultMealPlanCustomAdjustment,
+    actualFoodText: "",
+    actualMealTexts: createDefaultActualMealTexts(),
+    actualMealImageFoods: createDefaultActualMealImageFoods(),
+    actualFoodIds: [],
+    customFoods: [],
+    menuFoods: [],
+    actualTraining: createDefaultActualTraining(),
+    todayTrainingPlan: defaultTodayTrainingPlan,
+    exerciseLibraryPreferences: defaultExerciseLibraryPreferences,
+    historyLogs: {}
+  };
+}
+
+export function migrateFitnessStoreState(persistedState?: Partial<FitnessState>): Partial<FitnessState> {
+  const state = persistedState ?? {};
+  const migratedState: Partial<FitnessState> = {
+    ...state,
+    customFoods: state.customFoods ?? [],
+    menuFoods: state.menuFoods ?? [],
+    historyLogs: state.historyLogs ?? {},
+    actualMealTexts: state.actualMealTexts ?? createDefaultActualMealTexts(),
+    actualMealImageFoods: state.actualMealImageFoods ?? createDefaultActualMealImageFoods(),
+    todayTrainingPlan: {
+      ...defaultTodayTrainingPlan,
+      ...state.todayTrainingPlan,
+      customExercises: state.todayTrainingPlan?.customExercises ?? []
+    },
+    exerciseLibraryPreferences: {
+      ...defaultExerciseLibraryPreferences,
+      ...state.exerciseLibraryPreferences,
+      favoriteExerciseIds: state.exerciseLibraryPreferences?.favoriteExerciseIds ?? [],
+      pinnedExerciseIds: state.exerciseLibraryPreferences?.pinnedExerciseIds ?? [],
+      bottomExerciseIds: state.exerciseLibraryPreferences?.bottomExerciseIds ?? []
+    },
+    dynamicAdjustmentSettings: mergeDynamicAdjustmentSettings(state.dynamicAdjustmentSettings),
+    dynamicAtonementPreference: normalizeDynamicAtonementPreference(state.dynamicAtonementPreference),
+    dietPreference: normalizeDietPreference(state.dietPreference),
+    mealPlanCustomAdjustment: normalizeMealPlanCustomAdjustment(state.mealPlanCustomAdjustment),
+    fontScale: state.fontScale ?? "normal",
+    dashboardStyle: state.dashboardStyle ?? "bullet",
+    selectedDietPlanVariantId: state.selectedDietPlanVariantId ?? null
+  };
+
+  if (migratedState.actualTraining?.status === "done" && migratedState.actualTraining.minutes === 0 && migratedState.actualTraining.text.trim().length === 0) {
+    return {
+      ...migratedState,
+      actualTraining: {
+        ...migratedState.actualTraining,
+        status: "pending" as const
+      }
+    };
+  }
+
+  return migratedState;
+}
+
 export const useFitnessStore = create<FitnessState>()(
   persist(
     (set, get) => ({
@@ -561,93 +688,11 @@ export const useFitnessStore = create<FitnessState>()(
         return get().historyLogs[date];
       },
       resetHealthData: () =>
-        set((state) => ({
-          profile: defaultProfile,
-          goal: defaultGoal,
-          trainingPreference: defaultTrainingPreference,
-          dietPreference: state.dietPreference,
-          mealPlanCustomAdjustment: defaultMealPlanCustomAdjustment,
-          selectedFoodIds: [],
-          preparedFoodText: "",
-          actualFoodText: "",
-          actualMealTexts: {
-            breakfast: "",
-            lunch: "",
-            dinner: "",
-            snack: ""
-          },
-          actualMealImageFoods: emptyAiRecognizedMealFoods(),
-          actualFoodIds: [],
-          customFoods: [],
-          menuFoods: [],
-          actualTraining: {
-            status: "pending",
-            text: "",
-            minutes: 0,
-            calories: 0,
-            fatigue: 3
-          },
-          todayTrainingPlan: defaultTodayTrainingPlan,
-          exerciseLibraryPreferences: defaultExerciseLibraryPreferences,
-          historyLogs: {},
-          selectedDietPlanId: null,
-          selectedDietPlanVariantId: null,
-          appearanceMode: state.appearanceMode,
-          fontScale: state.fontScale,
-          dashboardStyle: state.dashboardStyle,
-          dynamicAdjustmentEnabled: state.dynamicAdjustmentEnabled,
-          dynamicAdjustmentSettings: state.dynamicAdjustmentSettings,
-          dynamicAtonementPreference: state.dynamicAtonementPreference
-        })),
+        set((state) => buildResetHealthDataState(state)),
       resetTodayRecords: () =>
-        set({
-          preparedFoodText: "",
-          selectedFoodIds: [],
-          mealPlanCustomAdjustment: defaultMealPlanCustomAdjustment,
-          actualFoodText: "",
-          actualMealTexts: {
-            breakfast: "",
-            lunch: "",
-            dinner: "",
-            snack: ""
-          },
-          actualMealImageFoods: emptyAiRecognizedMealFoods(),
-          actualFoodIds: [],
-          actualTraining: {
-            status: "pending",
-            text: "",
-            minutes: 0,
-            calories: 0,
-            fatigue: 3
-          }
-        }),
+        set(buildResetTodayRecordsState()),
       resetDevelopmentData: () =>
-        set({
-          selectedFoodIds: [],
-          preparedFoodText: "",
-          mealPlanCustomAdjustment: defaultMealPlanCustomAdjustment,
-          actualFoodText: "",
-          actualMealTexts: {
-            breakfast: "",
-            lunch: "",
-            dinner: "",
-            snack: ""
-          },
-          actualMealImageFoods: emptyAiRecognizedMealFoods(),
-          actualFoodIds: [],
-          customFoods: [],
-          menuFoods: [],
-          actualTraining: {
-            status: "pending",
-            text: "",
-            minutes: 0,
-            calories: 0,
-            fatigue: 3
-          },
-          todayTrainingPlan: defaultTodayTrainingPlan,
-          exerciseLibraryPreferences: defaultExerciseLibraryPreferences,
-          historyLogs: {}
-        }),
+        set(buildResetDevelopmentDataState()),
       isOnboardingComplete: () => {
         const { profile, goal, trainingPreference } = get();
         return profile.age > 0 && profile.heightCm > 0 && profile.weightKg > 0 && goal.targetDays > 0 && trainingPreference.daysPerWeek > 0;
@@ -657,52 +702,7 @@ export const useFitnessStore = create<FitnessState>()(
       name: "fitness-calendar-state",
       version: 6,
       storage: createJSONStorage(() => appStorage),
-      migrate: (persistedState) => {
-        const state = persistedState as Partial<FitnessState>;
-        const migratedState = {
-          ...state,
-          customFoods: state.customFoods ?? [],
-          menuFoods: state.menuFoods ?? [],
-          historyLogs: state.historyLogs ?? {},
-          actualMealTexts: state.actualMealTexts ?? {
-            breakfast: "",
-            lunch: "",
-            dinner: "",
-            snack: ""
-          },
-          actualMealImageFoods: state.actualMealImageFoods ?? emptyAiRecognizedMealFoods(),
-          todayTrainingPlan: {
-            ...defaultTodayTrainingPlan,
-            ...state.todayTrainingPlan,
-            customExercises: state.todayTrainingPlan?.customExercises ?? []
-          },
-          exerciseLibraryPreferences: {
-            ...defaultExerciseLibraryPreferences,
-            ...state.exerciseLibraryPreferences,
-            favoriteExerciseIds: state.exerciseLibraryPreferences?.favoriteExerciseIds ?? [],
-            pinnedExerciseIds: state.exerciseLibraryPreferences?.pinnedExerciseIds ?? [],
-            bottomExerciseIds: state.exerciseLibraryPreferences?.bottomExerciseIds ?? []
-          },
-          dynamicAdjustmentSettings: mergeDynamicAdjustmentSettings(state.dynamicAdjustmentSettings),
-          dynamicAtonementPreference: normalizeDynamicAtonementPreference(state.dynamicAtonementPreference),
-          dietPreference: normalizeDietPreference(state.dietPreference),
-          mealPlanCustomAdjustment: normalizeMealPlanCustomAdjustment(state.mealPlanCustomAdjustment),
-          fontScale: state.fontScale ?? "normal",
-          dashboardStyle: state.dashboardStyle ?? "bullet",
-          selectedDietPlanVariantId: state.selectedDietPlanVariantId ?? null
-        };
-        if (migratedState.actualTraining?.status === "done" && migratedState.actualTraining.minutes === 0 && migratedState.actualTraining.text.trim().length === 0) {
-          return {
-            ...migratedState,
-            actualTraining: {
-              ...migratedState.actualTraining,
-              status: "pending" as const
-            }
-          };
-        }
-
-        return migratedState;
-      },
+      migrate: (persistedState) => migrateFitnessStoreState(persistedState as Partial<FitnessState>),
       partialize: (state) => ({
         historyLogs: state.historyLogs,
         profile: state.profile,
@@ -737,6 +737,7 @@ export const useFitnessStore = create<FitnessState>()(
 export function useCurrentEnergyPlan() {
   const profile = useFitnessStore((state) => state.profile);
   const goal = useFitnessStore((state) => state.goal);
+  const trainingPreference = useFitnessStore((state) => state.trainingPreference);
 
   return calculateGoalEnergyPlan({
     currentWeightKg: profile.weightKg,
@@ -745,7 +746,8 @@ export function useCurrentEnergyPlan() {
     heightCm: profile.heightCm,
     age: profile.age,
     gender: profile.gender,
-    activityFactor: getActivityFactor(profile.trainingLevel)
+    activityFactor: getActivityFactorFromPreference(profile.trainingLevel, trainingPreference),
+    bodyFatPercent: profile.bodyComposition?.bodyFatPercent
   });
 }
 
@@ -759,6 +761,32 @@ export function getActivityFactor(trainingLevel: UserProfile["trainingLevel"]): 
   }
 
   return 1.3;
+}
+
+export function getActivityFactorFromPreference(
+  trainingLevel: UserProfile["trainingLevel"],
+  preference?: TrainingPreferenceDraft
+): number {
+  if (!preference) return getActivityFactor(trainingLevel);
+
+  const daysPerWeek = clampNumber(preference.daysPerWeek, 0, 7);
+  const minutesPerSession = clampNumber(preference.minutesPerSession, 0, 120);
+  const cardioRatio = clampNumber(preference.cardioRatio, 0, 1);
+  if (daysPerWeek <= 0 || minutesPerSession <= 0) {
+    return getActivityFactor(trainingLevel);
+  }
+
+  const effectiveWeeklyMinutes = daysPerWeek * minutesPerSession * (1 + cardioRatio * 0.3);
+  return round2(clampNumber(1.25 + (effectiveWeeklyMinutes / 900) * 0.55, 1.25, 1.75));
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.max(min, Math.min(max, value));
+}
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 export function buildTrainingQueue(exercises: Parameters<typeof generateTrainingQueue>[0], preference: TrainingPreferenceDraft) {

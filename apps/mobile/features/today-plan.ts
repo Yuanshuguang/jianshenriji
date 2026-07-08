@@ -177,18 +177,22 @@ export function buildMealPlan(portions: FoodPortion[], customFoods: Food[] = [])
   }));
 }
 
-export function estimateTodayWorkoutCalories(workout: WorkoutPlan | undefined, bodyWeightKg: number): number {
+export function estimateTodayWorkoutCalories(workout: WorkoutPlan | undefined, profile: TrainingCalorieProfile): number {
   if (!workout) return 0;
   const total = workout.exercises.reduce((sum, item) => {
     const exercise = exercises.find((entry) => entry.id === item.exerciseId);
     const met = exercise?.met ?? 5;
-    return sum + caloriesByMet(met, bodyWeightKg, item.minutes);
+    return sum + caloriesByMet(met, profile, item.minutes);
   }, 0);
   return Math.round(total);
 }
 
-export function estimateActualTrainingCalories(text: string, minutes: number, bodyWeightKg: number, fallbackWorkout?: WorkoutPlan): number {
-  return parseTrainingText(text, minutes, { heightCm: 175, weightKg: bodyWeightKg }, fallbackWorkout).totalCalories;
+export function estimateActualTrainingCalories(text: string, minutes: number, profile: TrainingCalorieProfile, fallbackWorkout?: WorkoutPlan): number {
+  return parseTrainingText(text, minutes, profile, fallbackWorkout).totalCalories;
+}
+
+export function estimateActualTrainingCaloriesWithProfile(text: string, minutes: number, profile: TrainingCalorieProfile, fallbackWorkout?: WorkoutPlan): number {
+  return parseTrainingText(text, minutes, profile, fallbackWorkout).totalCalories;
 }
 
 export function parseTrainingText(
@@ -308,10 +312,7 @@ function inferMinutes(text: string): number {
   return match ? Number(match[1]) : 0;
 }
 
-function caloriesByMet(met: number, profileOrWeightKg: TrainingCalorieProfile | number, minutes: number): number {
-  const profile = typeof profileOrWeightKg === "number"
-    ? { heightCm: 175, weightKg: profileOrWeightKg }
-    : profileOrWeightKg;
+function caloriesByMet(met: number, profile: TrainingCalorieProfile, minutes: number): number {
   return met * 3.5 * profile.weightKg * getBodySizeFactor(profile) / 200 * minutes;
 }
 

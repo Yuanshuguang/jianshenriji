@@ -80,7 +80,7 @@ export default function AtonementScreen() {
     minutesPerSession: dietTrainingRecommendation.durationMinutes,
     preferredMuscleGroups: [dietTrainingRecommendation.focus],
   })[0] ?? recommendedWorkout;
-  const plannedTrainingBaseCalories = estimateTodayWorkoutCalories(plannedTrainingWorkout, profile.weightKg);
+  const plannedTrainingBaseCalories = estimateTodayWorkoutCalories(plannedTrainingWorkout, profile);
   const plannedTrainingCalories =
     todayTrainingPlan.minutes && plannedTrainingWorkout?.estimatedMinutes
       ? Math.round(plannedTrainingBaseCalories * (todayTrainingPlan.minutes / Math.max(1, plannedTrainingWorkout.estimatedMinutes)))
