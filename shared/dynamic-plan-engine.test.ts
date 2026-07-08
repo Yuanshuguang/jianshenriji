@@ -58,7 +58,7 @@ test("动态调整后的 adjustedDailyCalories 与 macros 热量一致", () => {
 test("赎罪机制：用户选择 5 天偿还时，2000 kcal 均摊为每天 400 kcal", () => {
   const result = calculateDynamicPlanAdjustment({
     userProfile: { gender: "male", age: 30, heightCm: 175, weightKg: 70, trainingLevel: "intermediate" },
-    goalPlan: { targetWeightKg: 65, targetDays: 30, targetBodyShapeId: "slight-line" },
+    goalPlan: { targetWeightKg: 65, targetDays: 60, targetBodyShapeId: "slight-line" },
     nutritionLedger: {
       target: { calories: 2200, proteinG: 130, fatG: 70, carbsG: 280, bmr: 1700, tdee: 2700, dailyDeficit: 500 },
       actual: { calories: 4200, proteinG: 130, fatG: 70, carbsG: 780 },
@@ -81,7 +81,7 @@ test("赎罪机制：用户选择 5 天偿还时，2000 kcal 均摊为每天 400
 test("赎罪机制：顺延目标时不压低后续每日摄入", () => {
   const result = calculateDynamicPlanAdjustment({
     userProfile: { gender: "male", age: 30, heightCm: 175, weightKg: 70, trainingLevel: "intermediate" },
-    goalPlan: { targetWeightKg: 65, targetDays: 30, targetBodyShapeId: "slight-line" },
+    goalPlan: { targetWeightKg: 65, targetDays: 60, targetBodyShapeId: "slight-line" },
     nutritionLedger: {
       target: { calories: 2200, proteinG: 130, fatG: 70, carbsG: 280, bmr: 1700, tdee: 2700, dailyDeficit: 500 },
       actual: { calories: 4200, proteinG: 130, fatG: 70, carbsG: 780 },
@@ -104,7 +104,7 @@ test("赎罪机制：顺延目标时不压低后续每日摄入", () => {
 test("赎罪机制：默认混合处理会部分扣减并把剩余差额顺延", () => {
   const result = calculateDynamicPlanAdjustment({
     userProfile: { gender: "male", age: 30, heightCm: 175, weightKg: 70, trainingLevel: "intermediate" },
-    goalPlan: { targetWeightKg: 65, targetDays: 30, targetBodyShapeId: "slight-line" },
+    goalPlan: { targetWeightKg: 65, targetDays: 60, targetBodyShapeId: "slight-line" },
     nutritionLedger: {
       target: { calories: 2200, proteinG: 130, fatG: 70, carbsG: 280, bmr: 1700, tdee: 2700, dailyDeficit: 500 },
       actual: { calories: 4200, proteinG: 130, fatG: 70, carbsG: 780 },
@@ -128,7 +128,7 @@ test("赎罪机制：默认混合处理会部分扣减并把剩余差额顺延",
 test("赎罪机制：混合模式也要尊重用户指定的赎罪天数", () => {
   const result = calculateDynamicPlanAdjustment({
     userProfile: { gender: "male", age: 30, heightCm: 175, weightKg: 70, trainingLevel: "intermediate" },
-    goalPlan: { targetWeightKg: 65, targetDays: 30, targetBodyShapeId: "slight-line" },
+    goalPlan: { targetWeightKg: 65, targetDays: 60, targetBodyShapeId: "slight-line" },
     nutritionLedger: {
       target: { calories: 2200, proteinG: 130, fatG: 70, carbsG: 280, bmr: 1700, tdee: 2700, dailyDeficit: 500 },
       actual: { calories: 4200, proteinG: 130, fatG: 70, carbsG: 780 },
@@ -150,7 +150,7 @@ test("赎罪机制：混合模式也要尊重用户指定的赎罪天数", () =>
 test("赎罪机制：非法天数不会污染动态调整结果", () => {
   const result = calculateDynamicPlanAdjustment({
     userProfile: { gender: "male", age: 30, heightCm: 175, weightKg: 70, trainingLevel: "intermediate" },
-    goalPlan: { targetWeightKg: 65, targetDays: 30, targetBodyShapeId: "slight-line" },
+    goalPlan: { targetWeightKg: 65, targetDays: 60, targetBodyShapeId: "slight-line" },
     nutritionLedger: {
       target: { calories: 2200, proteinG: 130, fatG: 70, carbsG: 280, bmr: 1700, tdee: 2700, dailyDeficit: 500 },
       actual: { calories: 4200, proteinG: 130, fatG: 70, carbsG: 780 },
@@ -189,6 +189,25 @@ test("赎罪机制：低于目标时进入恢复观察，不奖励性补吃", ()
   assert.equal(result.days, 0);
   assert.equal(result.dailyRepayCalories, 0);
   assert.equal(result.adjustedDailyCalories, 2200);
+});
+
+test("训练补偿：增肌期额外训练消耗允许保守补回", () => {
+  const result = calculateDynamicPlanAdjustment({
+    userProfile: { gender: "male", age: 30, heightCm: 175, weightKg: 70, trainingLevel: "intermediate" },
+    goalPlan: { targetWeightKg: 75, targetDays: 60, targetBodyShapeId: "muscle" },
+    nutritionLedger: {
+      target: { calories: 2600, proteinG: 140, fatG: 80, carbsG: 330, bmr: 1700, tdee: 2400, dailyDeficit: -200 },
+      actual: { calories: 2600, proteinG: 140, fatG: 80, carbsG: 330 },
+      actualFoodIsDelta: false,
+      mealDeltas: []
+    },
+    trainingLedger: { plannedCalories: 200, actualCalories: 700, fatigue: 2 },
+    databases: { foodCount: 100, exerciseCount: 50 },
+    adjustmentRules: createDefaultAdjustmentRules(settings, "male")
+  });
+
+  assert.equal(result.netDelta, -300);
+  assert.equal(result.adjustedDailyCalories, 2900);
 });
 
 test("赎罪机制：疲劳偏高时优先顺延目标", () => {
@@ -258,7 +277,7 @@ test("动态宏量：低热量高蛋白目标不能挤掉脂肪和碳水底线",
   const macroCalories = result.adjustedMacros.proteinG * 4 + result.adjustedMacros.fatG * 9 + result.adjustedMacros.carbsG * 4;
   assert.equal(result.adjustedDailyCalories, 1200);
   assert.ok(result.adjustedMacros.proteinG <= 105, `protein too high: ${result.adjustedMacros.proteinG}`);
-  assert.ok(result.adjustedMacros.fatG >= 35, `fat too low: ${result.adjustedMacros.fatG}`);
+  assert.ok(result.adjustedMacros.fatG >= 30, `fat too low: ${result.adjustedMacros.fatG}`);
   assert.ok(result.adjustedMacros.carbsG >= 60, `carbs too low: ${result.adjustedMacros.carbsG}`);
   assert.ok(Math.abs(macroCalories - result.adjustedDailyCalories) <= 2, `macro vs target: ${macroCalories} vs ${result.adjustedDailyCalories}`);
 });

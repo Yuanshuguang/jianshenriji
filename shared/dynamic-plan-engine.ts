@@ -138,9 +138,10 @@ export function calculateDynamicPlanAdjustment(input: DynamicPlanEngineInput): D
     preference: input.atonementPreference,
     forceExtendDeadline: highFatigue || hasRedFlag(input, adjustmentRules)
   });
+  const trainingCompensationCalories = computeTrainingCompensation(adjustmentRules, trainingLedger, nutritionLedger.target);
   const adjustedDailyCalories = Math.max(
     adjustmentRules.safetyFloorCalories,
-    Math.round(nutritionLedger.target.calories - atonement.dailyRepayCalories)
+    Math.round(nutritionLedger.target.calories - atonement.dailyRepayCalories + trainingCompensationCalories)
   );
   const adjustedMacros = adjustMacros(nutritionLedger.target, adjustedDailyCalories, trainingLedger, adjustmentRules);
   const recoveryHint = highFatigue
@@ -169,7 +170,7 @@ export function calculateDynamicPlanAdjustment(input: DynamicPlanEngineInput): D
 
 export function adjustMacros(target: NutritionTotals, calories: number, training: TrainingLedgerEntry, rules: AdjustmentRules): NutritionTotals {
   // 蛋白优先，但不能把低热量日挤成低脂、极高蛋白方案。
-  const minFatG = 35;
+  const minFatG = 30;
   const minCarbsG = 60;
   const proteinByTarget = rules.settings.nutrition.proteinG
     ? Math.max(target.proteinG, Math.round((calories * 0.25) / 4))
@@ -372,14 +373,22 @@ function computeFoodDelta(
 function computeTrainingWeight(rules: AdjustmentRules, training: TrainingLedgerEntry, target: EnergyPlan): number {
   if (!rules.settings.training.calories) return 0;
   const fatigue = training.fatigue ?? 0;
-  // only fat-loss low-fatigue allow partial
-  const diff = (target.dailyDeficit ?? 0);
-  if (diff <= 0 && training.plannedCalories > training.actualCalories) {
-    // maintenance or muscle gain: training deficit doesnt reduce food
-    return 0;
-  }
   if (fatigue >= rules.fatigueRecoveryThreshold) return 0;
+  const diff = target.dailyDeficit ?? 0;
+  if (diff < -100) return training.plannedCalories > training.actualCalories ? 0.25 : 0.6;
+  if (Math.abs(diff) <= 100) return training.plannedCalories > training.actualCalories ? 0.3 : 0.5;
   return 0.5;
+}
+
+function computeTrainingCompensation(rules: AdjustmentRules, training: TrainingLedgerEntry, target: EnergyPlan): number {
+  if (!rules.settings.training.calories) return 0;
+  if ((training.fatigue ?? 0) >= rules.fatigueRecoveryThreshold) return 0;
+  const extraTrainingCalories = Math.max(0, training.actualCalories - training.plannedCalories);
+  if (extraTrainingCalories <= 0) return 0;
+
+  const dailyDeficit = target.dailyDeficit ?? 0;
+  const ratio = dailyDeficit < -100 ? 0.6 : Math.abs(dailyDeficit) <= 100 ? 0.5 : 0.3;
+  return Math.round(Math.min(extraTrainingCalories * ratio, target.calories * 0.15, 350));
 }
 function hasRedFlag(input: DynamicPlanEngineInput, rules: AdjustmentRules): boolean {
   const nutrition = input.nutritionLedger;
@@ -388,13 +397,11 @@ function hasRedFlag(input: DynamicPlanEngineInput, rules: AdjustmentRules): bool
     : nutrition.actual.calories;
   if (actual < rules.safetyFloorCalories * 0.7) return true;
   const weightDiff = input.userProfile.weightKg - input.goalPlan.targetWeightKg;
-  if (weightDiff > 0 && (weightDiff / Math.max(1, input.goalPlan.targetDays)) > 0.15) return true;
+  if (weightDiff > 0 && (weightDiff / Math.max(1, input.goalPlan.targetDays) * 7) > 1.0) return true;
   return false;
 }
 function resolveHybridRatio(netDelta: number, baseRatio: number): number {
   if (netDelta <= 150) return 0.15;
   if (netDelta <= 500) return 0.25;
-  if (netDelta <= 1200) return baseRatio;
-  if (netDelta <= 2500) return 0.35;
-  return 0.2;
+  return Math.max(0.35, baseRatio);
 }
