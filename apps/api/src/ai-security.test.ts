@@ -112,3 +112,54 @@ test("AI image routes rate-limit repeated requests", async () => {
     else delete process.env.AI_RATE_LIMIT_MAX;
   }
 });
+
+test("AI image routes require x-api-key when API_REQUIRED_KEY is configured", async () => {
+  const previousRequiredKey = process.env.API_REQUIRED_KEY;
+  process.env.API_REQUIRED_KEY = "test-required-key";
+
+  try {
+    const app = createApp();
+    const response = await app.request("/api/ai/dish-recognition", {
+      method: "POST",
+      body: JSON.stringify({ imageBase64: "data:text/plain;base64,AAAA" }),
+      headers: { "content-type": "application/json" },
+    });
+
+    assert.equal(response.status, 401);
+  } finally {
+    if (previousRequiredKey) process.env.API_REQUIRED_KEY = previousRequiredKey;
+    else delete process.env.API_REQUIRED_KEY;
+  }
+});
+
+test("AI image routes accept configured x-api-key before normal validation", async () => {
+  const previousRequiredKey = process.env.API_REQUIRED_KEY;
+  const previousApiKey = process.env.BAIDU_AI_API_KEY;
+  const previousSecret = process.env.BAIDU_AI_SECRET_KEY;
+  const previousFetch = globalThis.fetch;
+  process.env.API_REQUIRED_KEY = "test-required-key";
+  process.env.BAIDU_AI_API_KEY = "test-ak";
+  process.env.BAIDU_AI_SECRET_KEY = "test-sk";
+  globalThis.fetch = (() => {
+    throw new Error("fetch should not be called for invalid images");
+  }) as typeof fetch;
+
+  try {
+    const app = createApp();
+    const response = await app.request("/api/ai/dish-recognition", {
+      method: "POST",
+      body: JSON.stringify({ imageBase64: "data:text/plain;base64,AAAA" }),
+      headers: { "content-type": "application/json", "x-api-key": "test-required-key" },
+    });
+
+    assert.equal(response.status, 415);
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousRequiredKey) process.env.API_REQUIRED_KEY = previousRequiredKey;
+    else delete process.env.API_REQUIRED_KEY;
+    if (previousApiKey) process.env.BAIDU_AI_API_KEY = previousApiKey;
+    else delete process.env.BAIDU_AI_API_KEY;
+    if (previousSecret) process.env.BAIDU_AI_SECRET_KEY = previousSecret;
+    else delete process.env.BAIDU_AI_SECRET_KEY;
+  }
+});

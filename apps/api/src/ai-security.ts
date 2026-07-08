@@ -42,6 +42,17 @@ export function createAiRateLimitMiddleware() {
   const maxRequests = readPositiveInteger(process.env.AI_RATE_LIMIT_MAX, DEFAULT_AI_RATE_LIMIT_MAX);
   const windowMs = readPositiveInteger(process.env.AI_RATE_LIMIT_WINDOW_MS, DEFAULT_AI_RATE_LIMIT_WINDOW_MS);
 
+  // 定期清理过期桶，防止内存泄漏
+  const cleanupInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [key, bucket] of buckets) {
+      if (bucket.resetAt <= now) buckets.delete(key);
+    }
+  }, windowMs);
+
+  // 允许 Node 进程在 cleanupInterval 未 clear 时仍然正常退出
+  if (cleanupInterval.unref) cleanupInterval.unref();
+
   return async (context: Context, next: Next) => {
     const now = Date.now();
     const key = getClientKey(context);
@@ -142,4 +153,20 @@ function calculateBase64Bytes(base64: string): number {
 function readPositiveInteger(value: string | undefined, fallback: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : fallback;
+}
+
+/** 可选 API Key 校验中间件。环境变量 API_REQUIRED_KEY 设置后才启用。 */
+export function apiKeyAuth() {
+  return async (context: Context, next: Next) => {
+    const requiredKey = process.env.API_REQUIRED_KEY;
+    // 未设置 API_REQUIRED_KEY 时跳过校验，本地开发默认不启用
+    if (!requiredKey) {
+      return await next();
+    }
+    const provided = context.req.header("x-api-key")?.trim();
+    if (!provided || provided !== requiredKey) {
+      return context.json({ error: "Unauthorized" }, 401);
+    }
+    return await next();
+  };
 }

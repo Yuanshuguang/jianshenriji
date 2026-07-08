@@ -1,10 +1,6 @@
 import { Hono } from "hono";
 import { parseImageRecognitionRequest } from "../ai-security.js";
-
-type BaiduTokenResponse = {
-  access_token?: string;
-  expires_in?: number;
-};
+import { getBaiduCredentials, getBaiduAccessToken, baiduFetch } from "../baidu-auth.js";
 
 type BaiduOcrRawWord = {
   words?: string;
@@ -32,12 +28,7 @@ export type NutritionLabelRecognitionResponse = {
   metrics: NutritionLabelMetrics;
 };
 
-const BAIDU_TOKEN_URL = "https://aip.baidubce.com/oauth/2.0/token";
 const BAIDU_OCR_URL = "https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic";
-const TOKEN_SAFETY_WINDOW_MS = 60_000;
-
-let cachedAccessToken: string | null = null;
-let cachedAccessTokenExpiresAt = 0;
 
 export const nutritionLabelRoute = new Hono().post("/", async (context) => {
   const credentials = getBaiduCredentials();
@@ -54,7 +45,7 @@ export const nutritionLabelRoute = new Hono().post("/", async (context) => {
     return context.json({ error: "Failed to obtain Baidu access token" }, 502);
   }
 
-  const upstream = await fetch(`${BAIDU_OCR_URL}?access_token=${encodeURIComponent(accessToken)}`, {
+  const upstream = await baiduFetch(`${BAIDU_OCR_URL}?access_token=${encodeURIComponent(accessToken)}`, {
     method: "POST",
     headers: {
       "content-type": "application/x-www-form-urlencoded",
@@ -110,36 +101,6 @@ export function extractNutritionLabelMetrics(text: string, imageName?: string): 
     carbsPer100g: carbs,
     defaultUnitGram: serving,
   };
-}
-
-function getBaiduCredentials() {
-  const apiKey = process.env.BAIDU_AI_API_KEY ?? process.env.BAIDU_AK;
-  const secretKey = process.env.BAIDU_AI_SECRET_KEY ?? process.env.BAIDU_SK;
-  if (!apiKey || !secretKey) return null;
-  return { apiKey, secretKey };
-}
-
-async function getBaiduAccessToken(apiKey: string, secretKey: string): Promise<string | null> {
-  const now = Date.now();
-  if (cachedAccessToken && cachedAccessTokenExpiresAt > now) {
-    return cachedAccessToken;
-  }
-
-  const tokenUrl = new URL(BAIDU_TOKEN_URL);
-  tokenUrl.searchParams.set("grant_type", "client_credentials");
-  tokenUrl.searchParams.set("client_id", apiKey);
-  tokenUrl.searchParams.set("client_secret", secretKey);
-
-  const response = await fetch(tokenUrl);
-  const payload = (await response.json().catch(() => null)) as BaiduTokenResponse | null;
-  if (!response.ok || !payload?.access_token) {
-    return null;
-  }
-
-  const expiresIn = Number(payload.expires_in ?? 0);
-  cachedAccessToken = payload.access_token;
-  cachedAccessTokenExpiresAt = now + Math.max(0, expiresIn * 1000 - TOKEN_SAFETY_WINDOW_MS);
-  return cachedAccessToken;
 }
 
 function normalizeText(text: string): string {

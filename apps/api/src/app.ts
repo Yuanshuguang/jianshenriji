@@ -5,16 +5,17 @@ import { baiduDishRoute } from "./routes/baidu-dish.js";
 import { bodyReportRoute } from "./routes/body-report.js";
 import { healthRoute } from "./routes/health.js";
 import { nutritionLabelRoute } from "./routes/nutrition-label.js";
-import { createAiRateLimitMiddleware, resolveCorsOrigin } from "./ai-security.js";
+import { createAiRateLimitMiddleware, resolveCorsOrigin, apiKeyAuth } from "./ai-security.js";
 
 export function createApp() {
   const app = new Hono();
 
   app.use("/api/*", cors({
     origin: (origin) => resolveCorsOrigin(origin) ?? "",
-    allowHeaders: ["content-type"],
+    allowHeaders: ["content-type", "x-api-key"],
     allowMethods: ["GET", "POST", "OPTIONS"],
   }));
+  app.use("/api/ai/*", apiKeyAuth());
   app.use("/api/ai/*", createAiRateLimitMiddleware());
 
   app.route("/api/health", healthRoute);
