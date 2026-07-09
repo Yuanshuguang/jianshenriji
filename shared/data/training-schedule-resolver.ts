@@ -37,6 +37,11 @@ export type ResolveTrainingScheduleInput = {
   dietPlanSelection?: DietPlanCycleSelection;
   exercises: Exercise[];
   preference: TrainingSchedulePreference;
+  safetyProfile?: {
+    heightCm: number;
+    weightKg: number;
+    trainingLevel?: string;
+  };
   anchorDate?: Date;
   pastDays?: number;
   futureDays?: number;
@@ -147,6 +152,7 @@ function buildCandidates(
       baseMinutes: input.preference.minutesPerSession,
       manualFocus: offset === 0 ? input.manualTodayFocus ?? null : null,
       manualMinutes: offset === 0 ? input.manualTodayMinutes ?? null : null,
+      safetyProfile: input.safetyProfile,
     });
 
     result.push({

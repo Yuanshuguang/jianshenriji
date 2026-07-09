@@ -10,6 +10,8 @@ export type LibraryExercise = {
   license: string;
   mediaType: "gif" | "image" | "none";
   level: string | null;
+  riskLevel?: "low" | "medium" | "high";
+  riskLabel?: string;
   equipment: string | null;
   category: string | null;
   bodyPart: string | null;

@@ -1,4 +1,4 @@
-import type { DailyLogEntry, NutritionTotals } from "./index";
+import type { DailyLogEntry, GoalType, NutritionTotals } from "./index";
 
 export type MacroLedgerKey = "proteinG" | "fatG" | "carbsG";
 export type MacroLedgerTone = "low" | "high" | "ok";
@@ -47,6 +47,7 @@ export type CalorieLedgerWindow = {
   endDate?: string;
   limitDays?: number;
   targetNutritionFallback?: NutritionTotals;
+  goalType?: GoalType;
 };
 
 const emptyTotals: NutritionTotals = { calories: 0, proteinG: 0, fatG: 0, carbsG: 0 };
@@ -118,7 +119,7 @@ export function buildCalorieLedgerTimeline(
     netCaloriesDelta,
     averageDailyCalorieDelta: days > 0 ? Math.round(netCaloriesDelta / days) : 0,
     suggestedDailyCalorieAdjustment,
-    calorieAdvice: buildCalorieAdvice(netCaloriesDelta, suggestedDailyCalorieAdjustment),
+    calorieAdvice: buildCalorieAdvice(netCaloriesDelta, suggestedDailyCalorieAdjustment, window?.goalType ?? "fat_loss"),
     macroStats: buildMacroStats(macroActualTotals, macroTargetTotals, Math.max(1, days)),
     dayEntries
   };
@@ -186,11 +187,20 @@ function buildSuggestedDailyCalorieAdjustment(netCaloriesDelta: number): number 
   return Math.min(300, Math.max(50, raw));
 }
 
-function buildCalorieAdvice(netCaloriesDelta: number, dailyAdjustment: number): string {
+function buildCalorieAdvice(netCaloriesDelta: number, dailyAdjustment: number, goalType: GoalType): string {
   if (netCaloriesDelta > 0) {
+    if (goalType === "muscle_gain") {
+      return `这段时间净多摄入 ${netCaloriesDelta} kcal；增肌期优先回到计划盈余和蛋白目标，不额外制造减脂缺口。`;
+    }
+    if (goalType === "maintenance" || goalType === "recomp") {
+      return `这段时间净多摄入 ${netCaloriesDelta} kcal；先回到目标区间观察趋势，不建议用惩罚式缺口抵扣。`;
+    }
     return `这段时间净多摄入 ${netCaloriesDelta} kcal，建议用每天约 ${dailyAdjustment} kcal 的温和缺口平滑处理。`;
   }
   if (netCaloriesDelta < 0) {
+    if (goalType === "muscle_gain") {
+      return `这段时间净少摄入 ${Math.abs(netCaloriesDelta)} kcal；增肌期优先把正餐和加餐补回计划，不建议继续压低热量。`;
+    }
     return `这段时间净少摄入 ${Math.abs(netCaloriesDelta)} kcal，后续优先回到计划摄入，不建议用暴食补回。`;
   }
   return "这段时间热量基本贴近计划，继续按原目标执行。";

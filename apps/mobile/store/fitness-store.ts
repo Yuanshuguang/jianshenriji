@@ -1,4 +1,4 @@
-import { calculateGoalEnergyPlan, generateTrainingQueue, type AtonementPreference, type DailyLogEntry, type DynamicAdjustmentSettings, type Food, type Gender, type MealAdjustmentKey, type MealPlannerAdjustments, type MuscleGroup, type NutritionAdjustmentKey, type TrainingAdjustmentKey } from "@fitness-calendar/shared";
+import { calculateGoalEnergyPlan, generateTrainingQueue, type AtonementPreference, type DailyLogEntry, type DynamicAdjustmentSettings, type Food, type Gender, type GoalType, type MealAdjustmentKey, type MealPlannerAdjustments, type MuscleGroup, type NutritionAdjustmentKey, type TrainingAdjustmentKey } from "@fitness-calendar/shared";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import { create } from "zustand";
@@ -67,6 +67,7 @@ export function createDefaultBodyComposition(): BodyCompositionDraft {
 }
 
 export type UserGoal = {
+  goalType: GoalType;
   targetWeightKg: number;
   targetDays: number;
   targetBodyShapeId: string;
@@ -199,7 +200,7 @@ type FitnessState = {
   dynamicAdjustmentEnabled: boolean;
   /** 动态调整细分规则：控制哪些数据维度可以参与自动调整。 */
   dynamicAdjustmentSettings: DynamicAdjustmentSettings;
-  /** 赎罪机制：控制热量差额按天偿还、顺延目标或混合处理。 */
+  /** 弹性调整：控制热量差额按天分摊、顺延目标或混合处理。 */
   dynamicAtonementPreference: AtonementPreference;
   /** 外观模式：日间或夜间。 */
   appearanceMode: AppearanceMode;
@@ -365,6 +366,7 @@ const defaultProfile: UserProfile = {
 };
 
 const defaultGoal: UserGoal = {
+  goalType: "fat_loss",
   targetWeightKg: 66,
   targetDays: 56,
   targetBodyShapeId: "slight-line"
@@ -531,6 +533,7 @@ export function migrateFitnessStoreState(persistedState?: Partial<FitnessState>)
     customFoods: state.customFoods ?? [],
     menuFoods: state.menuFoods ?? [],
     historyLogs: state.historyLogs ?? {},
+    goal: normalizeGoal(state.goal, state.profile),
     actualMealTexts: state.actualMealTexts ?? createDefaultActualMealTexts(),
     actualMealImageFoods: state.actualMealImageFoods ?? createDefaultActualMealImageFoods(),
     todayTrainingPlan: {
@@ -810,6 +813,30 @@ function normalizeDynamicAtonementPreference(preference?: Partial<AtonementPrefe
     ? Math.max(1, Math.min(30, Math.round(Number(preference?.repayDays))))
     : defaultDynamicAtonementPreference.repayDays;
   return { adjustmentMode, repayDays };
+}
+
+function normalizeGoal(goal?: Partial<UserGoal>, profile?: Partial<UserProfile>): UserGoal {
+  const targetWeightKg = Number.isFinite(goal?.targetWeightKg) ? Number(goal?.targetWeightKg) : defaultGoal.targetWeightKg;
+  return {
+    ...defaultGoal,
+    ...goal,
+    targetWeightKg,
+    targetDays: Number.isFinite(goal?.targetDays) ? Number(goal?.targetDays) : defaultGoal.targetDays,
+    targetBodyShapeId: goal?.targetBodyShapeId ?? defaultGoal.targetBodyShapeId,
+    goalType: normalizeGoalType(goal?.goalType, profile?.weightKg, targetWeightKg)
+  };
+}
+
+function normalizeGoalType(goalType: unknown, currentWeightKg?: number, targetWeightKg?: number): GoalType {
+  if (goalType === "fat_loss" || goalType === "maintenance" || goalType === "muscle_gain" || goalType === "recomp") {
+    return goalType;
+  }
+  if (typeof currentWeightKg === "number" && typeof targetWeightKg === "number") {
+    const diff = currentWeightKg - targetWeightKg;
+    if (diff > 0.5) return "fat_loss";
+    if (diff < -0.5) return "muscle_gain";
+  }
+  return "maintenance";
 }
 
 function normalizeDietPreference(preference?: Partial<DietPreferenceDraft>): DietPreferenceDraft {

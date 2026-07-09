@@ -33,6 +33,15 @@ test("热量账本按区间统计多摄入、少摄入和净差", () => {
   assert.match(ledger.calorieAdvice, /每天约 143 kcal/);
 });
 
+test("热量账本对非减脂目标不建议制造额外缺口", () => {
+  const ledger = buildCalorieLedgerTimeline({
+    "2026-07-01": makeLog({ date: "2026-07-01", actualIntake: { calories: 2300, proteinG: 160, fatG: 70, carbsG: 260 } })
+  }, { goalType: "recomp" });
+
+  assert.match(ledger.calorieAdvice, /回到目标区间/);
+  assert.doesNotMatch(ledger.calorieAdvice, /温和缺口/);
+});
+
 test("蛋白质亏空只给分餐补足建议，不生成一次性补偿任务", () => {
   const ledger = buildCalorieLedgerTimeline({
     "2026-07-01": makeLog({ date: "2026-07-01", actualIntake: { calories: 1800, proteinG: 0, fatG: 60, carbsG: 220 } }),

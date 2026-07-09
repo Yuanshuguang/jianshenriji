@@ -4,6 +4,7 @@ import {
   resolveTrainingSchedule,
   sumNutrition,
   type DietPlanCycleSelection,
+  type GoalType,
   type MuscleGroup
 } from "@fitness-calendar/shared";
 import { useRouter } from "expo-router";
@@ -67,6 +68,7 @@ export default function TrainScreen() {
   const actualFoodText = useFitnessStore((state) => state.actualFoodText);
   const customFoods = useFitnessStore((state) => state.customFoods);
   const todayTrainingPlan = useFitnessStore((state) => state.todayTrainingPlan);
+  const goal = useFitnessStore((state) => state.goal);
   const selectedDietPlanId = useFitnessStore((state) => state.selectedDietPlanId);
   const selectedDietPlanVariantId = useFitnessStore((state) => state.selectedDietPlanVariantId);
 
@@ -79,10 +81,11 @@ export default function TrainScreen() {
     dietPlanSelection: dietPlanCycleSelection,
     exercises,
     preference,
+    safetyProfile: profile,
     anchorDate: today,
     manualTodayFocus: todayTrainingPlan.focus,
     manualTodayMinutes: todayTrainingPlan.minutes
-  }), [selectedDietPlanId, selectedDietPlanVariantId, preference, todayTrainingPlan.focus, todayTrainingPlan.minutes]);
+  }), [selectedDietPlanId, selectedDietPlanVariantId, preference, profile, todayTrainingPlan.focus, todayTrainingPlan.minutes]);
   const todayScheduleEntry = getTodayTrainingScheduleEntry(trainingSchedule);
   const selectedFocus: MuscleGroup = todayScheduleEntry.focus ?? "cardio";
   const selectedMinutes = todayScheduleEntry.minutes;
@@ -94,8 +97,9 @@ export default function TrainScreen() {
     [actualFoodText, customFoods, energyPlan.calories]
   );
   const actualIntake = Math.round(sumNutrition(actualFood.portions.map((portion) => portion.totals)).calories);
-  const burnCalories = Math.round(energyPlan.tdee + actualTraining.calories);
-  const deficit = Math.max(0, burnCalories - actualIntake);
+  const baseBurnCalories = Math.round(energyPlan.tdee);
+  const balanceCalories = Math.round(actualIntake - baseBurnCalories);
+  const targetBalanceCalories = Math.round(-(energyPlan.dailyDeficit ?? 0));
 
   const combinedLibraryItems = useMemo(
     () => mergeExerciseLibraries(libraryItems, supplementalLibraryItems),
@@ -109,8 +113,9 @@ export default function TrainScreen() {
           libraryItems: combinedLibraryItems,
           workout: todayWorkout,
           extraExerciseIds: todayScheduleEntry.exerciseIds,
+          safetyProfile: profile,
         }),
-    [selectedFocus, combinedLibraryItems, todayWorkout, todayScheduleEntry.exerciseIds, todayScheduleEntry.trainingType]
+    [selectedFocus, combinedLibraryItems, todayWorkout, todayScheduleEntry.exerciseIds, todayScheduleEntry.trainingType, profile]
   );
   const trainingTextReferences = useMemo(
     () => buildTrainingTextReferences(customTrainingExercises, combinedLibraryItems),
@@ -193,10 +198,11 @@ export default function TrainScreen() {
         />
       ) : (
         <TrainingEnergySummary
-          burnCalories={burnCalories}
-          burnTarget={Math.round(energyPlan.tdee)}
-          deficit={deficit}
-          deficitTarget={Math.max(0, Math.round(energyPlan.dailyDeficit))}
+          goalType={goal.goalType}
+          baseBurnCalories={baseBurnCalories}
+          targetCalories={Math.round(energyPlan.calories)}
+          balanceCalories={balanceCalories}
+          targetBalanceCalories={targetBalanceCalories}
           intakeCalories={actualIntake}
           trainingCalories={actualTrainingCalories}
         />
@@ -355,62 +361,119 @@ function RestDaySummary({
 }
 
 function TrainingEnergySummary({
-  burnCalories,
-  burnTarget,
-  deficit,
-  deficitTarget,
+  goalType,
+  baseBurnCalories,
+  targetCalories,
+  balanceCalories,
+  targetBalanceCalories,
   intakeCalories,
   trainingCalories,
 }: {
-  burnCalories: number;
-  burnTarget: number;
-  deficit: number;
-  deficitTarget: number;
+  goalType: GoalType;
+  baseBurnCalories: number;
+  targetCalories: number;
+  balanceCalories: number;
+  targetBalanceCalories: number;
   intakeCalories: number;
   trainingCalories: number;
 }) {
   const c = useBentoTheme().colors;
-  const deficitColor: SemanticColor = deficit >= deficitTarget ? "positive" : "accent";
+  const copy = getTrainingEnergyCopy(goalType, balanceCalories, targetBalanceCalories);
 
   return (
-    <GlassTile glow={deficitColor} padding={10} style={{ gap: 10 }}>
+    <GlassTile glow={copy.color} padding={10} style={{ gap: 10 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-        <Label color={c.inkMute} variant="label">训练消耗与赤字</Label>
+        <Label color={c.inkMute} variant="label">{copy.title}</Label>
         <Badge color={trainingCalories > 0 ? "positive" : "amber"} size="sm">
           训练 {Math.round(trainingCalories)} kcal
         </Badge>
       </View>
       <View style={{ flexDirection: "row", gap: 8 }}>
         <EnergyMetric
-          label="消耗热量"
-          value={burnCalories}
-          target={burnTarget}
+          label="目标摄入"
+          value={targetCalories}
+          target={targetCalories}
           unit="kcal"
         />
         <EnergyMetric
-          label="热量赤字"
-          value={deficit}
-          target={deficitTarget}
+          label={copy.metricLabel}
+          value={copy.metricValue}
+          target={copy.metricTarget}
+          targetLabel={copy.targetLabel}
           unit="kcal"
+          showBar={copy.showBar}
         />
       </View>
       <BentoText variant="micro" color={c.inkMute}>
-        消耗 = 基础日消耗 + 实际训练；赤字 = 消耗 - 饮食页实际摄入 {Math.round(intakeCalories)} kcal。
+        基础日消耗 {Math.round(baseBurnCalories)} kcal 已按训练偏好估算；实际训练 {Math.round(trainingCalories)} kcal 只做完成度参考，不重复叠加进 TDEE。今日已摄入 {Math.round(intakeCalories)} kcal。
       </BentoText>
     </GlassTile>
   );
+}
+
+function getTrainingEnergyCopy(goalType: GoalType, balanceCalories: number, targetBalanceCalories: number): {
+  title: string;
+  metricLabel: string;
+  metricValue: number;
+  metricTarget: number;
+  targetLabel: string;
+  color: SemanticColor;
+  showBar: boolean;
+} {
+  if (goalType === "muscle_gain") {
+    const surplus = Math.max(0, balanceCalories);
+    const targetSurplus = Math.max(0, targetBalanceCalories);
+    return {
+      title: "训练与增肌能量",
+      metricLabel: "热量盈余",
+      metricValue: surplus,
+      metricTarget: Math.max(1, targetSurplus),
+      targetLabel: `目标盈余 ${targetSurplus}kcal`,
+      color: surplus >= targetSurplus ? "positive" : "accent",
+      showBar: true,
+    };
+  }
+
+  if (goalType === "maintenance" || goalType === "recomp") {
+    const absBalance = Math.abs(balanceCalories);
+    return {
+      title: goalType === "recomp" ? "训练与重组能量" : "训练与维持能量",
+      metricLabel: "净平衡",
+      metricValue: balanceCalories,
+      metricTarget: Math.max(1, absBalance),
+      targetLabel: "目标接近 0kcal",
+      color: absBalance <= 150 ? "positive" : "accent",
+      showBar: false,
+    };
+  }
+
+  const deficit = Math.max(0, -balanceCalories);
+  const targetDeficit = Math.max(0, -targetBalanceCalories);
+  return {
+    title: "训练与减脂能量",
+    metricLabel: "热量赤字",
+    metricValue: deficit,
+    metricTarget: Math.max(1, targetDeficit),
+    targetLabel: `目标赤字 ${targetDeficit}kcal`,
+    color: deficit >= targetDeficit ? "positive" : "accent",
+    showBar: true,
+  };
 }
 
 function EnergyMetric({
   label,
   value,
   target,
+  targetLabel,
   unit,
+  showBar = true,
 }: {
   label: string;
   value: number;
   target: number;
+  targetLabel?: string;
   unit: string;
+  showBar?: boolean;
 }) {
   const c = useBentoTheme().colors;
   return (
@@ -422,9 +485,9 @@ function EnergyMetric({
         </BentoText>
         <BentoText mono color={c.inkMute} variant="micro">{unit}</BentoText>
       </View>
-      <MetricCompareBar actual={value} target={target} height={6} />
+      {showBar ? <MetricCompareBar actual={Math.max(0, value)} target={Math.max(1, target)} height={6} /> : null}
       <BentoText variant="micro" color={c.inkFaint}>
-        目标 {Math.round(target)}{unit}
+        {targetLabel ?? `目标 ${Math.round(target)}${unit}`}
       </BentoText>
     </View>
   );
@@ -447,15 +510,19 @@ function buildSuggestedLibraryExercises({
   libraryItems,
   workout,
   extraExerciseIds,
+  safetyProfile,
 }: {
   focus: MuscleGroup;
   libraryItems: LibraryExercise[];
   workout: ReturnType<typeof buildWorkoutForSelection> | undefined;
   extraExerciseIds: string[];
+  safetyProfile: { heightCm: number; weightKg: number; trainingLevel: string };
 }): RecommendedLibraryExercise[] {
   const workoutExerciseIds = new Set(workout?.exercises.map((item) => item.exerciseId) ?? []);
   const priorityExerciseIds = new Set(extraExerciseIds);
+  const lowImpactOnly = shouldUseLowImpactReferences(safetyProfile);
   const scored = exercises
+    .filter((exercise) => !lowImpactOnly || exercise.id !== "running")
     .map((exercise) => {
       let score = 100;
       if (exercise.primaryMuscleGroup === focus) score -= 40;
@@ -466,9 +533,16 @@ function buildSuggestedLibraryExercises({
     })
     .sort((left, right) => left.score - right.score || left.exercise.name.localeCompare(right.exercise.name))
     .slice(0, 9)
-    .map(({ exercise }) => resolveRecommendedLibraryExercise(exercise.id, libraryItems));
+    .map(({ exercise }) => resolveRecommendedLibraryExercise(exercise.id, libraryItems))
+    .filter((item) => !lowImpactOnly || item.riskLevel !== "high");
 
   return scored;
+}
+
+function shouldUseLowImpactReferences(profile: { heightCm: number; weightKg: number; trainingLevel: string }): boolean {
+  const heightM = profile.heightCm > 0 ? profile.heightCm / 100 : 0;
+  const bmi = heightM > 0 ? profile.weightKg / (heightM * heightM) : 0;
+  return bmi >= 30 || profile.weightKg >= 100 || profile.trainingLevel === "beginner";
 }
 type RecommendedLibraryExercise = {
   exerciseId: string;
@@ -477,6 +551,8 @@ type RecommendedLibraryExercise = {
   bodyPart: string | null;
   equipment: string | null;
   gifUrl: string | null;
+  riskLabel?: string;
+  riskLevel?: LibraryExercise["riskLevel"];
 };
 
 function ReferenceExerciseCard({ item, onPress }: { item: RecommendedLibraryExercise; onPress: () => void }) {
@@ -537,7 +613,7 @@ function ReferenceExerciseCard({ item, onPress }: { item: RecommendedLibraryExer
           {item.displayName}
         </BentoText>
         <BentoText variant="micro" color={c.inkMute} numberOfLines={1}>
-          {muscleNameMap[item.muscle]} · {formatLibraryMeta(item)}
+          {muscleNameMap[item.muscle]} · {[formatLibraryMeta(item), item.riskLabel].filter(Boolean).join(" · ")}
         </BentoText>
       </View>
     </Pressable>
@@ -554,7 +630,9 @@ function resolveRecommendedLibraryExercise(exerciseId: string, libraryItems: Lib
     muscle: source?.primaryMuscleGroup ?? inferMuscleFromLibraryBodyPart(matched?.bodyPart) ?? "core",
     bodyPart: matched?.bodyPart ?? null,
     equipment: matched?.equipment ?? source?.equipment[0] ?? null,
-    gifUrl: matched?.gifUrl ?? null
+    gifUrl: matched?.gifUrl ?? null,
+    riskLabel: matched?.riskLabel,
+    riskLevel: matched?.riskLevel
   };
 }
 

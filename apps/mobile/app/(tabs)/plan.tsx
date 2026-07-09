@@ -47,10 +47,11 @@ export default function PlanScreen() {
     dietPlanSelection: dietPlanCycleSelection,
     exercises,
     preference,
+    safetyProfile: profile,
     anchorDate: new Date(),
     manualTodayFocus: todayTrainingPlan.focus,
     manualTodayMinutes: todayTrainingPlan.minutes,
-  }), [selectedDietPlanId, selectedDietPlanVariantId, preference, todayTrainingPlan.focus, todayTrainingPlan.minutes]);
+  }), [selectedDietPlanId, selectedDietPlanVariantId, preference, profile, todayTrainingPlan.focus, todayTrainingPlan.minutes]);
   const selectedDietPlanVariant = selectedDietPlan?.cycleVariants?.find((item) => item.id === selectedDietPlanVariantId)?.name ?? null;
   const goalShape = bodyShapeOptions.find((item) => item.id === goal.targetBodyShapeId)?.label ?? "未设置";
   const weekTrainingDays = trainingSchedule.filter((item) => item.trainingType !== "rest").length;

@@ -50,7 +50,7 @@ export function buildDailyAdjustmentSummary(input: {
   plannedTrainingFocus?: MuscleGroup;
   gender: Gender;
   userProfile?: { age: number; heightCm: number; weightKg: number; trainingLevel: string };
-  goalPlan?: { targetWeightKg: number; targetDays: number; targetBodyShapeId: string };
+  goalPlan?: { targetWeightKg: number; targetDays: number; targetBodyShapeId: string; goalType?: GoalType };
   fatigue?: number;
   settings: DynamicAdjustmentSettings;
   atonementPreference?: AtonementPreference;
@@ -68,7 +68,8 @@ export function buildDailyAdjustmentSummary(input: {
     goalPlan: {
       targetWeightKg: input.goalPlan?.targetWeightKg ?? 0,
       targetDays: input.goalPlan?.targetDays ?? 0,
-      targetBodyShapeId: input.goalPlan?.targetBodyShapeId ?? ""
+      targetBodyShapeId: input.goalPlan?.targetBodyShapeId ?? "",
+      goalType
     },
     nutritionLedger: {
       target: input.target,
@@ -191,7 +192,9 @@ function resolveDeviationLevel(netDelta: number): "none" | "mild" | "moderate" |
   return "significant";
 }
 
-function resolveGoalType(input: { goalPlan?: { targetWeightKg: number }; userProfile?: { weightKg: number } }): GoalType {
+function resolveGoalType(input: { goalType?: GoalType; goalPlan?: { targetWeightKg: number; goalType?: GoalType }; userProfile?: { weightKg: number } }): GoalType {
+  if (input.goalType) return input.goalType;
+  if (input.goalPlan?.goalType) return input.goalPlan.goalType;
   const plan = input.goalPlan;
   const profile = input.userProfile;
   if (!plan || !profile) return "maintenance";
@@ -209,11 +212,13 @@ function buildAdjustmentTitle(mode: DynamicAdjustmentMode, netDelta: number, goa
   }
   if (netDelta <= 0) {
     if (goalType === "muscle_gain") return "增肌观察";
+    if (goalType === "recomp") return "重组观察";
     if (goalType === "maintenance") return "趋势记录";
     return "低于目标";
   }
   if (goalType !== "fat_loss") {
     if (goalType === "muscle_gain") return "热量盈余";
+    if (goalType === "recomp") return "重组偏离";
     return "偏离维持区";
   }
   if (mode === "extend-deadline") return "系统延长";

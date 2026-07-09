@@ -57,6 +57,7 @@ const dayTypeTone: Record<DietDayType, "accent" | "accent2" | "positive" | "warn
 export default function TrainingPreferenceScreen() {
   const router = useRouter();
   const preference = useFitnessStore((state) => state.trainingPreference);
+  const profile = useFitnessStore((state) => state.profile);
   const selectedDietPlanId = useFitnessStore((state) => state.selectedDietPlanId);
   const selectedDietPlanVariantId = useFitnessStore((state) => state.selectedDietPlanVariantId);
   const setTrainingPreference = useFitnessStore((state) => state.setTrainingPreference);
@@ -75,8 +76,8 @@ export default function TrainingPreferenceScreen() {
     ? { variantId: selectedDietPlanVariantId }
     : {};
   const previewDays = useMemo(
-    () => buildDietTrainingPreview(selectedDietPlanId, cycleSelection, draft),
-    [selectedDietPlanId, selectedDietPlanVariantId, draft]
+    () => buildDietTrainingPreview(selectedDietPlanId, cycleSelection, draft, profile),
+    [selectedDietPlanId, selectedDietPlanVariantId, draft, profile]
   );
   const currentSplit = getSplitLabel(draft.daysPerWeek);
   const selectedCardio = cardioOptions.find((item) => item.value === draft.cardioRatio) ?? cardioOptions[1];
@@ -320,13 +321,15 @@ function getSplitLabel(daysPerWeek: number) {
 function buildDietTrainingPreview(
   planId: string | null,
   selection: DietPlanCycleSelection,
-  preference: TrainingPreferenceDraft
+  preference: TrainingPreferenceDraft,
+  profile: UserProfile
 ) {
   return resolveTrainingSchedule({
     planId,
     dietPlanSelection: selection,
     exercises,
     preference,
+    safetyProfile: profile,
     pastDays: 0,
     futureDays: 3,
   }).map((entry) => ({

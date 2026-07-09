@@ -56,7 +56,7 @@ export const cfcCorrections: Food[] = [
     lastVerifiedAt: VERIFIED_AT,
   },
   {
-    id: "csv-ext2303",
+    id: "fallback-b3-guilinggao",
     name: "龟苓膏",
     aliases: ["龟苓膏冻", "草本龟苓膏", "Guilinggao", "清热龟苓膏", "生和堂龟苓膏"],
     category: "snack",

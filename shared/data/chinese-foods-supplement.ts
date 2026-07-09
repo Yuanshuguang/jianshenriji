@@ -259,7 +259,7 @@ const defs: FoodDef[] = [
   ["emei", "鹅莓", ["鹅莓", "醋栗", "鹅莓"], "fruit", 44, 0.9, 0.6, 9.4, 100, [["把", 100]], { foodGranularity: "ingredient" }],
   ["renxinguo", "人心果", ["人心果", "人心果"], "fruit", 83, 0.4, 0.6, 19.9, 100, [["个", 100]], { foodGranularity: "ingredient" }],
   ["mangguo", "芒果", ["芒果", "mangguo", "mango", "芒果干", "芒果片"], "fruit", 60, 0.6, 0.2, 15.0, 100, [["个", 100]], { foodGranularity: "ingredient" }],
-  ["xigua", "西瓜", ["西瓜", "黑美人西瓜"], "fruit", 31, 0.6, 0.2, 7.9, 100, [["块", 200], ["片", 100]], { foodGranularity: "ingredient" }],
+  ["xigua", "黑美人西瓜", ["黑美人西瓜"], "fruit", 31, 0.6, 0.2, 7.9, 100, [["块", 200], ["片", 100]], { foodGranularity: "ingredient" }],
 
   // ========== 甜品/糖水 (4种) ==========
   ["jiangzhuangnai", "姜撞奶", ["姜撞奶", "姜汁撞奶"], "snack", 88, 3.5, 3.0, 11.0, 200, [["碗", 200]], { foodGranularity: "prepared-dish" }],

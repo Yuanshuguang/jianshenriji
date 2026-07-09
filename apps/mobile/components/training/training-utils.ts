@@ -85,6 +85,31 @@ function inferMetForLibraryItem(item: Pick<LibraryExercise, "bodyPart" | "equipm
   return 5.2;
 }
 
+function inferExerciseRisk(input: {
+  name: string;
+  level?: string | null;
+  equipment?: string | null;
+  category?: string | null;
+  bodyPart?: string | null;
+}): Pick<LibraryExercise, "riskLevel" | "riskLabel"> {
+  const text = normalizeText([input.name, input.level, input.equipment, input.category, input.bodyPart].filter(Boolean).join(" "));
+  const highRiskKeywords = ["snatch", "clean", "jerk", "muscle up", "lever", "planche", "handstand", "pistol", "jump", "plyo", "behind neck"];
+  const lowRiskKeywords = ["walk", "walking", "stationary bike", "elliptical", "assisted", "band", "machine", "stretch"];
+  if (highRiskKeywords.some((keyword) => text.includes(keyword))) {
+    return { riskLevel: "high", riskLabel: "高风险" };
+  }
+  if (text.includes("advanced") || text.includes("expert")) {
+    return { riskLevel: "high", riskLabel: "高阶" };
+  }
+  if (lowRiskKeywords.some((keyword) => text.includes(keyword))) {
+    return { riskLevel: "low", riskLabel: "低冲击" };
+  }
+  if (text.includes("intermediate") || input.equipment === "Barbell" || input.equipment === "Kettlebell") {
+    return { riskLevel: "medium", riskLabel: "进阶" };
+  }
+  return { riskLevel: "low", riskLabel: "入门" };
+}
+
 function inferEquipmentLabel(equipment: string | null | undefined): string | null {
   if (!equipment) return null;
   const normalized = normalizeText(equipment);
@@ -265,6 +290,7 @@ export function buildLocalExerciseFallback(): LibraryExercise[] {
       license: "shared-builtin",
       mediaType: "none",
       level: null,
+      ...inferExerciseRisk({ name: exercise.name, equipment, bodyPart }),
       equipment,
       category: null,
       bodyPart,
@@ -392,6 +418,7 @@ function workoutXToLibraryExercise(item: WorkoutXExercise): LibraryExercise | nu
     license: "WorkoutX",
     mediaType: item.gifUrl || item.videoUrl ? "gif" : "image",
     level: item.level ?? item.difficulty ?? null,
+    ...inferExerciseRisk({ name, level: item.level ?? item.difficulty ?? null, equipment, category: item.category, bodyPart }),
     equipment,
     category: item.category ?? null,
     bodyPart,
@@ -438,6 +465,7 @@ function supplementalToLibraryExercise(item: SupplementalExercise): LibraryExerc
     license: "research-gif-dataset",
     mediaType: item.gif_url || item.image ? "gif" : "image",
     level: null,
+    ...inferExerciseRisk({ name, equipment, category: item.category, bodyPart }),
     equipment,
     category: item.category ?? null,
     bodyPart,

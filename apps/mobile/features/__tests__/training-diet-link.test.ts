@@ -68,6 +68,22 @@ test("低碳和生酮日：不默认推荐大重量大肌群", () => {
   assert.ok(!keto.exerciseIds.includes("squat"));
 });
 
+test("大体重或新手用户：默认避开跑步并优先低冲击有氧", () => {
+  const result = resolveTrainingDietRecommendation({
+    planId: "keto",
+    dayType: "very-low-carb",
+    exercises,
+    preferredMuscleGroups: ["cardio"],
+    baseMinutes: 45,
+    safetyProfile: { heightCm: 170, weightKg: 105, trainingLevel: "beginner" },
+  });
+
+  assert.equal(result.focus, "cardio");
+  assert.ok(result.exerciseIds.includes("walking"));
+  assert.ok(!result.exerciseIds.includes("running"));
+  assert.match(result.caution, /默认避开跑步/);
+});
+
 test("16+8：保持常规训练，但提示靠近进食窗口", () => {
   const result = resolveTrainingDietRecommendation({
     planId: "if-16-8",

@@ -34,6 +34,11 @@ export type TrainingDietRecommendationInput = {
   baseMinutes?: number;
   manualFocus?: MuscleGroup | null;
   manualMinutes?: number | null;
+  safetyProfile?: {
+    heightCm: number;
+    weightKg: number;
+    trainingLevel?: string;
+  };
 };
 
 export const trainingDietEvidence: TrainingDietEvidence[] = [
@@ -122,7 +127,7 @@ const dayTypeProfiles: Record<DietDayType, {
   "low-carb": {
     intensity: "light",
     focusCandidates: ["core", "arms", "shoulders", "cardio"],
-    exercisePriority: ["plank", "crunch", "curl", "lateral-raise", "cycling", "running"],
+    exercisePriority: ["plank", "crunch", "curl", "lateral-raise", "walking", "cycling", "elliptical"],
     durationFactor: 0.8,
     movementPattern: "轻中强度 / 小肌群 / 核心 / 低强度有氧",
     rationale: "低碳日更适合作为热量缺口和恢复控制日，不默认安排高糖原消耗的大重量大肌群。",
@@ -132,7 +137,7 @@ const dayTypeProfiles: Record<DietDayType, {
   "very-low-carb": {
     intensity: "recovery",
     focusCandidates: ["cardio", "core"],
-    exercisePriority: ["cycling", "running", "plank", "crunch"],
+    exercisePriority: ["walking", "cycling", "elliptical", "plank", "crunch"],
     durationFactor: 0.6,
     movementPattern: "恢复 / 步行或低强度有氧 / 轻核心",
     rationale: "极低碳或生酮日不适合作为默认高强度糖酵解训练日，优先恢复和低强度活动。",
@@ -142,7 +147,7 @@ const dayTypeProfiles: Record<DietDayType, {
   "depletion-carb": {
     intensity: "recovery",
     focusCandidates: ["cardio", "core"],
-    exercisePriority: ["cycling", "plank", "crunch", "running"],
+    exercisePriority: ["walking", "cycling", "elliptical", "plank", "crunch"],
     durationFactor: 0.55,
     movementPattern: "断碳恢复 / 低强度活动",
     rationale: "断碳日用于短期平台突破时，应避免叠加高强度力量压力。",
@@ -152,7 +157,7 @@ const dayTypeProfiles: Record<DietDayType, {
   "fasting-low-calorie": {
     intensity: "recovery",
     focusCandidates: ["cardio", "core"],
-    exercisePriority: ["cycling", "running", "plank", "crunch"],
+    exercisePriority: ["walking", "cycling", "elliptical", "plank", "crunch"],
     durationFactor: 0.55,
     movementPattern: "低热量日 / 恢复或轻活动",
     rationale: "低热量日训练恢复资源有限，适合低强度活动，不适合追求训练表现。",
@@ -207,7 +212,7 @@ const intensityLabels: Record<TrainingDietIntensity, string> = {
 export function resolveTrainingDietRecommendation(input: TrainingDietRecommendationInput): TrainingDietRecommendation {
   const baseProfile = dayTypeProfiles[input.dayType] ?? dayTypeProfiles.balanced;
   const planOverride = input.planId ? planOverrides[input.planId]?.[input.dayType] : undefined;
-  const profile = { ...baseProfile, ...planOverride };
+  const profile = applySafetyProfile({ ...baseProfile, ...planOverride }, input.safetyProfile);
   const preferred = input.preferredMuscleGroups?.length ? input.preferredMuscleGroups : profile.focusCandidates;
   const focusCandidates = mergeFocusCandidates(profile.focusCandidates, preferred);
   const manualFocusAllowed = input.manualFocus && focusCandidates.includes(input.manualFocus);
@@ -233,6 +238,37 @@ export function resolveTrainingDietRecommendation(input: TrainingDietRecommendat
     caution: profile.caution,
     evidenceIds: profile.evidenceIds
   };
+}
+
+function applySafetyProfile(
+  profile: typeof dayTypeProfiles[DietDayType],
+  safetyProfile?: TrainingDietRecommendationInput["safetyProfile"]
+): typeof dayTypeProfiles[DietDayType] {
+  if (!shouldUseLowImpactCardio(safetyProfile)) return profile;
+  const exercisePriority = profile.exercisePriority.filter((id) => id !== "running");
+  return {
+    ...profile,
+    intensity: profile.intensity === "heavy" ? "moderate" : profile.intensity,
+    focusCandidates: prioritizeFocus(["cardio", "core", ...profile.focusCandidates]),
+    exercisePriority: prioritizeUnique(["walking", "cycling", "elliptical", ...exercisePriority]),
+    movementPattern: `${profile.movementPattern} / 低冲击优先`,
+    caution: `${profile.caution} 大体重或新手阶段默认避开跑步、跳跃和冲刺，优先快走、椭圆机、单车或低冲击动作。`,
+  };
+}
+
+function shouldUseLowImpactCardio(profile?: TrainingDietRecommendationInput["safetyProfile"]): boolean {
+  if (!profile) return false;
+  const heightM = profile.heightCm > 0 ? profile.heightCm / 100 : 0;
+  const bmi = heightM > 0 ? profile.weightKg / (heightM * heightM) : 0;
+  return bmi >= 30 || profile.weightKg >= 100 || profile.trainingLevel === "beginner";
+}
+
+function prioritizeFocus(items: MuscleGroup[]): MuscleGroup[] {
+  return Array.from(new Set(items));
+}
+
+function prioritizeUnique(items: string[]): string[] {
+  return Array.from(new Set(items));
 }
 
 export function getTrainingDietEvidence(ids: string[]): TrainingDietEvidence[] {

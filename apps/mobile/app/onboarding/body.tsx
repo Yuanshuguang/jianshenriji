@@ -54,6 +54,13 @@ const bodyShapeLabels: Record<string, string> = {
   "very-clear-line": "马甲线非常明显",
 };
 
+const goalTypeOptions: Array<{ id: UserGoal["goalType"]; label: string }> = [
+  { id: "fat_loss", label: "减脂" },
+  { id: "maintenance", label: "维持" },
+  { id: "muscle_gain", label: "增肌" },
+  { id: "recomp", label: "增肌减脂" },
+];
+
 const allowedImageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/heic"]);
 const allowedSelfieMediaTypes = new Set([...allowedImageTypes, "video/mp4", "video/quicktime", "video/webm"]);
 const maxImageBytes = 8 * 1024 * 1024;
@@ -453,7 +460,24 @@ export default function BodyScreen() {
 
         <View style={{ gap: 8 }}>
           <Label color={colors.inkMute} variant="label">
-            目标体型
+            主要目标
+          </Label>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {goalTypeOptions.map((option) => (
+              <SelectChip
+                key={option.id}
+                label={option.label}
+                active={goalDraft.goalType === option.id}
+                color="accent"
+                onPress={() => setGoalDraft((current) => ({ ...current, goalType: option.id }))}
+              />
+            ))}
+          </View>
+        </View>
+
+        <View style={{ gap: 8 }}>
+          <Label color={colors.inkMute} variant="label">
+            目标方向
           </Label>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {bodyShapeOptions.map((option) => (

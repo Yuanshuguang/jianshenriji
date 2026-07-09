@@ -106,6 +106,11 @@ export function LibraryExerciseCard({
           {bottom ? <StatusDot label="底" color={c.inkMute} /> : null}
         </View>
       ) : null}
+      {item.riskLabel ? (
+        <View style={{ position: "absolute", bottom: 8, right: 8 }}>
+          <StatusDot label={item.riskLabel.slice(0, 2)} color={item.riskLevel === "high" ? c.warn : item.riskLevel === "medium" ? c.amber : c.positive} />
+        </View>
+      ) : null}
       {onActionPress ? (
         <Pressable
           ref={actionButtonRef}

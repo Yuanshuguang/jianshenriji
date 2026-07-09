@@ -31,6 +31,17 @@ test("宏量热量闭合：训练日和休息日的目标 calories 与三大营�
   const r = restDay.proteinG * 4 + restDay.fatG * 9 + restDay.carbsG * 4; assert.ok(Math.abs(r - 1800) <= 1, `restDay drifted: ${r}`);
 });
 
+test("宏量分配：训练日提高碳水，休息日相对降低碳水", () => {
+  const rules = createDefaultAdjustmentRules(settings, "male");
+  const target = { calories: 2200, proteinG: 130, fatG: 70, carbsG: 280 };
+
+  const trainingDay = adjustMacros(target, 2200, { plannedCalories: 400, actualCalories: 0 }, rules);
+  const restDay = adjustMacros(target, 2200, { plannedCalories: 0, actualCalories: 0 }, rules);
+
+  assert.ok(trainingDay.carbsG > restDay.carbsG, `expected training carbs > rest carbs, got ${trainingDay.carbsG} <= ${restDay.carbsG}`);
+  assert.ok(trainingDay.fatG < restDay.fatG, `expected training fat < rest fat, got ${trainingDay.fatG} >= ${restDay.fatG}`);
+});
+
 test("动态调整后的 adjustedDailyCalories 与 macros 热量一致", () => {
   const result = calculateDynamicPlanAdjustment({
     userProfile: { gender: "male", age: 30, heightCm: 175, weightKg: 70, trainingLevel: "intermediate" },
@@ -55,7 +66,7 @@ test("动态调整后的 adjustedDailyCalories 与 macros 热量一致", () => {
   assert.ok(Math.abs(macroCalories - result.adjustedDailyCalories) <= 2, `macro vs target: ${macroCalories} vs ${result.adjustedDailyCalories}`);
 });
 
-test("赎罪机制：用户选择 5 天偿还时，2000 kcal 均摊为每天 400 kcal", () => {
+test("弹性调整：用户选择 5 天分摊时，2000 kcal 均摊为每天 400 kcal", () => {
   const result = calculateDynamicPlanAdjustment({
     userProfile: { gender: "male", age: 30, heightCm: 175, weightKg: 70, trainingLevel: "intermediate" },
     goalPlan: { targetWeightKg: 65, targetDays: 60, targetBodyShapeId: "slight-line" },
@@ -78,7 +89,7 @@ test("赎罪机制：用户选择 5 天偿还时，2000 kcal 均摊为每天 400
   assert.equal(result.deadlineExtensionDays, 0);
 });
 
-test("赎罪机制：顺延目标时不压低后续每日摄入", () => {
+test("弹性调整：顺延目标时不压低后续每日摄入", () => {
   const result = calculateDynamicPlanAdjustment({
     userProfile: { gender: "male", age: 30, heightCm: 175, weightKg: 70, trainingLevel: "intermediate" },
     goalPlan: { targetWeightKg: 65, targetDays: 60, targetBodyShapeId: "slight-line" },
@@ -101,7 +112,7 @@ test("赎罪机制：顺延目标时不压低后续每日摄入", () => {
   assert.equal(result.unresolvedCalories, 2000);
 });
 
-test("赎罪机制：默认混合处理会部分扣减并把剩余差额顺延", () => {
+test("弹性调整：默认混合处理会部分扣减并把剩余差额顺延", () => {
   const result = calculateDynamicPlanAdjustment({
     userProfile: { gender: "male", age: 30, heightCm: 175, weightKg: 70, trainingLevel: "intermediate" },
     goalPlan: { targetWeightKg: 65, targetDays: 60, targetBodyShapeId: "slight-line" },
@@ -125,7 +136,7 @@ test("赎罪机制：默认混合处理会部分扣减并把剩余差额顺延",
   assert.equal(result.adjustedDailyCalories, 2200 - result.dailyRepayCalories);
 });
 
-test("赎罪机制：混合模式也要尊重用户指定的赎罪天数", () => {
+test("弹性调整：混合模式也要尊重用户指定的分摊天数", () => {
   const result = calculateDynamicPlanAdjustment({
     userProfile: { gender: "male", age: 30, heightCm: 175, weightKg: 70, trainingLevel: "intermediate" },
     goalPlan: { targetWeightKg: 65, targetDays: 60, targetBodyShapeId: "slight-line" },
@@ -147,7 +158,7 @@ test("赎罪机制：混合模式也要尊重用户指定的赎罪天数", () =>
   assert.equal(result.deadlineExtensionDays, 2);
 });
 
-test("赎罪机制：非法天数不会污染动态调整结果", () => {
+test("弹性调整：非法天数不会污染动态调整结果", () => {
   const result = calculateDynamicPlanAdjustment({
     userProfile: { gender: "male", age: 30, heightCm: 175, weightKg: 70, trainingLevel: "intermediate" },
     goalPlan: { targetWeightKg: 65, targetDays: 60, targetBodyShapeId: "slight-line" },
@@ -169,7 +180,7 @@ test("赎罪机制：非法天数不会污染动态调整结果", () => {
   assert.ok(Number.isFinite(result.deadlineExtensionDays));
 });
 
-test("赎罪机制：低于目标时进入恢复观察，不奖励性补吃", () => {
+test("弹性调整：低于目标时进入恢复观察，不奖励性补吃", () => {
   const result = calculateDynamicPlanAdjustment({
     userProfile: { gender: "male", age: 30, heightCm: 175, weightKg: 70, trainingLevel: "intermediate" },
     goalPlan: { targetWeightKg: 65, targetDays: 30, targetBodyShapeId: "slight-line" },
@@ -210,7 +221,7 @@ test("训练补偿：增肌期额外训练消耗允许保守补回", () => {
   assert.equal(result.adjustedDailyCalories, 2900);
 });
 
-test("赎罪机制：疲劳偏高时优先顺延目标", () => {
+test("弹性调整：疲劳偏高时优先顺延目标", () => {
   const result = calculateDynamicPlanAdjustment({
     userProfile: { gender: "male", age: 30, heightCm: 175, weightKg: 70, trainingLevel: "intermediate" },
     goalPlan: { targetWeightKg: 65, targetDays: 30, targetBodyShapeId: "slight-line" },
@@ -282,7 +293,7 @@ test("动态宏量：低热量高蛋白目标不能挤掉脂肪和碳水底线",
   assert.ok(Math.abs(macroCalories - result.adjustedDailyCalories) <= 2, `macro vs target: ${macroCalories} vs ${result.adjustedDailyCalories}`);
 });
 
-test("赎罪机制：维持期多吃不生成伪顺延天数", () => {
+test("弹性调整：维持期多吃不生成伪顺延天数", () => {
   const result = calculateDynamicPlanAdjustment({
     userProfile: { gender: "male", age: 30, heightCm: 175, weightKg: 70, trainingLevel: "intermediate" },
     goalPlan: { targetWeightKg: 70, targetDays: 56, targetBodyShapeId: "slight-line" },

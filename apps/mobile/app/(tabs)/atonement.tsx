@@ -72,6 +72,7 @@ export default function AtonementScreen() {
     baseMinutes: trainingPreference.minutesPerSession,
     manualFocus: todayTrainingPlan.focus,
     manualMinutes: todayTrainingPlan.minutes,
+    safetyProfile: profile,
   });
   const plannedTrainingFocus = dietTrainingRecommendation.focus;
   const plannedTrainingWorkout = buildTrainingQueue(exercises, {
@@ -150,7 +151,7 @@ export default function AtonementScreen() {
       <GlassTile glow="warn" raised style={{ gap: 10 }}>
         <View style={{ gap: 4 }}>
           <BentoText weight="bold" style={{ fontSize: 26, lineHeight: 30, color: c.ink }}>
-            赎罪
+            弹性
           </BentoText>
           <BentoText variant="caption" color={c.inkMute}>
             热量账本 · 动态调整
@@ -176,11 +177,12 @@ export default function AtonementScreen() {
         </GlassTile>
       )}
 
-      <BentoText variant="micro" color={c.inkFaint} style={{lineHeight:16,marginBottom:6}}>赎罪 = 动态调整目标偏差，系统会把差额重新分配回计划轨道。</BentoText>
+      <BentoText variant="micro" color={c.inkFaint} style={{lineHeight:16,marginBottom:6}}>弹性 = 把目标偏差温和安排回计划轨道，不做惩罚式补偿。</BentoText>
       <CalorieLedgerPanel
         historyLogs={historyLogs}
         previewEntry={previewEntry}
         targetNutrition={dietTarget}
+        goalType={adjustmentSummary.goalType}
       />
     </Screen>
   );

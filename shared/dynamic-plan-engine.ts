@@ -1,7 +1,7 @@
 ﻿import type { EnergyPlan, Gender, MuscleGroup, NutritionTotals } from "./index";
 
 export type MealAdjustmentKey = "breakfast" | "lunch" | "dinner" | "snack";
-export type GoalType = "fat_loss" | "maintenance" | "muscle_gain";
+export type GoalType = "fat_loss" | "maintenance" | "muscle_gain" | "recomp";
 export type NutritionAdjustmentKey = "calories" | "proteinG" | "fatG" | "carbsG";
 export type TrainingAdjustmentKey = "calories" | "schedule" | "fatigue";
 export type DynamicAdjustmentMode = "repay-by-days" | "extend-deadline" | "hybrid";
@@ -25,6 +25,7 @@ export type GoalPlanSnapshot = {
   targetWeightKg: number;
   targetDays: number;
   targetBodyShapeId: string;
+  goalType?: GoalType;
 };
 
 export type NutritionLedgerEntry = {
@@ -179,12 +180,14 @@ export function adjustMacros(target: NutritionTotals, calories: number, training
   const maxProteinByFloor = Math.floor((calories - minFatG * 9 - minCarbsG * 4) / 4);
   const proteinG = Math.max(0, Math.min(proteinByTarget, maxProteinByShare, maxProteinByFloor));
 
-  const trainingMultiplier = training.plannedCalories > 0 ? rules.trainingDayCarbMultiplier : rules.restDayCarbMultiplier;
+  const carbMultiplier = rules.settings.nutrition.carbsG
+    ? (training.plannedCalories > 0 ? rules.trainingDayCarbMultiplier : rules.restDayCarbMultiplier)
+    : 1;
   const scaledFatG = Math.max(minFatG, target.fatG * (calories / Math.max(1, target.calories)));
-  const fatBase = training.plannedCalories > 0
-    ? Math.max(minFatG, scaledFatG / trainingMultiplier)
-    : Math.max(minFatG, scaledFatG * rules.restDayCarbMultiplier);
   const maxFatG = Math.floor((calories - proteinG * 4 - minCarbsG * 4) / 9);
+  const scaledCarbsG = Math.max(minCarbsG, target.carbsG * (calories / Math.max(1, target.calories)));
+  const desiredCarbsG = Math.max(minCarbsG, scaledCarbsG * carbMultiplier);
+  const fatBase = Math.max(minFatG, Math.min(maxFatG, (calories - proteinG * 4 - desiredCarbsG * 4) / 9 || scaledFatG));
   const macroPair = chooseFatCarbPair({
     calories,
     proteinG,

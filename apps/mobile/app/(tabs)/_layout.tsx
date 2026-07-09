@@ -18,7 +18,7 @@ type TabBarProps = {
 const tabItems: TabItem[] = [
   { key: "index", label: "饮食", icon: "food" },
   { key: "train", label: "训练", icon: "train" },
-  { key: "atonement", label: "赎罪", icon: "bolt" },
+  { key: "atonement", label: "弹性", icon: "bolt" },
   { key: "plan", label: "计划", icon: "plan" },
   { key: "more", label: "我的", icon: "more" },
 ];
@@ -59,7 +59,7 @@ export default function TabLayout() {
     >
       <Tabs.Screen name="index" options={{ title: "饮食" }} />
       <Tabs.Screen name="train" options={{ title: "训练" }} />
-      <Tabs.Screen name="atonement" options={{ title: "赎罪" }} />
+      <Tabs.Screen name="atonement" options={{ title: "弹性" }} />
       <Tabs.Screen name="plan" options={{ title: "计划" }} />
       <Tabs.Screen name="calendar" options={{ title: "日历", href: null }} />
       <Tabs.Screen name="more" options={{ title: "我的" }} />

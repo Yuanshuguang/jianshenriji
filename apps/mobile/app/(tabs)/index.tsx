@@ -246,7 +246,8 @@ export default function TodayScreen() {
     preferredMuscleGroups: trainingPreference.preferredMuscleGroups,
     baseMinutes: trainingPreference.minutesPerSession,
     manualFocus: todayTrainingPlan.focus,
-    manualMinutes: todayTrainingPlan.minutes
+    manualMinutes: todayTrainingPlan.minutes,
+    safetyProfile: profile
   });
   const plannedTrainingFocus = dietTrainingRecommendation.focus;
   const plannedTrainingWorkout = buildTrainingQueue(exercises, {

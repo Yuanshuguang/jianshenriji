@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
-import { buildCalorieLedgerTimeline, type DailyLogEntry, type NutritionTotals, type MacroLedgerStat } from "@fitness-calendar/shared";
+import { buildCalorieLedgerTimeline, type DailyLogEntry, type GoalType, type NutritionTotals, type MacroLedgerStat } from "@fitness-calendar/shared";
 import { Badge, Button, GlassTile, MetricCompareBar, Text as BentoText, useBentoTheme, type SemanticColor } from "./bento";
 
 type LedgerWindowKey = "7" | "14" | "30" | "all";
@@ -16,10 +16,12 @@ export function CalorieLedgerPanel({
   historyLogs,
   previewEntry,
   targetNutrition,
+  goalType = "fat_loss",
 }: {
   historyLogs: Record<string, DailyLogEntry>;
   previewEntry?: DailyLogEntry;
   targetNutrition: NutritionTotals;
+  goalType?: GoalType;
 }) {
   const c = useBentoTheme().colors;
   const [expanded, setExpanded] = useState(false);
@@ -27,17 +29,18 @@ export function CalorieLedgerPanel({
 
   const todayLedger = useMemo(() => {
     if (!previewEntry) return null;
-    return buildCalorieLedgerTimeline({ [previewEntry.date]: previewEntry }, { targetNutritionFallback: targetNutrition });
-  }, [previewEntry, targetNutrition]);
+    return buildCalorieLedgerTimeline({ [previewEntry.date]: previewEntry }, { targetNutritionFallback: targetNutrition, goalType });
+  }, [previewEntry, targetNutrition, goalType]);
 
   const rangeLedger = useMemo(() => {
     const mergedLogs = previewEntry ? { ...historyLogs, [previewEntry.date]: previewEntry } : historyLogs;
     const option = windowOptions.find((item) => item.key === windowKey);
     return buildCalorieLedgerTimeline(mergedLogs, {
       limitDays: option?.limitDays,
-      targetNutritionFallback: targetNutrition
+      targetNutritionFallback: targetNutrition,
+      goalType
     });
-  }, [historyLogs, previewEntry, targetNutrition, windowKey]);
+  }, [historyLogs, previewEntry, targetNutrition, goalType, windowKey]);
 
   const today = todayLedger?.today ?? null;
   const calorieDelta = today?.calorieDelta ?? 0;
